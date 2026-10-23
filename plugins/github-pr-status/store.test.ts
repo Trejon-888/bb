@@ -505,7 +505,7 @@ describe("reads with a maximum age", () => {
     await store.read("a", { viewer: true });
     const signal = new AbortController();
     store.watch("a", signal.signal);
-    await vi.advanceTimersByTimeAsync(60 * 60_000);
+    await vi.advanceTimersByTimeAsync(62 * 60_000);
     load.mockClear();
     let release!: () => void;
     load.mockImplementationOnce(

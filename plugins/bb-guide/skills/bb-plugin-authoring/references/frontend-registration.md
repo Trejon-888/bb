@@ -217,12 +217,6 @@ as `{ key, pluginId }` in row order (`key` is `<pluginId>/<id>`; bb's own use
 `bb--core`), and `isExpanded`/`onToggle` (one segment is expanded at a time).
 `useVisible(input)` false leaves it out.
 
-### Items on every thread row
-
-`app.slots.experimental_threadRowItem` adds a small badge to every thread row;
-plugin-built lists draw them with `experimental_ThreadRowItems`. See
-frontend-thread-row-items.md.
-
 ### An action in every thread menu
 
 `app.slots.experimental_threadAction` adds an entry to the thread header's
@@ -484,9 +478,6 @@ actions; see "An action in every thread menu".
 For multi-row selections (`experimental_bulkItem`), see frontend-sidebar-navigation.md.
 `experimental_useArchiveEnvironmentThreads()` archives a whole environment
 group with bb's pane cleanup and Undo toast.
-
-**bb's row items on your row.** Render `experimental_ThreadRowItems` in the
-row's title area (frontend-thread-row-items.md).
 
 **bb's status glyph on your row.** Render `experimental_ThreadStatusGlyph`
 with the row's `indicator` (start from the thread's own, then fold in what

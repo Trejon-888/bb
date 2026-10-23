@@ -298,10 +298,11 @@
         },
         {
           "path": "plugins/github-pr-status/app.tsx",
-          "anchors": [
-            "app.slots.experimental_threadRowItem",
-            "enabled: isLive && environmentId !== null"
-          ]
+          "anchors": ["app.slots.experimental_threadRowItem"]
+        },
+        {
+          "path": "plugins/github-pr-status/ui/PullRequestRowItem.tsx",
+          "anchors": ["enabled: isLive && environmentId !== null"]
         }
       ]
     },
