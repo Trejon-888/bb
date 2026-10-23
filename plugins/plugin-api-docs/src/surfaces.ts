@@ -1430,9 +1430,8 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         bullets: [
           "Create threads attributed to the plugin, send messages, and manage projects and machines",
           "Start plugin updates in the background and follow their progress or rollback",
-          "Discover current execution and repository paths without persisting workspace metadata",
           "Read Viewed state for up to 500 file paths; mark and clear return acknowledgements",
-          "Retry failed environment cleanup with recover: true after inspecting processes using the workspace",
+          "Look up an environment's folder, repo root and branches, or retry failed cleanup with recover: true",
         ],
         apiSymbols: [
           "BbPluginApi",
