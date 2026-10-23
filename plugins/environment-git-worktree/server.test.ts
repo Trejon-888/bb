@@ -98,6 +98,7 @@ function restoreContext(
         projectId: PROJECT_ID,
         hostId: HOST_ID,
         path: WORKTREE_PATH,
+        repoRoot: null,
         isGitRepo: true,
         isWorktree: true,
         branchName,

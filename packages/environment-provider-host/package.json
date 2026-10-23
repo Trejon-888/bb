@@ -41,7 +41,8 @@
   },
   "dependencies": {
     "@get-bb/plugin-sdk": "workspace:*",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@bb/domain": "workspace:*"
   },
   "devDependencies": {
     "@bb/tsconfig": "workspace:*",

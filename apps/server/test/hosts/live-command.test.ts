@@ -1,8 +1,4 @@
-import {
-  createEnvironment,
-  getEnvironment,
-  updateHost,
-} from "@bb/db";
+import { createEnvironment, getEnvironment, updateHost } from "@bb/db";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { replaceMachineEnvironment } from "../../src/services/machines/environment-settings.js";
@@ -143,6 +139,7 @@ it("resolves fresh setup values at dispatch without retaining them in the reques
         ok: true,
         result: {
           path: command.path,
+          repoRoot: null,
           isGitRepo: false,
           isWorktree: false,
           branchName: null,

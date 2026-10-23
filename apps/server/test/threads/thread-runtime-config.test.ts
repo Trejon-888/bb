@@ -1189,12 +1189,7 @@ describe("thread runtime config", () => {
         {
           thread,
           model: "test-model",
-          environment: {
-            hostId: environment.hostId,
-            id: environment.id,
-            path: environment.path,
-            status: environment.status,
-          },
+          environment: environment,
         },
       );
       setPluginAgentContributions(undefined);
@@ -1528,12 +1523,7 @@ describe("thread runtime config", () => {
         {
           thread,
           model: "test-model",
-          environment: {
-            hostId: environment.hostId,
-            id: environment.id,
-            path: environment.path,
-            status: environment.status,
-          },
+          environment: environment,
         },
       );
 
@@ -1640,12 +1630,7 @@ describe("thread runtime config", () => {
           {
             thread,
             model: "test-model",
-            environment: {
-              hostId: environment.hostId,
-              id: environment.id,
-              path: environment.path,
-              status: environment.status,
-            },
+            environment: environment,
           },
         );
 
@@ -1723,12 +1708,7 @@ describe("thread runtime config", () => {
           {
             thread,
             model: "test-model",
-            environment: {
-              hostId: environment.hostId,
-              id: environment.id,
-              path: environment.path,
-              status: environment.status,
-            },
+            environment: environment,
           },
         );
 

@@ -5,7 +5,7 @@ import {
   serverMoveProgressMessageSchema,
 } from "./server-move.js";
 import {
-  discoveredWorkspacePropertiesSchema,
+  workspaceDescriptorSchema,
   idleProviderSessionTimeoutMinutesSchema,
   ENVIRONMENT_CHANGE_KINDS,
   jsonValueSchema,
@@ -381,7 +381,7 @@ export type HostDaemonEnvironmentChangePayload = z.infer<
 const hostDaemonEnvironmentMetadataChangePayloadSchema = z
   .object({
     environmentId: z.string().min(1),
-    workspace: discoveredWorkspacePropertiesSchema,
+    workspace: workspaceDescriptorSchema,
   })
   .strict();
 export type HostDaemonEnvironmentMetadataChangePayload = z.infer<

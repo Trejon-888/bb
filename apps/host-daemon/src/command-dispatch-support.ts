@@ -278,6 +278,10 @@ export async function requireWorkspaceEnvironment(
     ...(args.targetThreadId !== undefined
       ? { targetThreadId: args.targetThreadId }
       : {}),
+    provision: {
+      path: args.workspaceContext.workspacePath,
+      descriptor: args.workspaceContext.descriptor,
+    },
     workspacePath: args.workspaceContext.workspacePath,
   });
 }

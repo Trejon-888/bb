@@ -205,6 +205,7 @@ describe("internal environment change websocket hints", () => {
           environmentId: environment.id,
           workspace: {
             path: environment.path,
+            repoRoot: "/tmp",
             isGitRepo: true,
             isWorktree: true,
             branchName: "main",
@@ -215,6 +216,7 @@ describe("internal environment change websocket hints", () => {
 
       expect(socket.close).not.toHaveBeenCalled();
       expect(getEnvironment(harness.db, environment.id)).toMatchObject({
+        repoRoot: "/tmp",
         isGitRepo: true,
         isWorktree: true,
         branchName: "main",
@@ -234,6 +236,7 @@ describe("internal environment change websocket hints", () => {
             environmentId: environment.id,
             workspace: {
               path: environment.path,
+              repoRoot: "/tmp",
               isGitRepo: true,
               isWorktree: true,
               branchName,

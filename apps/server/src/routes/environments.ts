@@ -537,7 +537,7 @@ export function registerEnvironmentRoutes(app: Hono, deps: AppDeps): void {
       throw new ApiError(400, "invalid_request", "Invalid path");
     }
     const absolutePath = joinHostPathSegments(
-      environment.path,
+      environment.repoRoot ?? environment.path,
       repoRelativePath,
     );
     const ref = resolveDiffFileRef(query);
@@ -547,7 +547,7 @@ export function registerEnvironmentRoutes(app: Hono, deps: AppDeps): void {
       command: {
         type: "host.read_file",
         path: absolutePath,
-        rootPath: environment.path,
+        rootPath: environment.repoRoot ?? environment.path,
         ...(ref !== undefined ? { ref } : {}),
       },
     }).catch(remapDaemonFileRouteError);

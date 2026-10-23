@@ -1,3 +1,4 @@
+import { resolveEnvironmentPreviewRoot } from "@bb/client-core";
 import { useMemo, type ReactNode } from "react";
 import type { OpenInTargetContext } from "@bb/host-daemon-contract";
 import type { SidebarProject } from "@/hooks/queries/project-queries";
@@ -388,7 +389,10 @@ function RootComposeFilePreviewTabContent({
       enabled: openContext !== null,
       ...(openContext ? { openContext } : {}),
     });
-  const workspaceRootPath = environment?.path ?? null;
+  const workspaceRootPath =
+    tab.kind === "workspace-file-preview"
+      ? resolveEnvironmentPreviewRoot(environment, tab.source)
+      : (environment?.path ?? null);
   const relativeFileRootPath =
     tab.kind === "workspace-file-preview"
       ? tab.environmentId === null

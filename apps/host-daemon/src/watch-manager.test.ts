@@ -33,6 +33,14 @@ function createFakeWorkspace(path: string, isGitRepo = true) {
   let sharedGitRefsFingerprint: GetSharedGitRefsFingerprintResult = `refs:${path}:initial`;
   let sharedGitRefsFingerprintError: Error | null = null;
   const workspace = {
+    descriptor: {
+      path: path,
+      repoRoot: isGitRepo ? path : null,
+      isGitRepo: isGitRepo,
+      isWorktree: false,
+      branchName: isGitRepo ? "main" : null,
+      defaultBranch: isGitRepo ? "main" : null,
+    },
     path,
     isGitRepo,
     isWorktree: false,
@@ -401,6 +409,7 @@ describe("WatchManager", () => {
         environmentId: "env-watch",
         workspace: {
           path: "/tmp/env-watch",
+          repoRoot: "/tmp/env-watch",
           isGitRepo: true,
           isWorktree: false,
           branchName: "main",

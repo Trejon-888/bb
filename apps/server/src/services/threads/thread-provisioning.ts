@@ -265,12 +265,7 @@ async function startThreadIfEnvironmentReady(
 
   await requestThreadStart(deps, {
     thread: args.thread,
-    environment: {
-      id: args.environment.id,
-      hostId: args.environment.hostId,
-      path: args.environment.path,
-      status: args.environment.status,
-    },
+    environment: args.environment,
     fork: args.context.request.fork,
     input: args.context.request.input,
     ...(args.context.request.inputGroups !== undefined

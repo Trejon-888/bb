@@ -91,6 +91,71 @@ describe("provisionWorkspace", () => {
       ]);
     });
 
+    it.each([
+      { linked: false, alias: false },
+      { linked: true, alias: false },
+      { linked: false, alias: true },
+    ])(
+      "serves repository-relative changes from a subfolder (linked=$linked, alias=$alias)",
+      async ({ linked, alias }) => {
+        const root = await initRepo(await makeTempDir("bb-subfolder-"));
+        let repo = root;
+        if (linked) {
+          repo = path.join(
+            await makeTempDir("bb-subfolder-worktree-"),
+            "checkout",
+          );
+          await runGit(["worktree", "add", "-b", "feature", repo], {
+            cwd: root,
+          });
+        }
+        if (alias) {
+          const link = path.join(
+            await makeTempDir("bb-subfolder-alias-"),
+            "linked-repo",
+          );
+          await fs.symlink(repo, link, "junction");
+          repo = link;
+        }
+        const subfolder = path.join(repo, "packages", "app");
+        await fs.mkdir(subfolder, { recursive: true });
+        await fs.writeFile(path.join(subfolder, "file[1].txt"), "one\n");
+        await runGit(["add", "."], { cwd: repo });
+        await runGit(["commit", "-m", "nested file"], { cwd: repo });
+        await fs.appendFile(path.join(subfolder, "file[1].txt"), "two\n");
+        await fs.writeFile(path.join(subfolder, "new.txt"), "new content\n");
+        const ws = await provisionWorkspace({ path: subfolder });
+        const target = { type: "uncommitted" } as const;
+        const files = await ws.diffFiles({
+          target,
+          maxFiles: 100,
+          ignoreWhitespace: false,
+        });
+        expect(files.files.map((file) => file.path)).toEqual(
+          expect.arrayContaining([
+            "packages/app/file[1].txt",
+            "packages/app/new.txt",
+          ]),
+        );
+        const patches = await ws.diffPatch({
+          target,
+          paths: files.files.map((file) => file.path),
+          maxBytesPerFile: 10000,
+          ignoreWhitespace: false,
+        });
+        expect(
+          patches.find((entry) => entry.path === "packages/app/file[1].txt")
+            ?.patch,
+        ).toContain("+two");
+        expect(
+          patches.find((entry) => entry.path === "packages/app/new.txt")?.patch,
+        ).toContain("+new content");
+        expect(ws.path).toBe(subfolder);
+        expect(ws.isWorktree).toBe(linked);
+        expect(ws.descriptor.repoRoot).toBe(await fs.realpath(repo));
+      },
+    );
+
     it("throws for non-existent path", async () => {
       await expect(
         provisionWorkspace({

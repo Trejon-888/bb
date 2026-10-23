@@ -497,6 +497,7 @@ async function runCreate(
             row.teardownStatus = "removed";
             row.claimPath = null;
             row.path = null;
+            row.repoRoot = null;
             row.resource = null;
           },
         );
@@ -1541,11 +1542,7 @@ function settleEnvironmentProvisionOutcome(
       args.deps.hub,
       args.command.environmentId,
       {
-        path: args.report.result.path,
-        isGitRepo: args.report.result.isGitRepo,
-        isWorktree: args.report.result.isWorktree,
-        branchName: args.report.result.branchName,
-        defaultBranch: args.report.result.defaultBranch,
+        ...args.report.result,
         ...(args.mergeBaseBranch === null
           ? {}
           : { baseBranch: null, mergeBaseBranch: args.mergeBaseBranch }),

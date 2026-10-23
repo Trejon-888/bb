@@ -10,7 +10,7 @@ import {
 } from "./server-move.js";
 import {
   availableModelSchema,
-  discoveredWorkspacePropertiesSchema,
+  workspaceDescriptorSchema,
   dynamicToolSchema,
   gitBranchOptionsSchema,
   gitSourceInspectionSchema,
@@ -85,6 +85,7 @@ const INJECTED_SKILL_NAME_PATTERN =
 
 export const workspaceContextSchema = z.object({
   workspacePath: z.string().min(1),
+  descriptor: workspaceDescriptorSchema.optional(),
 });
 export type WorkspaceContext = z.infer<typeof workspaceContextSchema>;
 
@@ -1290,7 +1291,7 @@ const projectInspectResultSchema = projectPathResultSchema
   .extend({ gitRemoteUrl: z.string().min(1).nullable() })
   .strict();
 const projectCloneResultSchema = projectInspectResultSchema;
-const environmentProvisionResultSchema = discoveredWorkspacePropertiesSchema;
+const environmentProvisionResultSchema = workspaceDescriptorSchema;
 const environmentProvisionCancelResultSchema = z.object({
   aborted: z.boolean(),
 });

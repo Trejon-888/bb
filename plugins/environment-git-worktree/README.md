@@ -13,3 +13,9 @@ reuse the project's recorded environment on the selected machine before running
 provider creation. Its ownership and cleanup behavior stay intact. When the path
 has no environment, the plugin validates it against Git and adopts it without
 taking ownership; retiring that environment leaves the worktree on disk.
+
+Named bases resolve to `origin/<name>` when that remote-tracking ref exists and
+are fetched before creating a worktree. Fully qualified `refs/heads/<name>`
+selects the local branch explicitly. Local-only bases remain local. The resolved
+base is returned and stored with the environment; this does not refresh existing
+worktrees before later agent turns.

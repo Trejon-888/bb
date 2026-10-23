@@ -195,6 +195,7 @@ it.each([
                 ok: true,
                 result: {
                   path: environment.path!,
+                  repoRoot: null,
                   isGitRepo: false,
                   isWorktree: false,
                   branchName: null,

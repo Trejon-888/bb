@@ -459,7 +459,7 @@ export function registerFileRoutes(app: Hono, deps: AppDeps): void {
       context.req.raw,
       {
         hostId: environment.hostId,
-        rootPath: environment.path,
+        rootPath: environment.repoRoot ?? environment.path,
         ref: parseRevisionRef(context.req.param("ref")),
       },
       parseRelativeFileSegments(context.req.param("filePath")),

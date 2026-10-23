@@ -92,6 +92,7 @@ function toEnvironmentResponseWithHostLifecycle(
     projectId: row.projectId,
     hostId: row.hostId,
     path: row.path,
+    repoRoot: row.repoRoot,
     isGitRepo: row.isGitRepo,
     isWorktree: row.isWorktree,
     branchName: row.branchName,

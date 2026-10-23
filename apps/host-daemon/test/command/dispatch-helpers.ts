@@ -139,6 +139,14 @@ export function createFakeWorkspace(pathname: string) {
     destroyed: false,
   };
   const workspace: FakeHostWorkspace = {
+    descriptor: {
+      path: pathname,
+      repoRoot: true ? pathname : null,
+      isGitRepo: true,
+      isWorktree: false,
+      branchName: true ? "main" : null,
+      defaultBranch: true ? "main" : null,
+    },
     path: pathname,
     isGitRepo: true,
     isWorktree: false,

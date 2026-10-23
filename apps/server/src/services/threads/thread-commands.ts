@@ -1,3 +1,4 @@
+import { getEnvironment } from "@bb/db";
 import { environments, hasStoredSpawnAgentToolCall, threads } from "@bb/db";
 import { and, eq, isNull } from "drizzle-orm";
 import {
@@ -43,7 +44,7 @@ import {
 import { clampPermissionModeToHost } from "../hosts/permission-ceiling.js";
 import type { ProviderRegistryService } from "../providers/provider-registry.js";
 import { resolveProviderPlanCommand } from "../providers/provider-plan-command.js";
-import { workspaceContextFromPath } from "../environments/workspace-command-target.js";
+import { workspaceContextFromEnvironment } from "../environments/workspace-command-target.js";
 import {
   requireBridgeLaunchForProviderId,
   resolveBridgeLaunchForProviderId,
@@ -282,7 +283,8 @@ export async function buildThreadStartCommand(
     type: "thread.start",
     environmentId: args.environment.id,
     threadId: args.thread.id,
-    workspaceContext: workspaceContextFromPath({
+    workspaceContext: workspaceContextFromEnvironment({
+      ...args.environment,
       path: runtimeContext.workspacePath,
     }),
     projectId: args.projectId,
@@ -313,6 +315,8 @@ export async function buildThreadStartCommand(
 function buildPreparedTurnSubmitCommandPayload(
   args: PreparedTurnSubmitCommandBuildArgs,
 ): PreparedTurnSubmitCommandPayload {
+  const environment = getEnvironment(args.deps.db, args.environmentId);
+  if (environment === null) throw new Error("Thread environment is missing");
   const bridgeLaunch = requireBridgeLaunchForProviderId(
     args.deps,
     args.runtimeContext.providerId,
@@ -334,7 +338,8 @@ function buildPreparedTurnSubmitCommandPayload(
     }),
     target: args.target,
     resumeContext: {
-      workspaceContext: workspaceContextFromPath({
+      workspaceContext: workspaceContextFromEnvironment({
+        ...environment,
         path: args.runtimeContext.workspacePath,
       }),
       projectId: args.runtimeContext.projectId,
@@ -500,7 +505,8 @@ export function dispatchArchivedThreadProviderArchiveCommand(
   if (!environment.path) {
     return false;
   }
-  const workspaceContext = workspaceContextFromPath({
+  const workspaceContext = workspaceContextFromEnvironment({
+    ...environment,
     path: environment.path,
   });
 

@@ -1,3 +1,5 @@
+import type { WorkspaceDescriptor } from "@bb/domain";
+import { describeWorkspace } from "bb-environment-provider-host/git";
 import type { ProvisioningTranscriptEntry, WorkspaceStatus } from "@bb/domain";
 import { pathExists } from "@bb/process-utils";
 import type {
@@ -14,7 +16,6 @@ import type {
 } from "./workspace.js";
 import { Workspace } from "./workspace.js";
 import {
-  inspectGitRepository,
   readDefaultBranch,
   WorkspaceError,
   type SharedGitRefsSnapshot,
@@ -45,6 +46,7 @@ interface ProvisionBase {
 }
 
 interface UnmanagedWorkspaceOpts extends ProvisionBase {
+  descriptor?: WorkspaceDescriptor;
   path: string;
 }
 
@@ -53,6 +55,7 @@ export type ProvisionWorkspaceArgs = UnmanagedWorkspaceOpts;
 const WORKSPACE_BRANCH_GIT_TIMEOUT_MS = 15_000;
 
 export interface HostWorkspace {
+  readonly descriptor: WorkspaceDescriptor;
   readonly path: string;
   readonly isGitRepo: boolean;
   readonly isWorktree: boolean;
@@ -72,6 +75,7 @@ export interface HostWorkspace {
 }
 
 class ProvisionedHostWorkspace implements HostWorkspace {
+  readonly descriptor: WorkspaceDescriptor;
   readonly path: string;
   readonly isGitRepo: boolean;
   readonly isWorktree: boolean;
@@ -79,19 +83,19 @@ class ProvisionedHostWorkspace implements HostWorkspace {
   private readonly ws: Workspace;
   private readonly gitProcessOptions: GitProcessOptions;
 
-  constructor(opts: {
-    path: string;
-    isGitRepo: boolean;
-    isWorktree: boolean;
-    shellPath?: string;
-  }) {
-    this.path = opts.path;
-    this.isGitRepo = opts.isGitRepo;
-    this.isWorktree = opts.isWorktree;
+  constructor(opts: { descriptor: WorkspaceDescriptor; shellPath?: string }) {
+    this.descriptor = opts.descriptor;
+    this.path = opts.descriptor.path;
+    this.isGitRepo = opts.descriptor.isGitRepo;
+    this.isWorktree = opts.descriptor.isWorktree;
     this.gitProcessOptions = {
       ...(opts.shellPath !== undefined ? { shellPath: opts.shellPath } : {}),
     };
-    this.ws = new Workspace(opts.path, this.gitProcessOptions, opts.isGitRepo);
+    this.ws = new Workspace(
+      this.descriptor.repoRoot ?? this.path,
+      this.gitProcessOptions,
+      this.isGitRepo,
+    );
   }
 
   async getCurrentBranch(): Promise<string | null> {
@@ -169,14 +173,20 @@ async function provisionUnmanaged(
       `Unmanaged workspace path does not exist: ${opts.path}`,
     );
   }
-  const { isGitRepo, isWorktree } = await inspectGitRepository(opts.path, {
-    ...(opts.shellPath !== undefined ? { shellPath: opts.shellPath } : {}),
-  });
+  if (opts.descriptor && opts.descriptor.path !== opts.path) {
+    throw new WorkspaceError(
+      "workspace_type_mismatch",
+      "Workspace descriptor does not match its execution directory",
+    );
+  }
+  const descriptor =
+    opts.descriptor ??
+    (await describeWorkspace(opts.path, {
+      ...(opts.shellPath !== undefined ? { shellPath: opts.shellPath } : {}),
+    }));
 
   return new ProvisionedHostWorkspace({
-    path: opts.path,
-    isGitRepo,
-    isWorktree,
+    descriptor,
     shellPath: opts.shellPath,
   });
 }

@@ -1,3 +1,4 @@
+import type { WorkspaceDescriptor } from "@bb/domain";
 import {
   resolveHostEnvironment,
   mergeHostAndProviderEnvironment,
@@ -43,7 +44,10 @@ const UPDATE_ENVIRONMENT_DIRECTORY_INSTRUCTIONS =
 
 const PLUGIN_INSTRUCTION_CONTRIBUTION_MAX_CHARS = 4096;
 
-export interface ThreadRuntimeCommandEnvironment {
+export interface ThreadRuntimeCommandEnvironment extends Omit<
+  WorkspaceDescriptor,
+  "path"
+> {
   hostId: string;
   id: string;
   path: string | null;

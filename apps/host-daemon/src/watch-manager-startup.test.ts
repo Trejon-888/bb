@@ -75,6 +75,7 @@ it("reconciles content and branch changed between ignore discovery and root watc
         environmentId: "env-watch",
         workspace: {
           path: root,
+          repoRoot: root,
           isGitRepo: true,
           isWorktree: false,
           branchName: "feature",

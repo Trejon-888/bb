@@ -1,3 +1,4 @@
+import { recordProvisionedEnvironmentWorkspace } from "@bb/db/internal-environment-lifecycle";
 import { describe, expect, it } from "vitest";
 import { getEnvironment } from "@bb/db";
 import {
@@ -361,44 +362,62 @@ describe("public environments", () => {
     });
   });
 
-  it("remaps a daemon file-read failure on diff/file to its HTTP status", async () => {
-    await withTestHarness(async (harness) => {
-      const { host } = seedHostSession(harness.deps, {
-        id: "host-environment-diff-file-enoent",
-      });
-      const { project } = seedProjectWithSource(harness.deps, {
-        hostId: host.id,
-      });
-      const environment = seedEnvironment(harness.deps, {
-        hostId: host.id,
-        projectId: project.id,
-        path: "/tmp/diff-file-env",
-        environmentProviderId: "git-worktree",
-      });
+  it.each([false, true])(
+    "remaps a daemon file-read failure on diff/file to its HTTP status",
+    async (subfolder) => {
+      await withTestHarness(async (harness) => {
+        const { host } = seedHostSession(harness.deps, {
+          id: "host-environment-diff-file-enoent",
+        });
+        const { project } = seedProjectWithSource(harness.deps, {
+          hostId: host.id,
+        });
+        const environment = seedEnvironment(harness.deps, {
+          hostId: host.id,
+          projectId: project.id,
+          path: subfolder
+            ? "/tmp/diff-file-env/packages/app"
+            : "/tmp/diff-file-env",
+          environmentProviderId: "git-worktree",
+        });
 
-      const responsePromise = harness.app.request(
-        `/api/v1/environments/${environment.id}/diff/file?target=uncommitted&side=new&path=missing.md`,
-      );
-      const readCommand = await waitForQueuedCommand(
-        harness,
-        ({ command }) => command.type === "host.read_file",
-      );
-      expect(readCommand.command).toMatchObject({
-        path: "/tmp/diff-file-env/missing.md",
-        rootPath: "/tmp/diff-file-env",
-      });
-      await reportQueuedCommandError(harness, readCommand, {
-        errorCode: "ENOENT",
-        errorMessage: "Path does not exist: /tmp/diff-file-env/missing.md",
-      });
+        recordProvisionedEnvironmentWorkspace(
+          harness.db,
+          harness.hub,
+          environment.id,
+          {
+            path: environment.path!,
+            repoRoot: "/tmp/diff-file-env",
+            isGitRepo: true,
+            isWorktree: false,
+            branchName: "main",
+            defaultBranch: "main",
+          },
+        );
+        const responsePromise = harness.app.request(
+          `/api/v1/environments/${environment.id}/diff/file?target=uncommitted&side=new&path=missing.md`,
+        );
+        const readCommand = await waitForQueuedCommand(
+          harness,
+          ({ command }) => command.type === "host.read_file",
+        );
+        expect(readCommand.command).toMatchObject({
+          path: "/tmp/diff-file-env/missing.md",
+          rootPath: "/tmp/diff-file-env",
+        });
+        await reportQueuedCommandError(harness, readCommand, {
+          errorCode: "ENOENT",
+          errorMessage: "Path does not exist: /tmp/diff-file-env/missing.md",
+        });
 
-      const response = await responsePromise;
-      expect(response.status).toBe(404);
-      await expect(readJson(response)).resolves.toMatchObject({
-        code: "ENOENT",
+        const response = await responsePromise;
+        expect(response.status).toBe(404);
+        await expect(readJson(response)).resolves.toMatchObject({
+          code: "ENOENT",
+        });
       });
-    });
-  });
+    },
+  );
 
   it("remaps an oversized daemon file read on diff/file to 413", async () => {
     await withTestHarness(async (harness) => {

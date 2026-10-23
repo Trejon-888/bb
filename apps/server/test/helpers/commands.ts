@@ -590,6 +590,7 @@ export async function reportNextEnvironmentAttachSuccess(
   }
   await reportQueuedCommandSuccess(harness, queued, {
     path: queued.command.path,
+    repoRoot: queued.command.path,
     isGitRepo: true,
     isWorktree: false,
     branchName: "main",

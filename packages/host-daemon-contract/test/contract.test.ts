@@ -578,6 +578,7 @@ const SETTLED_RESPONSE_RESULT_FIXTURES: SettledResponseResultFixtures = {
   "interactive.resolve": {},
   "environment.attach": {
     path: "/tmp/env",
+    repoRoot: null,
     isGitRepo: true,
     isWorktree: false,
     branchName: "bb/env-123",
@@ -778,6 +779,15 @@ function terminalDataBase64(byteLength: number): string {
 }
 
 const INTENTIONAL_OPTIONAL_HOST_DAEMON_FIELDS: Record<string, string> = {
+  "hostDaemonCommandSchema.resumeContext.workspaceContext.descriptor":
+    "Absent only when workspace discovery has not been persisted, including pre-migration Git environments; the daemon discovers it and reports the descriptor for storage.",
+  "hostDaemonCommandSchema.workspaceContext.descriptor":
+    "Absent only when workspace discovery has not been persisted, including pre-migration Git environments; the daemon discovers it and reports the descriptor for storage.",
+  "hostDaemonOnlineRpcCommandSchema.workspaceContext.descriptor":
+    "Absent only when workspace discovery has not been persisted, including pre-migration Git environments; the daemon discovers it and reports the descriptor for storage.",
+  "hostDaemonSessionOpenResponseSchema.watchSet.workspaceTargets.workspaceContext.descriptor":
+    "Absent only when workspace discovery has not been persisted, including pre-migration Git environments; the daemon discovers it and reports the descriptor for storage.",
+
   "hostDaemonCommandSchema.resolution.description":
     "the interaction.resolve command's resolution is the persisted union, so it also admits the plugin_submitted arm and the description a plugin's describeSubmission returned. It never reaches the wire: a plugin interaction is settled in the server against its waiting requestInput promise and never queues a daemon command, so an older daemon never sees the field.",
   "hostDaemonCommandSchema.resolution.description.detail":
@@ -2963,12 +2973,14 @@ describe("host-daemon command schemas", () => {
     expect(
       hostDaemonCommandResultSchemaByType["environment.attach"].parse({
         path: "/tmp/env",
+        repoRoot: null,
         isGitRepo: true,
         isWorktree: true,
         branchName: "bb/env-123",
         defaultBranch: "main",
       }),
     ).toMatchObject({
+      repoRoot: null,
       isGitRepo: true,
       isWorktree: true,
       branchName: "bb/env-123",
@@ -2976,6 +2988,7 @@ describe("host-daemon command schemas", () => {
     expect(() =>
       hostDaemonCommandResultSchemaByType["environment.attach"].parse({
         path: "/tmp/env",
+        repoRoot: null,
         isGitRepo: true,
         branchName: "bb/env-123",
         defaultBranch: "main",
@@ -3375,6 +3388,7 @@ describe("host-daemon session schemas", () => {
         environmentId: "env_123",
         workspace: {
           path: "/tmp/workspace",
+          repoRoot: null,
           isGitRepo: true,
           isWorktree: false,
           branchName: "main",
@@ -3386,6 +3400,7 @@ describe("host-daemon session schemas", () => {
       environmentId: "env_123",
       workspace: {
         path: "/tmp/workspace",
+        repoRoot: null,
         isGitRepo: true,
         isWorktree: false,
         branchName: "main",

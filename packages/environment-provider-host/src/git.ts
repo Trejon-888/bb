@@ -1,9 +1,16 @@
+import type {
+  WorkspaceDescriptor,
+  GitCheckoutRef,
+  DefaultBranchRelation,
+} from "@bb/domain";
+export type { DefaultBranchRelation } from "@bb/domain";
 import {
   experimental_runVcsProcess as runVcsProcess,
   experimental_sanitizeInheritedChildProcessEnv as sanitizeInheritedChildProcessEnv,
   experimental_spawnPortableOutputProcess as spawnPortableOutputProcess,
 } from "@get-bb/plugin-sdk/host";
 import path from "node:path";
+import fs from "node:fs/promises";
 
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const USES_PROCESS_GROUPS = process.platform !== "win32";
@@ -41,20 +48,13 @@ export interface GitCommandResult {
 
 export type GitRepositoryState = "not_git" | "no_commits" | "has_commits";
 
-export type DefaultBranchRelation =
-  | "equal"
-  | "local-behind"
-  | "local-ahead"
-  | "diverged"
-  | "unknown";
-
 export interface DefaultBranchRefs {
   defaultBranch: string | undefined;
   defaultBranchRelation: DefaultBranchRelation | undefined;
   originDefaultBranch: string | undefined;
 }
 
-type GitRepoKind = "work-tree" | "bare" | "none";
+export type GitRepoKind = "work-tree" | "bare" | "none";
 
 interface GitOutputBuffer {
   append: (chunk: Buffer) => boolean;
@@ -290,25 +290,11 @@ export async function getGitCommonDir(
   return path.resolve(cwd, commonDir);
 }
 
-async function detectGitRepoKind(
+export async function detectGitRepoKind(
   cwd: string,
   options: GitTimeoutOptions = {},
 ): Promise<GitRepoKind> {
-  const result = await runGit(
-    ["rev-parse", "--is-inside-work-tree", "--is-bare-repository"],
-    { cwd, ...options, allowFailure: true },
-  );
-  if (result.exitCode !== 0) {
-    return "none";
-  }
-  const [insideWorkTree, bare] = trimOutput(result.stdout).split("\n");
-  if (insideWorkTree === "true") {
-    return "work-tree";
-  }
-  if (bare === "true") {
-    return "bare";
-  }
-  return "none";
+  return (await inspectGitRepository(cwd, options)).kind;
 }
 
 export async function detectGitRepo(
@@ -318,14 +304,14 @@ export async function detectGitRepo(
   return (await detectGitRepoKind(cwd, options)) === "work-tree";
 }
 
-async function detectGitSource(
+export async function detectGitSource(
   cwd: string,
   options: GitTimeoutOptions = {},
 ): Promise<boolean> {
   return (await detectGitRepoKind(cwd, options)) !== "none";
 }
 
-async function ensureGitRepo(
+export async function ensureGitRepo(
   cwd: string,
   options: GitTimeoutOptions = {},
 ): Promise<void> {
@@ -374,7 +360,7 @@ export async function getCurrentBranch(
   return branchName || undefined;
 }
 
-async function readLocalBranches(
+export async function readLocalBranches(
   cwd: string,
   options: GitTimeoutOptions = {},
 ): Promise<string[]> {
@@ -393,14 +379,7 @@ export async function readDefaultBranch(
   options: GitTimeoutOptions = {},
 ): Promise<string | undefined> {
   await ensureGitRepo(cwd, options);
-  const originHeadBranch = await readOriginHeadBranchName(cwd, options);
-  if (originHeadBranch !== undefined) {
-    return originHeadBranch;
-  }
-  return resolvePreferredLocalDefaultBranch(
-    await readLocalBranches(cwd, options),
-    undefined,
-  );
+  return readRepoDefaultBranch(cwd, options);
 }
 
 export async function hasRef(
@@ -441,7 +420,7 @@ export async function findWorktreeForBranch(
   return null;
 }
 
-function resolvePreferredLocalDefaultBranch(
+export function resolvePreferredLocalDefaultBranch(
   localBranches: readonly string[],
   originDefaultBranchName: string | undefined,
 ): string | undefined {
@@ -460,7 +439,7 @@ function resolvePreferredLocalDefaultBranch(
   return localBranches[0];
 }
 
-async function readOriginHeadBranchName(
+export async function readOriginHeadBranchName(
   cwd: string,
   options: GitTimeoutOptions = {},
 ): Promise<string | undefined> {
@@ -468,11 +447,7 @@ async function readOriginHeadBranchName(
     ["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
     { cwd, ...options, allowFailure: true },
   );
-  const remoteHead = trimOutput(originHead.stdout);
-  if (remoteHead.startsWith("refs/remotes/origin/")) {
-    return remoteHead.replace("refs/remotes/origin/", "");
-  }
-  return undefined;
+  return parseOriginHeadBranchName(originHead.stdout);
 }
 
 async function readOriginDefaultBranch(
@@ -613,4 +588,186 @@ export async function readDefaultBranchRefs(
     defaultBranchRelation,
     originDefaultBranch,
   };
+}
+
+async function pathExists(value: string): Promise<boolean> {
+  try {
+    await fs.access(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function inspectGitRepository(
+  cwd: string,
+  options: GitTimeoutOptions = {},
+): Promise<{ kind: GitRepoKind; isGitRepo: boolean; isWorktree: boolean }> {
+  const result = await runGit(
+    [
+      "rev-parse",
+      "--is-inside-work-tree",
+      "--is-bare-repository",
+      "--git-dir",
+      "--git-common-dir",
+    ],
+    { cwd, ...options, allowFailure: true },
+  );
+  if (result.exitCode !== 0)
+    return { kind: "none", isGitRepo: false, isWorktree: false };
+  const [insideWorkTree, bare, ...directoryLines] = result.stdout
+    .replace(/\n$/u, "")
+    .split("\n");
+  let gitDir: string | undefined = directoryLines[0];
+  let commonDir: string | undefined = directoryLines[1];
+  if (directoryLines.length > 2) {
+    gitDir = undefined;
+    commonDir = undefined;
+    for (let index = 1; index < directoryLines.length; index += 1) {
+      const candidateGitDir = directoryLines.slice(0, index).join("\n");
+      const candidateCommonDir = directoryLines.slice(index).join("\n");
+      const directoriesExist = await Promise.all([
+        pathExists(path.resolve(cwd, candidateGitDir)),
+        pathExists(path.resolve(cwd, candidateCommonDir)),
+      ]);
+      if (directoriesExist.every(Boolean)) {
+        gitDir = candidateGitDir;
+        commonDir = candidateCommonDir;
+        break;
+      }
+    }
+  }
+  if (
+    (insideWorkTree !== "true" && insideWorkTree !== "false") ||
+    (bare !== "true" && bare !== "false") ||
+    !gitDir ||
+    !commonDir
+  ) {
+    throw new WorkspaceError(
+      "git_command_failed",
+      "Invalid repository inspection output",
+    );
+  }
+  const isGitRepo = insideWorkTree === "true";
+  const [resolvedGitDir, resolvedCommonDir] = await Promise.all([
+    fs.realpath(path.resolve(cwd, gitDir)),
+    fs.realpath(path.resolve(cwd, commonDir)),
+  ]);
+  return {
+    kind: isGitRepo ? "work-tree" : bare === "true" ? "bare" : "none",
+    isGitRepo,
+    isWorktree: isGitRepo && resolvedGitDir !== resolvedCommonDir,
+  };
+}
+
+async function readHeadSha(
+  cwd: string,
+  options: GitTimeoutOptions = {},
+): Promise<string | null> {
+  const result = await runGit(["rev-parse", "--verify", "HEAD"], {
+    cwd,
+    ...options,
+    allowFailure: true,
+  });
+  if (result.exitCode !== 0) {
+    return null;
+  }
+
+  const sha = trimOutput(result.stdout);
+  return sha || null;
+}
+
+export async function getCheckoutRef(
+  cwd: string,
+  options: GitTimeoutOptions = {},
+) {
+  if (!(await detectGitSource(cwd, options))) {
+    return {
+      kind: "unknown",
+      reason: "Path is not a git repository",
+    } satisfies GitCheckoutRef;
+  }
+
+  const [symbolicRef, headSha] = await Promise.all([
+    runGit(["symbolic-ref", "--quiet", "--short", "HEAD"], {
+      cwd,
+      ...options,
+      allowFailure: true,
+    }),
+    readHeadSha(cwd, options),
+  ]);
+
+  const branchName = trimOutput(symbolicRef.stdout);
+  if (symbolicRef.exitCode === 0 && branchName) {
+    if (headSha === null) {
+      return { kind: "unborn", branchName } satisfies GitCheckoutRef;
+    }
+    return { kind: "branch", branchName, headSha } satisfies GitCheckoutRef;
+  }
+
+  if (headSha !== null) {
+    return { kind: "detached", headSha } satisfies GitCheckoutRef;
+  }
+
+  return {
+    kind: "unknown",
+    reason: "HEAD is not symbolic and no commit is checked out",
+  } satisfies GitCheckoutRef;
+}
+
+export async function detectLinkedWorktree(
+  cwd: string,
+  options: GitTimeoutOptions = {},
+): Promise<boolean> {
+  return (await inspectGitRepository(cwd, options)).isWorktree;
+}
+
+export async function describeWorkspace(
+  cwd: string,
+  options: GitTimeoutOptions = {},
+): Promise<WorkspaceDescriptor> {
+  const { isGitRepo, isWorktree } = await inspectGitRepository(cwd, options);
+  const repository = { isGitRepo, isWorktree };
+  if (!repository.isGitRepo)
+    return {
+      path: cwd,
+      repoRoot: null,
+      ...repository,
+      branchName: null,
+      defaultBranch: null,
+    };
+  const [root, branchName, defaultBranch] = await Promise.all([
+    runGit(["rev-parse", "--show-toplevel"], { cwd, ...options }),
+    getCurrentBranch(cwd, options),
+    readDefaultBranch(cwd, options),
+  ]);
+  return {
+    path: cwd,
+    repoRoot: root.stdout.replace(/\r?\n$/u, ""),
+    ...repository,
+    branchName: branchName ?? null,
+    defaultBranch: defaultBranch ?? branchName ?? null,
+  };
+}
+
+export function parseOriginHeadBranchName(output: string): string | undefined {
+  const remoteHead = trimOutput(output);
+  if (remoteHead.startsWith("refs/remotes/origin/")) {
+    return remoteHead.replace("refs/remotes/origin/", "");
+  }
+  return undefined;
+}
+
+export async function readRepoDefaultBranch(
+  cwd: string,
+  options: GitTimeoutOptions = {},
+): Promise<string | undefined> {
+  const originHeadBranch = await readOriginHeadBranchName(cwd, options);
+  if (originHeadBranch !== undefined) {
+    return originHeadBranch;
+  }
+  return resolvePreferredLocalDefaultBranch(
+    await readLocalBranches(cwd, options),
+    undefined,
+  );
 }

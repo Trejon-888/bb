@@ -1,16 +1,15 @@
-import type { EnvironmentStatus } from "@bb/domain";
+import type { WorkspaceDescriptor, EnvironmentStatus } from "@bb/domain";
 import type { WorkspaceContext } from "@bb/host-daemon-contract";
 import { throwEnvironmentNotReady } from "../lib/lifecycle-api-errors.js";
 
-interface WorkspaceCommandTargetEnvironment {
+interface WorkspaceCommandTargetEnvironment extends Omit<
+  WorkspaceDescriptor,
+  "path"
+> {
   hostId: string;
   id: string;
   path: string | null;
   status: EnvironmentStatus;
-}
-
-interface WorkspaceCommandTargetPath {
-  path: string;
 }
 
 export interface WorkspaceCommandTarget {
@@ -19,11 +18,23 @@ export interface WorkspaceCommandTarget {
   workspaceContext: WorkspaceContext;
 }
 
-export function workspaceContextFromPath(
-  target: WorkspaceCommandTargetPath,
+export function workspaceContextFromEnvironment(
+  target: WorkspaceDescriptor,
 ): WorkspaceContext {
   return {
     workspacePath: target.path,
+    ...(target.repoRoot !== null || !target.isGitRepo
+      ? {
+          descriptor: {
+            path: target.path,
+            repoRoot: target.repoRoot,
+            isGitRepo: target.isGitRepo,
+            isWorktree: target.isWorktree,
+            branchName: target.branchName,
+            defaultBranch: target.defaultBranch,
+          },
+        }
+      : {}),
   };
 }
 
@@ -37,7 +48,10 @@ export function requireWorkspaceCommandTarget(
   return {
     environmentId: environment.id,
     hostId: environment.hostId,
-    workspaceContext: workspaceContextFromPath({ path: environment.path }),
+    workspaceContext: workspaceContextFromEnvironment({
+      ...environment,
+      path: environment.path,
+    }),
   };
 }
 

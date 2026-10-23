@@ -1,3 +1,4 @@
+import type { Environment } from "@bb/domain";
 const DEFAULT_FILE_PREVIEW_MIME_TYPE = "application/octet-stream";
 const textDecoder = new TextDecoder();
 const strictUtf8TextDecoder = new TextDecoder("utf-8", { fatal: true });
@@ -350,4 +351,15 @@ export function buildFilePreviewFromSample(
   }
 
   return unsupported("binary");
+}
+
+export function resolveEnvironmentPreviewRoot(
+  environment: Pick<Environment, "path" | "repoRoot"> | null | undefined,
+  source: EnvironmentFilePreviewSource,
+): string | null {
+  return (
+    (source.kind === "working-tree"
+      ? environment?.path
+      : (environment?.repoRoot ?? environment?.path)) ?? null
+  );
 }

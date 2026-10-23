@@ -1,5 +1,6 @@
 import {
   readDefaultBranchRefs,
+  hasRef,
   type DefaultBranchRelation,
 } from "bb-environment-provider-host/git";
 import type { WorktreeBaseBranch } from "../contract.js";
@@ -10,7 +11,7 @@ interface ResolveDefaultWorktreeBaseBranchArgs {
   originDefaultBranch: string | null;
 }
 
-export function resolveDefaultWorktreeBaseBranch(
+function resolveDefaultWorktreeBaseBranch(
   args: ResolveDefaultWorktreeBaseBranchArgs,
 ): string | null {
   if (!args.originDefaultBranch) {
@@ -33,7 +34,12 @@ export async function resolveWorktreeBaseBranch(
   requested: WorktreeBaseBranch,
 ): Promise<string | null> {
   if (requested.kind === "named") {
-    return requested.name;
+    if (await hasRef(sourcePath, `refs/remotes/${requested.name}`))
+      return requested.name;
+    return !requested.name.startsWith("refs/") &&
+      (await hasRef(sourcePath, `refs/remotes/origin/${requested.name}`))
+      ? `origin/${requested.name}`
+      : requested.name;
   }
   const refs = await readDefaultBranchRefs(sourcePath);
   const resolved = resolveDefaultWorktreeBaseBranch({
@@ -41,7 +47,5 @@ export async function resolveWorktreeBaseBranch(
     defaultBranchRelation: refs.defaultBranchRelation ?? null,
     originDefaultBranch: refs.originDefaultBranch ?? null,
   });
-  return resolved && resolved !== (refs.defaultBranch ?? null)
-    ? resolved
-    : null;
+  return resolved;
 }

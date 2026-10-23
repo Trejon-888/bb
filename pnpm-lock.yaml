@@ -2088,6 +2088,9 @@ importers:
 
   packages/environment-provider-host:
     dependencies:
+      '@bb/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@get-bb/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk

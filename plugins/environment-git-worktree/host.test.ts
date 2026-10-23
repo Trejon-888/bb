@@ -125,6 +125,37 @@ afterEach(async () => {
 });
 
 describe("worktree host entry", () => {
+  it.each(["main", "release", "origin/main", "refs/heads/main"])(
+    "resolves and fetches a stale named base %s",
+    async (base) => {
+      const { root, sourcePath, dataDir } = await createSourceRepository();
+      const clone = join(root, "clone");
+      await git(sourcePath, "branch", "release");
+      await git(root, "clone", sourcePath, clone);
+      const oldHead = (await git(clone, "rev-parse", "HEAD")).trim();
+      await git(clone, "branch", "release", "origin/release");
+      await writeFile(join(sourcePath, "README.md"), "remote advance\n");
+      await git(sourcePath, "commit", "-am", "advance remote");
+      await git(sourcePath, "branch", "-f", "release", "HEAD");
+      const remoteHead = (await git(sourcePath, "rev-parse", "HEAD")).trim();
+      const result = await createHarness(dataDir).experimental_call("create", {
+        ...createInput({
+          operationId: "stale-base",
+          sourcePath: clone,
+          pathKey: "stale-base",
+          branchName: "bb/child",
+        }),
+        baseBranch: { kind: "named", name: base },
+      });
+      expect(result.status).toBe("created");
+      if (result.status !== "created") throw new Error(result.message);
+      expect((await git(result.path, "rev-parse", "HEAD")).trim()).toBe(
+        base.startsWith("refs/heads/") ? oldHead : remoteHead,
+      );
+      expect((await git(clone, "rev-parse", "main")).trim()).toBe(oldHead);
+    },
+  );
+
   it.each([
     { existingBranch: false, branchMode: "reset" },
     { existingBranch: false, branchMode: "reuse-existing" },
