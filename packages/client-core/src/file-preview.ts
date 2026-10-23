@@ -1,4 +1,4 @@
-import type { Environment } from "@bb/domain";
+import type { WorkspaceDescriptor } from "@bb/domain";
 const DEFAULT_FILE_PREVIEW_MIME_TYPE = "application/octet-stream";
 const textDecoder = new TextDecoder();
 const strictUtf8TextDecoder = new TextDecoder("utf-8", { fatal: true });
@@ -354,7 +354,10 @@ export function buildFilePreviewFromSample(
 }
 
 export function resolveEnvironmentPreviewRoot(
-  environment: Pick<Environment, "path" | "repoRoot"> | null | undefined,
+  environment:
+    | Pick<WorkspaceDescriptor, "path" | "repoRoot">
+    | null
+    | undefined,
   source: EnvironmentFilePreviewSource,
 ): string | null {
   return (

@@ -14,8 +14,9 @@ provider creation. Its ownership and cleanup behavior stay intact. When the path
 has no environment, the plugin validates it against Git and adopts it without
 taking ownership; retiring that environment leaves the worktree on disk.
 
-Named bases resolve to `origin/<name>` when that remote-tracking ref exists and
-are fetched before creating a worktree. Fully qualified `refs/heads/<name>`
-selects the local branch explicitly. Local-only bases remain local. The resolved
-base is returned and stored with the environment; this does not refresh existing
-worktrees before later agent turns.
+Default and named bases share one comparison: use the remote when local is
+equal or behind, and preserve local commits when ahead, diverged or unknown.
+Remote-only branches are usable too. Explicit remote names and fully qualified
+refs are honored exactly. Selected remote bases are fetched before creation.
+The resolved base is returned and stored with the environment; this does not
+refresh existing worktrees before later agent turns.

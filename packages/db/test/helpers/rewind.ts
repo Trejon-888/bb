@@ -112,12 +112,3 @@ export function rewindQueuedMessageStateMigration(db: DbConnection): void {
     DELETE FROM __drizzle_migrations WHERE created_at >= ${QUEUED_MESSAGE_STATE_MIGRATION_WHEN};
   `);
 }
-
-export function dropEnvironmentRepoRootColumn(db: DbConnection): void {
-  const columns = db.$client
-    .prepare<[], { name: string }>("PRAGMA table_info(environments)")
-    .all();
-  if (columns.some((column) => column.name === "repo_root")) {
-    db.$client.exec("ALTER TABLE environments DROP COLUMN repo_root");
-  }
-}

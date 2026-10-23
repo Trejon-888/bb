@@ -11,6 +11,7 @@ import {
 import {
   availableModelSchema,
   workspaceDescriptorSchema,
+  discoveredWorkspacePropertiesSchema,
   dynamicToolSchema,
   gitBranchOptionsSchema,
   gitSourceInspectionSchema,
@@ -85,7 +86,6 @@ const INJECTED_SKILL_NAME_PATTERN =
 
 export const workspaceContextSchema = z.object({
   workspacePath: z.string().min(1),
-  descriptor: workspaceDescriptorSchema.optional(),
 });
 export type WorkspaceContext = z.infer<typeof workspaceContextSchema>;
 
@@ -1291,7 +1291,7 @@ const projectInspectResultSchema = projectPathResultSchema
   .extend({ gitRemoteUrl: z.string().min(1).nullable() })
   .strict();
 const projectCloneResultSchema = projectInspectResultSchema;
-const environmentProvisionResultSchema = workspaceDescriptorSchema;
+const environmentProvisionResultSchema = discoveredWorkspacePropertiesSchema;
 const environmentProvisionCancelResultSchema = z.object({
   aborted: z.boolean(),
 });
@@ -1886,6 +1886,20 @@ export const hostDaemonCommandRegistry = {
     type: "host.global_skills_status",
     schema: hostGlobalSkillsStatusCommandSchema,
     resultSchema: globalSkillsStatusResultSchema,
+    transport: "onlineRpc",
+    retryable: true,
+    flushEventsBeforeResult: false,
+    envLane: null,
+  }),
+  "host.describe_workspace": defineHostDaemonCommandDescriptor({
+    type: "host.describe_workspace",
+    schema: z
+      .object({
+        type: z.literal("host.describe_workspace"),
+        path: z.string().min(1),
+      })
+      .strict(),
+    resultSchema: workspaceDescriptorSchema,
     transport: "onlineRpc",
     retryable: true,
     flushEventsBeforeResult: false,

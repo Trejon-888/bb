@@ -240,7 +240,6 @@ describe("environments", () => {
       environment.id,
       {
         path: "/tmp/project",
-        repoRoot: "/tmp",
         isGitRepo: true,
         isWorktree: true,
         branchName: "bb/test",
@@ -251,7 +250,6 @@ describe("environments", () => {
     expect(updated).toMatchObject({
       path: "/tmp/project",
       status: "provisioning",
-      repoRoot: "/tmp",
       isGitRepo: true,
       isWorktree: true,
       branchName: "bb/test",

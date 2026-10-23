@@ -86,14 +86,6 @@ describe("WatchInterestCoordinator", () => {
           environmentId: environment.id,
           workspaceContext: {
             workspacePath: "/tmp/test-workspace",
-            descriptor: {
-              path: "/tmp/test-workspace",
-              repoRoot: null,
-              isGitRepo: false,
-              isWorktree: false,
-              branchName: null,
-              defaultBranch: null,
-            },
           },
         },
       ],
@@ -178,14 +170,6 @@ describe("WatchInterestCoordinator", () => {
           environmentId: environment.id,
           workspaceContext: {
             workspacePath: "/tmp/test-workspace",
-            descriptor: {
-              path: "/tmp/test-workspace",
-              repoRoot: null,
-              isGitRepo: false,
-              isWorktree: false,
-              branchName: null,
-              defaultBranch: null,
-            },
           },
         },
       ],

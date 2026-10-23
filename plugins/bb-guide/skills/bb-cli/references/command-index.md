@@ -347,3 +347,5 @@ This index lists every command path that the core CLI registers, including alias
 - `bb browser watch`
 - `bb browser import-sources`
 - `bb browser import-cookies`
+
+- `bb environment workspace <id> [--json]`: inspect current workspace paths and Git identity; see `bb guide environments`.

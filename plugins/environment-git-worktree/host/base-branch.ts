@@ -1,6 +1,7 @@
 import {
   readDefaultBranchRefs,
   hasRef,
+  readBranchRelation,
   type DefaultBranchRelation,
 } from "bb-environment-provider-host/git";
 import type { WorktreeBaseBranch } from "../contract.js";
@@ -11,7 +12,7 @@ interface ResolveDefaultWorktreeBaseBranchArgs {
   originDefaultBranch: string | null;
 }
 
-function resolveDefaultWorktreeBaseBranch(
+function selectWorktreeBaseBranch(
   args: ResolveDefaultWorktreeBaseBranchArgs,
 ): string | null {
   if (!args.originDefaultBranch) {
@@ -34,15 +35,37 @@ export async function resolveWorktreeBaseBranch(
   requested: WorktreeBaseBranch,
 ): Promise<string | null> {
   if (requested.kind === "named") {
-    if (await hasRef(sourcePath, `refs/remotes/${requested.name}`))
+    if (
+      requested.name.startsWith("refs/") ||
+      (await hasRef(sourcePath, `refs/remotes/${requested.name}`))
+    )
       return requested.name;
-    return !requested.name.startsWith("refs/") &&
-      (await hasRef(sourcePath, `refs/remotes/origin/${requested.name}`))
+    const localBranch = (await hasRef(
+      sourcePath,
+      `refs/heads/${requested.name}`,
+    ))
+      ? requested.name
+      : null;
+    const remoteBranch = (await hasRef(
+      sourcePath,
+      `refs/remotes/origin/${requested.name}`,
+    ))
       ? `origin/${requested.name}`
-      : requested.name;
+      : null;
+    if (!remoteBranch) return requested.name;
+    return selectWorktreeBaseBranch({
+      defaultBranch: localBranch,
+      originDefaultBranch: remoteBranch,
+      defaultBranchRelation:
+        (await readBranchRelation(
+          sourcePath,
+          localBranch ?? undefined,
+          remoteBranch,
+        )) ?? null,
+    });
   }
   const refs = await readDefaultBranchRefs(sourcePath);
-  const resolved = resolveDefaultWorktreeBaseBranch({
+  const resolved = selectWorktreeBaseBranch({
     defaultBranch: refs.defaultBranch ?? null,
     defaultBranchRelation: refs.defaultBranchRelation ?? null,
     originDefaultBranch: refs.originDefaultBranch ?? null,

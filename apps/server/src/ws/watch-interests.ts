@@ -11,7 +11,7 @@ import type {
   HostDaemonWatchSetThreadStorageTarget,
   HostDaemonWatchSetWorkspaceTarget,
 } from "@bb/host-daemon-contract";
-import { workspaceContextFromEnvironment } from "../services/environments/workspace-command-target.js";
+import { workspaceContextFromPath } from "../services/environments/workspace-command-target.js";
 import type { NotificationHub, ServerChangedMessage } from "./hub.js";
 import type { WatchedTarget, WatchedTargetChange } from "./watched-targets.js";
 
@@ -322,11 +322,6 @@ export class WatchInterestCoordinator {
           id: environments.id,
           hostId: environments.hostId,
           path: environments.path,
-          repoRoot: environments.repoRoot,
-          isGitRepo: environments.isGitRepo,
-          isWorktree: environments.isWorktree,
-          branchName: environments.branchName,
-          defaultBranch: environments.defaultBranch,
         })
         .from(environments)
         .where(
@@ -353,8 +348,7 @@ export class WatchInterestCoordinator {
             hostId: environment.hostId,
             workspaceTarget: {
               environmentId: environment.id,
-              workspaceContext: workspaceContextFromEnvironment({
-                ...environment,
+              workspaceContext: workspaceContextFromPath({
                 path: environment.path,
               }),
             },

@@ -1,3 +1,4 @@
+import { describeWorkspace } from "bb-environment-provider-host/git";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { withVcsProcessPriority } from "@bb/process-utils";
@@ -651,6 +652,11 @@ const onlineRpcHandlers: OnlineRpcHandlerMap = {
   "host.install_global_skills": installGlobalSkills,
   "host.global_skills_status": async (command) =>
     readGlobalSkillsStatus(command, {}),
+  "host.describe_workspace": (command, options) =>
+    describeWorkspace(
+      command.path,
+      userExecutableProcessOptions(options.runtimeManager.getShellEnv()),
+    ),
   "host.inspect_git_source": inspectHostGitSource,
   "host.list_branch_options": listHostBranchOptions,
   "host.read_file": readHostFile,

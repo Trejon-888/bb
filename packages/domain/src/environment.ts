@@ -105,7 +105,13 @@ export const environmentLifecycleSchema = z.object({
     .nullable(),
 });
 
-export const environmentSchema = workspaceDescriptorSchema.extend({
+export const discoveredWorkspacePropertiesSchema =
+  workspaceDescriptorSchema.omit({ repoRoot: true });
+export type DiscoveredWorkspaceProperties = z.infer<
+  typeof discoveredWorkspacePropertiesSchema
+>;
+
+export const environmentSchema = discoveredWorkspacePropertiesSchema.extend({
   id: z.string(),
   name: z.string().nullable(),
   projectId: z.string(),

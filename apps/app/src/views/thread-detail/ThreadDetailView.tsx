@@ -1,3 +1,4 @@
+import { useEnvironmentWorkspace } from "@/hooks/queries/environment-queries";
 import { buildAbsoluteFilePath } from "@/lib/absolute-file-path";
 import { resolveEnvironmentPreviewRoot } from "@bb/client-core";
 import type { AppTabOpenIntent } from "@/lib/app-navigation-host";
@@ -477,6 +478,8 @@ function ThreadDetailViewInternal(
     staleTime: 5_000,
   });
   const environment = environmentQuery.data;
+  const { data: workspace, refetch: refreshWorkspace } =
+    useEnvironmentWorkspace(environment);
   const hostLifecycle =
     environment === undefined || environment.hostLifecycle === "active"
       ? null
@@ -1566,17 +1569,16 @@ function ThreadDetailViewInternal(
     return desktopInfo.onCloseWindowRequest(handleCloseWindowRequest);
   }, [handleCloseWindowRequest, isFocused]);
   const handleChangedFileClick = useCallback(
-    (selection: WorkspaceChangedFileSelection) => {
+    async (selection: WorkspaceChangedFileSelection) => {
       const openTarget = resolveWorkspaceChangedFileOpenTarget(selection);
       if (openTarget.kind === "preview") {
-        if (
-          openTarget.source.kind === "working-tree" &&
-          environment?.repoRoot
-        ) {
+        if (openTarget.source.kind === "working-tree") {
+          const currentWorkspace = workspace ?? (await refreshWorkspace()).data;
+          if (!currentWorkspace) return;
           openHostFile({
             lineRange: null,
             path: buildAbsoluteFilePath({
-              rootPath: environment.repoRoot,
+              rootPath: currentWorkspace.repoRoot ?? currentWorkspace.path,
               path: selection.file.path,
             }),
           });
@@ -1593,7 +1595,8 @@ function ThreadDetailViewInternal(
       openSecondaryPanelDiffFile(selection.file.path);
     },
     [
-      environment?.repoRoot,
+      workspace,
+      refreshWorkspace,
       openHostFile,
       openSecondaryPanelDiffFile,
       openWorkspaceFile,
@@ -1952,13 +1955,13 @@ function ThreadDetailViewInternal(
   const handleOpenRepositoryFileInEditor = useMemo(
     () =>
       buildOpenInEditorHandler({
-        rootPath: environment?.repoRoot ?? environment?.path ?? null,
+        rootPath: workspace?.repoRoot ?? workspace?.path ?? null,
         canOpenPreferredTarget: canOpenPreferredFileTarget,
         openInPreferredTarget: openPathInPreferredFileTarget,
       }),
     [
-      environment?.repoRoot,
-      environment?.path,
+      workspace?.repoRoot,
+      workspace?.path,
       canOpenPreferredFileTarget,
       openPathInPreferredFileTarget,
     ],
@@ -2463,7 +2466,7 @@ function ThreadDetailViewInternal(
         );
       case "workspace-file-preview": {
         const previewRoot = resolveEnvironmentPreviewRoot(
-          environment,
+          workspace,
           tab.source,
         );
         const copyPath = resolveAbsoluteFilePath({

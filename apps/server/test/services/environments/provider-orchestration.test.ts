@@ -163,7 +163,6 @@ function setup(
       environment.id,
       {
         path: prepared.path,
-        repoRoot: null,
         isGitRepo: false,
         isWorktree: false,
         branchName: null,

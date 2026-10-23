@@ -3981,7 +3981,6 @@ describe("public thread data routes", () => {
               ok: true,
               result: {
                 path: request.command.path,
-                repoRoot: request.command.path,
                 isGitRepo: true,
                 isWorktree: false,
                 branchName: `bb/${thread.id}`,

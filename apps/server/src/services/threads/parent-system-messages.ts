@@ -315,7 +315,12 @@ async function queueActiveParentSystemMessage(
       mode: "auto",
       expectedTurnId: expectedSteerTurnId,
     },
-    environment: args.environment,
+    environment: {
+      id: args.environment.id,
+      hostId: args.environment.hostId,
+      path: args.environment.path,
+      status: args.environment.status,
+    },
   });
 
   const command = deps.db.transaction(
@@ -370,7 +375,12 @@ async function queueReadyParentSystemMessage(
     requestId,
     execution: args.execution,
     permissionEscalation,
-    environment: args.environment,
+    environment: {
+      id: args.environment.id,
+      hostId: args.environment.hostId,
+      path: args.environment.path,
+      status: args.environment.status,
+    },
     projectId: args.thread.projectId,
     providerId: args.thread.providerId,
     syncGeneratedTitle: false,

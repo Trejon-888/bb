@@ -47,10 +47,15 @@ export async function provisionEnvironment(
       setupContributedEnv: command.contributedEnv,
     });
 
-    const [branchName, defaultBranch] = await Promise.all([
+    const [branchName, resolvedDefaultBranch] = await Promise.all([
       entry.workspace.getCurrentBranch(),
-      entry.workspace.getDefaultBranch(),
+      entry.workspace.isGitRepo
+        ? entry.workspace.getDefaultBranch()
+        : Promise.resolve(null),
     ]);
+    const defaultBranch = entry.workspace.isGitRepo
+      ? (resolvedDefaultBranch ?? branchName)
+      : null;
 
     if (!alreadyExists || !streamedAnyStep) {
       onProgress({
@@ -82,9 +87,11 @@ export async function provisionEnvironment(
     }
 
     return {
-      ...entry.workspace.descriptor,
+      path: entry.workspace.path,
+      isGitRepo: entry.workspace.isGitRepo,
+      isWorktree: entry.workspace.isWorktree,
       branchName,
-      defaultBranch: defaultBranch ?? branchName,
+      defaultBranch,
     };
   } finally {
     progress.flush();

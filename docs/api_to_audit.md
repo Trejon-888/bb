@@ -3701,3 +3701,12 @@ Docs: `providers.md`.
 
 Before stabilization, decide whether `model/list` `supportedServiceTiers` may
 override the icon and whether reasoning levels should render it.
+
+## `PluginBbSdk.environments.experimental_describeWorkspace`
+
+Discovers a ready environment's current execution directory, repository root,
+Git kind, branch and default branch on its host. Results are not persisted.
+Core file previews, diff context and revision file routes use the same discovery
+path; the CLI exposes it as `bb environment workspace <id>`.
+Stabilization requires auditing host-offline behavior and subfolder, non-Git and
+linked-worktree discovery across these callers.

@@ -409,7 +409,6 @@ describe("WatchManager", () => {
         environmentId: "env-watch",
         workspace: {
           path: "/tmp/env-watch",
-          repoRoot: "/tmp/env-watch",
           isGitRepo: true,
           isWorktree: false,
           branchName: "main",

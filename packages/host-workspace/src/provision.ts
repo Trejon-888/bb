@@ -1,6 +1,9 @@
-import type { WorkspaceDescriptor } from "@bb/domain";
 import { describeWorkspace } from "bb-environment-provider-host/git";
-import type { ProvisioningTranscriptEntry, WorkspaceStatus } from "@bb/domain";
+import type {
+  WorkspaceDescriptor,
+  ProvisioningTranscriptEntry,
+  WorkspaceStatus,
+} from "@bb/domain";
 import { pathExists } from "@bb/process-utils";
 import type {
   CommitOptions,
@@ -46,7 +49,6 @@ interface ProvisionBase {
 }
 
 interface UnmanagedWorkspaceOpts extends ProvisionBase {
-  descriptor?: WorkspaceDescriptor;
   path: string;
 }
 
@@ -173,17 +175,9 @@ async function provisionUnmanaged(
       `Unmanaged workspace path does not exist: ${opts.path}`,
     );
   }
-  if (opts.descriptor && opts.descriptor.path !== opts.path) {
-    throw new WorkspaceError(
-      "workspace_type_mismatch",
-      "Workspace descriptor does not match its execution directory",
-    );
-  }
-  const descriptor =
-    opts.descriptor ??
-    (await describeWorkspace(opts.path, {
-      ...(opts.shellPath !== undefined ? { shellPath: opts.shellPath } : {}),
-    }));
+  const descriptor = await describeWorkspace(opts.path, {
+    ...(opts.shellPath !== undefined ? { shellPath: opts.shellPath } : {}),
+  });
 
   return new ProvisionedHostWorkspace({
     descriptor,

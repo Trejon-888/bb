@@ -664,7 +664,12 @@ async function sendThreadMessageWithoutContextClear(
       requestId,
       execution,
       permissionEscalation,
-      environment: readyEnvironment,
+      environment: {
+        id: readyEnvironment.id,
+        hostId: readyEnvironment.hostId,
+        path: readyEnvironment.path,
+        status: readyEnvironment.status,
+      },
       projectId: thread.projectId,
       providerId: thread.providerId,
       syncGeneratedTitle: false,
@@ -770,7 +775,12 @@ async function sendThreadMessageWithoutContextClear(
       mode,
       expectedTurnId: expectedSteerTurnId,
     },
-    environment: readyEnvironment,
+    environment: {
+      id: readyEnvironment.id,
+      hostId: readyEnvironment.hostId,
+      path: readyEnvironment.path,
+      status: readyEnvironment.status,
+    },
   });
   const command = addRequestIdToTurnSubmitCommandPayload({
     preparedCommand,

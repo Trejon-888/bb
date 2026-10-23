@@ -1,7 +1,7 @@
 import { prepareCachedQuery } from "../connection.js";
 import { and, asc, eq, inArray, isNotNull, isNull, ne, or, placeholder, sql } from "drizzle-orm";
 import type {
-  WorkspaceDescriptor,
+  DiscoveredWorkspaceProperties,
   EnvironmentChangeKind,
   EnvironmentLifecycleEvent,
   EnvironmentLifecycleNoopReason,
@@ -24,7 +24,6 @@ export interface CreateEnvironmentInput {
   projectId: string;
   hostId: string;
   path?: string | null;
-  repoRoot?: string | null;
   isGitRepo?: boolean;
   branchName?: string | null;
   baseBranch?: string | null;
@@ -55,7 +54,6 @@ export function createEnvironment(
       projectId: input.projectId,
       hostId: input.hostId,
       path: input.path ?? null,
-      repoRoot: input.repoRoot ?? null,
       isGitRepo: input.isGitRepo ?? false,
       branchName: input.branchName ?? null,
       baseBranch: input.baseBranch ?? null,
@@ -213,7 +211,7 @@ export function markHostEnvironmentsDestroyed(
   const updated = db
     .update(environments)
     .set({
-      path: null, repoRoot: null,
+      path: null,
       resource: null,
       retireAt: null,
       status: "destroyed",
@@ -242,7 +240,6 @@ interface EnvironmentMetadataUpdateColumns {
   mergeBaseBranch?: string | null;
   name?: string | null;
   path?: string | null;
-  repoRoot?: string | null;
 }
 
 interface EnvironmentMetadataChangeArgs {
@@ -301,7 +298,6 @@ function buildEnvironmentMetadataUpdateSet(
   const set: EnvironmentMetadataUpdateColumns = {};
   if ("baseBranch" in input) set.baseBranch = input.baseBranch;
   if ("path" in input) set.path = input.path;
-  if ("repoRoot" in input) set.repoRoot = input.repoRoot;
   if ("isGitRepo" in input) set.isGitRepo = input.isGitRepo;
   if ("isWorktree" in input) set.isWorktree = input.isWorktree;
   if ("branchName" in input) set.branchName = input.branchName;
@@ -318,7 +314,6 @@ function environmentMetadataChanged(
     ("baseBranch" in args.metadata &&
       args.updated.baseBranch !== args.existing.baseBranch) ||
     ("path" in args.metadata && args.updated.path !== args.existing.path) ||
-    ("repoRoot" in args.metadata && args.updated.repoRoot !== args.existing.repoRoot) ||
     ("isGitRepo" in args.metadata &&
       args.updated.isGitRepo !== args.existing.isGitRepo) ||
     ("isWorktree" in args.metadata &&
@@ -387,7 +382,7 @@ export function recordEnvironmentCurrentBranch(
   });
 }
 
-export interface RecordProvisionedEnvironmentWorkspaceInput extends WorkspaceDescriptor {
+export interface RecordProvisionedEnvironmentWorkspaceInput extends DiscoveredWorkspaceProperties {
   baseBranch?: string | null;
   mergeBaseBranch?: string | null;
 }
@@ -400,7 +395,6 @@ export function recordProvisionedEnvironmentWorkspace(
 ) {
   return updateEnvironmentMetadataRecord(db, notifier, id, {
     path: input.path,
-    repoRoot: input.repoRoot,
     isGitRepo: input.isGitRepo,
     isWorktree: input.isWorktree,
     branchName: input.branchName,
@@ -466,7 +460,6 @@ export function applyEnvironmentLifecycleEventInTransaction(
   };
   if (evaluation.to === "destroyed") {
     set.path = null;
-    set.repoRoot = null;
   }
 
   const conditions = [
@@ -541,7 +534,7 @@ export function reserveEnvironment(db: EnvironmentWriteConnection, input: Omit<t
     const now = Date.now();
     if (existing !== null) {
       if (existing.teardownStatus !== "removed") throw new Error("Previous environment cleanup is incomplete");
-      return tx.update(environments).set({ ...input, path: null, repoRoot: null, resource: null, claimPath: null, teardownStatus: null, teardownMessage: null, teardownAttempt: 0, retireAt: null, pendingLog: "", updatedAt: now }).where(eq(environments.id, existing.id)).returning().get()!;
+      return tx.update(environments).set({ ...input, path: null, resource: null, claimPath: null, teardownStatus: null, teardownMessage: null, teardownAttempt: 0, retireAt: null, pendingLog: "", updatedAt: now }).where(eq(environments.id, existing.id)).returning().get()!;
     }
     return tx.insert(environments).values({ ...input, id: createEnvironmentId(), createdAt: now, updatedAt: now }).returning().get();
   });

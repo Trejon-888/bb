@@ -508,7 +508,7 @@ async function isAncestorRef(
   return undefined;
 }
 
-async function readDefaultBranchRelation(
+export async function readBranchRelation(
   cwd: string,
   localDefaultBranch: string | undefined,
   originDefaultBranch: string | undefined,
@@ -576,7 +576,7 @@ export async function readDefaultBranchRefs(
     defaultBranch,
     options,
   );
-  const defaultBranchRelation = await readDefaultBranchRelation(
+  const defaultBranchRelation = await readBranchRelation(
     cwd,
     defaultBranch,
     originDefaultBranch,

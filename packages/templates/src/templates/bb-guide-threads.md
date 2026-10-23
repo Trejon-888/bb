@@ -108,9 +108,10 @@ Spawning:
   workspace. It cannot be combined with an existing environment ID because that
   environment already selects its machine. Without the flag, local/server
   machine resolution is unchanged.
-  Omit --base-branch for bb's default. Named branches prefer origin/<name>
-  when that remote-tracking ref exists, and fetch before creation. Use
-  refs/heads/<name> for an explicitly local base.
+  Omit --base-branch for bb's default. Default and named branches use the
+  remote when local is equal or behind, preserving local commits when ahead
+  or diverged. Explicit refs are honored exactly. Selected remote refs are
+  fetched before creation.
   With no environment flag, a new thread gets a fresh worktree of the
   project's default branch (the project checkout when the project has no
   branch) on the primary host, or on the persistent machine that holds the

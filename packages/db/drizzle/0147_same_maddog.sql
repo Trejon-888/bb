@@ -1,1 +1,0 @@
-ALTER TABLE `environments` ADD `repo_root` text;

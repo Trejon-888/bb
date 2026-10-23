@@ -157,6 +157,57 @@ describe("worktree host entry", () => {
   );
 
   it.each([
+    ["ahead", "main"],
+    ["diverged", "main"],
+    ["ahead", "release"],
+    ["diverged", "release"],
+    ["ahead", "origin/main"],
+    ["diverged", "refs/heads/main"],
+    ["ahead", "default"],
+    ["diverged", "default"],
+  ])("preserves local commits for %s with base %s", async (relation, base) => {
+    const { root, sourcePath, dataDir } = await createSourceRepository();
+    const clone = join(root, "clone");
+    await git(sourcePath, "branch", "release");
+    await git(root, "clone", sourcePath, clone);
+    await writeFile(join(clone, "local.txt"), "local work\n");
+    await git(clone, "add", ".");
+    await git(clone, "commit", "-m", "local work");
+    await git(clone, "branch", "release");
+    const localHead = (await git(clone, "rev-parse", "HEAD")).trim();
+    if (relation === "diverged") {
+      await writeFile(join(sourcePath, "remote.txt"), "remote work\n");
+      await git(sourcePath, "add", ".");
+      await git(sourcePath, "commit", "-m", "remote work");
+      await git(sourcePath, "branch", "-f", "release", "HEAD");
+      await git(clone, "fetch", "origin");
+    }
+    const remoteHead = (await git(sourcePath, "rev-parse", "HEAD")).trim();
+    const harness = createHarness(dataDir);
+    try {
+      const result = await harness.experimental_call("create", {
+        ...createInput({
+          operationId: "local-work",
+          sourcePath: clone,
+          pathKey: "local-work",
+          branchName: "bb/child",
+        }),
+        baseBranch:
+          base === "default"
+            ? { kind: "default" }
+            : { kind: "named", name: base },
+      });
+      expect(result.status).toBe("created");
+      if (result.status !== "created") throw new Error(result.message);
+      expect((await git(result.path, "rev-parse", "HEAD")).trim()).toBe(
+        base === "origin/main" ? remoteHead : localHead,
+      );
+    } finally {
+      await harness.experimental_dispose();
+    }
+  });
+
+  it.each([
     { existingBranch: false, branchMode: "reset" },
     { existingBranch: false, branchMode: "reuse-existing" },
     { existingBranch: true, branchMode: "reuse-existing" },

@@ -1,3 +1,4 @@
+import { useEnvironmentWorkspace } from "@/hooks/queries/environment-queries";
 import { resolveEnvironmentPreviewRoot } from "@bb/client-core";
 import { useMemo, type ReactNode } from "react";
 import type { OpenInTargetContext } from "@bb/host-daemon-contract";
@@ -314,6 +315,7 @@ function RootComposeFilePreviewTabContent({
     staleTime: 5_000,
   });
   const environment = environmentQuery.data;
+  const workspace = useEnvironmentWorkspace(environment).data;
   const imageThreadId = fileOpenerSource?.threadId ?? rootPanelThreadId;
   const storageThreadId =
     tab.kind === "thread-storage-file-preview"
@@ -391,7 +393,7 @@ function RootComposeFilePreviewTabContent({
     });
   const workspaceRootPath =
     tab.kind === "workspace-file-preview"
-      ? resolveEnvironmentPreviewRoot(environment, tab.source)
+      ? resolveEnvironmentPreviewRoot(workspace, tab.source)
       : (environment?.path ?? null);
   const relativeFileRootPath =
     tab.kind === "workspace-file-preview"

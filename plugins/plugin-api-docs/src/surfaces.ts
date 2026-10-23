@@ -1430,6 +1430,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         bullets: [
           "Create threads attributed to the plugin, send messages, and manage projects and machines",
           "Start plugin updates in the background and follow their progress or rollback",
+          "Discover current execution and repository paths without persisting workspace metadata",
           "Read Viewed state for up to 500 file paths; mark and clear return acknowledgements",
           "Retry failed environment cleanup with recover: true after inspecting processes using the workspace",
         ],
@@ -1439,6 +1440,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "PluginBbSdk.hosts.get",
           "PluginBbSdk.hosts.experimental_discoverRepos",
           "PluginBbSdk.experimental_promptHistory.list",
+          "PluginBbSdk.environments.experimental_describeWorkspace",
           "PluginBbSdk.environments.experimental_cleanup",
           "PluginBbSdk.environments.experimental_diffViewed",
           "PluginBbSdk.environments.experimental_markDiffViewed",
