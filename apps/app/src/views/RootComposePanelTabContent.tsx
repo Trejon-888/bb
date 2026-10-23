@@ -393,7 +393,11 @@ function RootComposeFilePreviewTabContent({
     });
   const workspaceRootPath =
     tab.kind === "workspace-file-preview"
-      ? resolveEnvironmentPreviewRoot(workspace, tab.source)
+      ? resolveEnvironmentPreviewRoot(
+          environment?.path ?? null,
+          workspace?.repoRoot ?? null,
+          tab.source,
+        )
       : (environment?.path ?? null);
   const relativeFileRootPath =
     tab.kind === "workspace-file-preview"

@@ -140,7 +140,7 @@ export function createFakeWorkspace(pathname: string) {
   };
   const workspace: FakeHostWorkspace = {
     path: pathname,
-    repoRoot: pathname,
+    repository: { root: pathname, workspacePrefix: "" },
     isGitRepo: true,
     isWorktree: false,
     async getDefaultBranch() {

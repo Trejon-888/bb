@@ -1,6 +1,8 @@
-import { useEnvironmentWorkspace } from "@/hooks/queries/environment-queries";
 import { buildAbsoluteFilePath } from "@/lib/absolute-file-path";
-import { resolveEnvironmentPreviewRoot } from "@bb/client-core";
+import {
+  locateRepositoryFile,
+  resolveEnvironmentPreviewRoot,
+} from "@bb/client-core";
 import type { AppTabOpenIntent } from "@/lib/app-navigation-host";
 import { openAppTabFromDestinations } from "@/lib/app-fixed-tab-navigation";
 import { createPanelActionDestination } from "@/components/plugin/PluginPanelActions";
@@ -478,8 +480,6 @@ function ThreadDetailViewInternal(
     staleTime: 5_000,
   });
   const environment = environmentQuery.data;
-  const { data: workspace, refetch: refreshWorkspace } =
-    useEnvironmentWorkspace(environment);
   const hostLifecycle =
     environment === undefined || environment.hostLifecycle === "active"
       ? null
@@ -1568,40 +1568,6 @@ function ThreadDetailViewInternal(
     }
     return desktopInfo.onCloseWindowRequest(handleCloseWindowRequest);
   }, [handleCloseWindowRequest, isFocused]);
-  const handleChangedFileClick = useCallback(
-    async (selection: WorkspaceChangedFileSelection) => {
-      const openTarget = resolveWorkspaceChangedFileOpenTarget(selection);
-      if (openTarget.kind === "preview") {
-        if (openTarget.source.kind === "working-tree") {
-          const currentWorkspace = workspace ?? (await refreshWorkspace()).data;
-          if (!currentWorkspace) return;
-          openHostFile({
-            lineRange: null,
-            path: buildAbsoluteFilePath({
-              rootPath: currentWorkspace.repoRoot ?? currentWorkspace.path,
-              path: selection.file.path,
-            }),
-          });
-          return;
-        }
-        openWorkspaceFile({
-          lineRange: null,
-          path: selection.file.path,
-          source: openTarget.source,
-          statusLabel: openTarget.statusLabel,
-        });
-        return;
-      }
-      openSecondaryPanelDiffFile(selection.file.path);
-    },
-    [
-      workspace,
-      refreshWorkspace,
-      openHostFile,
-      openSecondaryPanelDiffFile,
-      openWorkspaceFile,
-    ],
-  );
   const workStatusQuery = useEnvironmentWorkStatus(
     thread?.environmentId,
     requestedMergeBaseBranch,
@@ -1619,6 +1585,37 @@ function ThreadDetailViewInternal(
     workStatusResponse?.outcome === "unavailable"
       ? workStatusResponse.failure
       : undefined;
+  const repository = workspaceStatus?.repository ?? null;
+  const handleChangedFileClick = useCallback(
+    (selection: WorkspaceChangedFileSelection) => {
+      const openTarget = resolveWorkspaceChangedFileOpenTarget(selection);
+      if (openTarget.kind === "diff") {
+        openSecondaryPanelDiffFile(selection.file.path);
+        return;
+      }
+      const location =
+        openTarget.source.kind === "working-tree" && repository !== null
+          ? locateRepositoryFile(repository, selection.file.path)
+          : null;
+      if (location?.kind === "repository" && repository !== null) {
+        openHostFile({
+          lineRange: null,
+          path: buildAbsoluteFilePath({
+            rootPath: repository.root,
+            path: location.path,
+          }),
+        });
+        return;
+      }
+      openWorkspaceFile({
+        lineRange: null,
+        path: location?.path ?? selection.file.path,
+        source: openTarget.source,
+        statusLabel: openTarget.statusLabel,
+      });
+    },
+    [repository, openHostFile, openSecondaryPanelDiffFile, openWorkspaceFile],
+  );
   const workspaceBranch = workspaceStatus?.branch;
   const workspaceChangedFilesSection = useMemo(
     () => selectWorkspaceChangedFilesSection(workspaceStatus),
@@ -1952,20 +1949,39 @@ function ThreadDetailViewInternal(
       workspacePreviewRootPath,
     ],
   );
-  const handleOpenRepositoryFileInEditor = useMemo(
-    () =>
-      buildOpenInEditorHandler({
-        rootPath: workspace?.repoRoot ?? workspace?.path ?? null,
-        canOpenPreferredTarget: canOpenPreferredFileTarget,
-        openInPreferredTarget: openPathInPreferredFileTarget,
-      }),
-    [
-      workspace?.repoRoot,
-      workspace?.path,
-      canOpenPreferredFileTarget,
-      openPathInPreferredFileTarget,
-    ],
+  const resolveRepositoryFilePath = useCallback(
+    (repositoryPath: string) => {
+      if (repository === null) {
+        return resolveAbsoluteFilePath({
+          path: repositoryPath,
+          rootPath: workspacePreviewRootPath,
+        });
+      }
+      const location = locateRepositoryFile(repository, repositoryPath);
+      return resolveAbsoluteFilePath({
+        path: location.path,
+        rootPath:
+          location.kind === "workspace"
+            ? workspacePreviewRootPath
+            : repository.root,
+      });
+    },
+    [repository, workspacePreviewRootPath],
   );
+  const handleOpenRepositoryFileInEditor = useMemo(() => {
+    if (!canOpenPreferredFileTarget) {
+      return undefined;
+    }
+    return (repositoryPath: string) => {
+      const path = resolveRepositoryFilePath(repositoryPath);
+      if (path === null) return;
+      void openPathInPreferredFileTarget({ lineNumber: null, path });
+    };
+  }, [
+    canOpenPreferredFileTarget,
+    openPathInPreferredFileTarget,
+    resolveRepositoryFilePath,
+  ]);
   const handleOpenStorageFileInEditor = useMemo(
     () =>
       buildOpenInEditorHandler({
@@ -2466,13 +2482,14 @@ function ThreadDetailViewInternal(
         );
       case "workspace-file-preview": {
         const previewRoot = resolveEnvironmentPreviewRoot(
-          workspace,
+          workspacePreviewRootPath,
+          repository?.root ?? null,
           tab.source,
         );
-        const copyPath = resolveAbsoluteFilePath({
-          path: tab.path,
-          rootPath: previewRoot,
-        });
+        const copyPath =
+          tab.source.kind === "working-tree"
+            ? resolveAbsoluteFilePath({ path: tab.path, rootPath: previewRoot })
+            : resolveRepositoryFilePath(tab.path);
         return (
           <LazyWorkspaceFilePreviewTabContent
             activePath={tab.path}

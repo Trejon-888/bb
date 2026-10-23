@@ -109,7 +109,7 @@ async function unexpectedWorkspaceCall(): Promise<never> {
 function createWorkspace(workspacePath = WORKSPACE_PATH): HostWorkspace {
   return {
     path: workspacePath,
-    repoRoot: null,
+    repository: null,
     isGitRepo: false,
     isWorktree: false,
     getDefaultBranch: unexpectedWorkspaceCall,

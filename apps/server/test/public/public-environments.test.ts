@@ -537,6 +537,7 @@ describe("public environments", () => {
       await reportQueuedCommandSuccess(harness, statusCommand, {
         outcome: "available",
         workspaceStatus: {
+          repository: { root: "/repo", workspacePrefix: "" },
           workingTree: {
             insertions: 0,
             deletions: 0,
@@ -606,6 +607,7 @@ describe("public environments", () => {
       await reportQueuedCommandSuccess(harness, statusCommand, {
         outcome: "available",
         workspaceStatus: {
+          repository: { root: "/repo", workspacePrefix: "" },
           workingTree: {
             insertions: 0,
             deletions: 0,

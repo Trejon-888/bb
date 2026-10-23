@@ -580,7 +580,9 @@ export class Workspace {
       : getCurrentBranch(this.path, this.gitProcessOptions);
   }
 
-  async getStatus(options: StatusOptions = {}): Promise<WorkspaceStatus> {
+  async getStatus(
+    options: StatusOptions = {},
+  ): Promise<Omit<WorkspaceStatus, "repository">> {
     const maxFiles = options.maxFiles;
     if (maxFiles !== undefined) {
       assertPositiveInteger(maxFiles, "maxFiles");

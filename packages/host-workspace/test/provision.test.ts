@@ -152,7 +152,12 @@ describe("provisionWorkspace", () => {
         ).toContain("+new content");
         expect(ws.path).toBe(subfolder);
         expect(ws.isWorktree).toBe(linked);
-        expect(ws.repoRoot).toBe(await fs.realpath(repo));
+        const repository = {
+          root: await fs.realpath(repo),
+          workspacePrefix: "packages/app/",
+        };
+        expect(ws.repository).toEqual(repository);
+        expect((await ws.getStatus()).repository).toEqual(repository);
       },
     );
 

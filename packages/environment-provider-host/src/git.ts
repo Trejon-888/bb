@@ -301,7 +301,21 @@ export async function detectGitRepoKind(
   cwd: string,
   options: GitTimeoutOptions = {},
 ): Promise<GitRepoKind> {
-  return (await inspectGitRepository(cwd, options)).kind;
+  const result = await runGit(
+    ["rev-parse", "--is-inside-work-tree", "--is-bare-repository"],
+    { cwd, ...options, allowFailure: true },
+  );
+  if (result.exitCode !== 0) {
+    return "none";
+  }
+  const [insideWorkTree, bare] = trimOutput(result.stdout).split("\n");
+  if (insideWorkTree === "true") {
+    return "work-tree";
+  }
+  if (bare === "true") {
+    return "bare";
+  }
+  return "none";
 }
 
 export async function detectGitRepo(
@@ -607,7 +621,7 @@ async function pathExists(value: string): Promise<boolean> {
 export async function inspectGitRepository(
   cwd: string,
   options: GitTimeoutOptions = {},
-): Promise<{ kind: GitRepoKind; isGitRepo: boolean; isWorktree: boolean }> {
+): Promise<{ isGitRepo: boolean; isWorktree: boolean }> {
   const result = await runGit(
     [
       "rev-parse",
@@ -618,8 +632,7 @@ export async function inspectGitRepository(
     ],
     { cwd, ...options, allowFailure: true },
   );
-  if (result.exitCode !== 0)
-    return { kind: "none", isGitRepo: false, isWorktree: false };
+  if (result.exitCode !== 0) return { isGitRepo: false, isWorktree: false };
   const [insideWorkTree, bare, ...directoryLines] = result.stdout
     .replace(/\n$/u, "")
     .split("\n");
@@ -659,7 +672,6 @@ export async function inspectGitRepository(
     fs.realpath(path.resolve(cwd, commonDir)),
   ]);
   return {
-    kind: isGitRepo ? "work-tree" : bare === "true" ? "bare" : "none",
     isGitRepo,
     isWorktree: isGitRepo && resolvedGitDir !== resolvedCommonDir,
   };
@@ -724,19 +736,33 @@ export async function detectLinkedWorktree(
   return (await inspectGitRepository(cwd, options)).isWorktree;
 }
 
-export async function readWorkTreeRoot(
+export interface WorkTreeLocation {
+  root: string;
+  workspacePrefix: string;
+}
+
+export async function readWorkTreeLocation(
   cwd: string,
   options: GitTimeoutOptions = {},
-): Promise<string | null> {
-  const result = await runGit(["rev-parse", "--show-toplevel"], {
-    cwd,
-    ...options,
-    allowFailure: true,
-  });
+): Promise<WorkTreeLocation | null> {
+  const result = await runGit(
+    ["rev-parse", "--show-toplevel", "--show-prefix"],
+    {
+      cwd,
+      ...options,
+      allowFailure: true,
+    },
+  );
   if (result.exitCode !== 0) {
     return null;
   }
-  return result.stdout.replace(/\r?\n$/u, "") || null;
+  const output = result.stdout.replace(/\r?\n$/u, "");
+  const separator = output.lastIndexOf("\n");
+  const root = output.slice(0, separator).replace(/\r$/u, "");
+  if (separator < 0 || !root) {
+    return null;
+  }
+  return { root, workspacePrefix: output.slice(separator + 1) };
 }
 
 export function parseOriginHeadBranchName(output: string): string | undefined {

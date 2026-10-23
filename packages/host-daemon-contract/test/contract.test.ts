@@ -109,6 +109,7 @@ const WORKSPACE_UNAVAILABLE_RESULT: JsonObject = {
 const WORKSPACE_STATUS_AVAILABLE_RESULT: JsonObject = {
   outcome: "available",
   workspaceStatus: {
+    repository: { root: "/repo", workspacePrefix: "" },
     workingTree: {
       insertions: 3,
       deletions: 1,
@@ -676,6 +677,7 @@ const ADDITIONAL_ONLINE_RPC_RESPONSE_ROUND_TRIP_CASES: OnlineRpcResponseRoundTri
       result: {
         outcome: "available",
         workspaceStatus: {
+          repository: { root: "/repo", workspacePrefix: "" },
           workingTree: {
             insertions: 0,
             deletions: 0,

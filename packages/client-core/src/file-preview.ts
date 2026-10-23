@@ -1,4 +1,4 @@
-import type { WorkspaceDescriptor } from "@bb/domain";
+import type { WorkspaceRepositoryLocation } from "@bb/domain";
 const DEFAULT_FILE_PREVIEW_MIME_TYPE = "application/octet-stream";
 const textDecoder = new TextDecoder();
 const strictUtf8TextDecoder = new TextDecoder("utf-8", { fatal: true });
@@ -354,15 +354,27 @@ export function buildFilePreviewFromSample(
 }
 
 export function resolveEnvironmentPreviewRoot(
-  environment:
-    | Pick<WorkspaceDescriptor, "path" | "repoRoot">
-    | null
-    | undefined,
+  environmentPath: string | null,
+  repositoryRoot: string | null,
   source: EnvironmentFilePreviewSource,
 ): string | null {
-  return (
-    (source.kind === "working-tree"
-      ? environment?.path
-      : (environment?.repoRoot ?? environment?.path)) ?? null
-  );
+  return source.kind === "working-tree"
+    ? environmentPath
+    : (repositoryRoot ?? environmentPath);
+}
+
+export type RepositoryFileLocation =
+  | { kind: "workspace"; path: string }
+  | { kind: "repository"; path: string };
+
+export function locateRepositoryFile(
+  repository: WorkspaceRepositoryLocation,
+  repositoryPath: string,
+): RepositoryFileLocation {
+  return repositoryPath.startsWith(repository.workspacePrefix)
+    ? {
+        kind: "workspace",
+        path: repositoryPath.slice(repository.workspacePrefix.length),
+      }
+    : { kind: "repository", path: repositoryPath };
 }
