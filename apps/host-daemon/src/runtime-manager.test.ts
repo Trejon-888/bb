@@ -132,15 +132,8 @@ function createFakeWorkspace(path: string, isGitRepo = true) {
   let sharedGitRefsFingerprint: GetSharedGitRefsFingerprintResult = `refs:${path}:initial`;
   let sharedGitRefsFingerprintError: Error | null = null;
   const workspace = {
-    descriptor: {
-      path: path,
-      repoRoot: isGitRepo ? path : null,
-      isGitRepo: isGitRepo,
-      isWorktree: false,
-      branchName: isGitRepo ? "main" : null,
-      defaultBranch: isGitRepo ? "main" : null,
-    },
     path,
+    repoRoot: isGitRepo ? path : null,
     isGitRepo,
     isWorktree: false,
     getDefaultBranch: vi.fn(async () => "main"),

@@ -350,7 +350,7 @@ export function registerSpawnCommand(
     )
     .option(
       "--base-branch <branch>",
-      "Base branch or ref; named branches prefer origin/<name> when tracked (use refs/heads/<name> for local)",
+      "Base branch or ref; a named branch uses origin/<name> unless local has commits it lacks (use refs/heads/<name> to force local)",
     )
     .option(
       "--machine <id-or-name>",

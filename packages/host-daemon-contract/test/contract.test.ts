@@ -586,7 +586,6 @@ const SETTLED_RESPONSE_RESULT_FIXTURES: SettledResponseResultFixtures = {
   "interactive.resolve": {},
   "environment.attach": {
     path: "/tmp/env",
-
     isGitRepo: true,
     isWorktree: false,
     branchName: "bb/env-123",
@@ -2972,7 +2971,6 @@ describe("host-daemon command schemas", () => {
     expect(
       hostDaemonCommandResultSchemaByType["environment.attach"].parse({
         path: "/tmp/env",
-
         isGitRepo: true,
         isWorktree: true,
         branchName: "bb/env-123",
@@ -2986,7 +2984,6 @@ describe("host-daemon command schemas", () => {
     expect(() =>
       hostDaemonCommandResultSchemaByType["environment.attach"].parse({
         path: "/tmp/env",
-
         isGitRepo: true,
         branchName: "bb/env-123",
         defaultBranch: "main",
@@ -3386,7 +3383,6 @@ describe("host-daemon session schemas", () => {
         environmentId: "env_123",
         workspace: {
           path: "/tmp/workspace",
-
           isGitRepo: true,
           isWorktree: false,
           branchName: "main",
@@ -3398,7 +3394,6 @@ describe("host-daemon session schemas", () => {
       environmentId: "env_123",
       workspace: {
         path: "/tmp/workspace",
-
         isGitRepo: true,
         isWorktree: false,
         branchName: "main",

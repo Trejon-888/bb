@@ -375,5 +375,6 @@ export function useEnvironmentWorkspace(environment: Environment | undefined) {
         signal,
       }),
     enabled: environment?.status === "ready",
+    staleTime: 60_000,
   });
 }

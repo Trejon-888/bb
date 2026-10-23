@@ -6,19 +6,6 @@ import {
   parseOriginHeadBranchName,
   readOriginHeadBranchName,
 } from "bb-environment-provider-host/git";
-export {
-  detectGitRepoKind,
-  detectGitRepo,
-  detectLinkedWorktree,
-  detectGitSource,
-  ensureGitRepo,
-  getCurrentBranch,
-  readDefaultBranch,
-  readRepoDefaultBranch,
-  hasRef,
-  readDefaultBranchRefs,
-  getCheckoutRef,
-} from "bb-environment-provider-host/git";
 import { execFile, type ExecFileException } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -35,8 +22,6 @@ import {
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_BUFFER_BYTES = 16 * 1024 * 1024;
-
-export { WorkspaceError } from "bb-environment-provider-host/git";
 
 export interface GitProcessOptions {
   shellPath?: string;
@@ -593,8 +578,6 @@ async function findWorkspaceGitOperationMarker(
   }
   return undefined;
 }
-
-export type { GitRepoKind } from "bb-environment-provider-host/git";
 
 function appendUtf8Bytes(bytes: number[], value: string): void {
   bytes.push(...Buffer.from(value, "utf8"));

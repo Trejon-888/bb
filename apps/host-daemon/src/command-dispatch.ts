@@ -1,4 +1,4 @@
-import { describeWorkspace } from "bb-environment-provider-host/git";
+import { WorkspaceError } from "bb-environment-provider-host/git";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { withVcsProcessPriority } from "@bb/process-utils";
@@ -81,7 +81,11 @@ import {
   startThread,
   submitTurn,
 } from "./command-handlers/thread.js";
-import { WorkspaceError, type HostWorkspace } from "@bb/host-workspace";
+import {
+  describeHostWorkspace,
+  provisionWorkspace,
+  type HostWorkspace,
+} from "@bb/host-workspace";
 import {
   cloneProject,
   inspectProjectPath,
@@ -652,10 +656,12 @@ const onlineRpcHandlers: OnlineRpcHandlerMap = {
   "host.install_global_skills": installGlobalSkills,
   "host.global_skills_status": async (command) =>
     readGlobalSkillsStatus(command, {}),
-  "host.describe_workspace": (command, options) =>
-    describeWorkspace(
-      command.path,
-      userExecutableProcessOptions(options.runtimeManager.getShellEnv()),
+  "host.describe_workspace": async (command, options) =>
+    describeHostWorkspace(
+      await provisionWorkspace({
+        path: command.path,
+        ...userExecutableProcessOptions(options.runtimeManager.getShellEnv()),
+      }),
     ),
   "host.inspect_git_source": inspectHostGitSource,
   "host.list_branch_options": listHostBranchOptions,

@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { DiscoveredWorkspaceProperties } from "@bb/domain";
 import {
+  describeHostWorkspace,
   provisionWorkspace,
   type HostWorkspace,
   type LocalStateSnapshot,
@@ -498,26 +499,24 @@ export class WatchManager {
       return;
     }
 
-    const [branchName, resolvedDefaultBranch, sharedRefsFingerprint] =
-      await Promise.all([
-        workspace.getCurrentBranch(),
-        workspace.getDefaultBranch(),
-        workspace.getSharedGitRefsSnapshot(),
-      ]);
+    const [description, sharedRefsFingerprint] = await Promise.all([
+      describeHostWorkspace(workspace),
+      workspace.getSharedGitRefsSnapshot(),
+    ]);
     if (this.workspaceEntries.get(entry.target.environmentId) !== entry) return;
     entry.workspace = workspace;
-    entry.watchState.lastBranchName = branchName;
-    entry.watchState.lastDefaultBranch = resolvedDefaultBranch ?? branchName;
+    entry.watchState.lastBranchName = description.branchName;
+    entry.watchState.lastDefaultBranch = description.defaultBranch;
     entry.watchState.lastSharedRefsFingerprint =
       sharedRefsFingerprint.fingerprint;
     this.options.onWorkspaceMetadataChanged?.({
       environmentId: entry.target.environmentId,
       workspace: {
-        path: workspace.path,
-        isGitRepo: true,
-        isWorktree: workspace.isWorktree,
-        branchName,
-        defaultBranch: resolvedDefaultBranch ?? branchName,
+        path: description.path,
+        isGitRepo: description.isGitRepo,
+        isWorktree: description.isWorktree,
+        branchName: description.branchName,
+        defaultBranch: description.defaultBranch,
       },
     });
   }

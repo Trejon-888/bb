@@ -152,7 +152,7 @@ describe("provisionWorkspace", () => {
         ).toContain("+new content");
         expect(ws.path).toBe(subfolder);
         expect(ws.isWorktree).toBe(linked);
-        expect(ws.descriptor.repoRoot).toBe(await fs.realpath(repo));
+        expect(ws.repoRoot).toBe(await fs.realpath(repo));
       },
     );
 

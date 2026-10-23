@@ -1,4 +1,3 @@
-export { getCheckoutRef } from "bb-environment-provider-host/git";
 import { hasRef, runGit } from "bb-environment-provider-host/git";
 import fs from "node:fs/promises";
 import path from "node:path";

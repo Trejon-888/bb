@@ -27,7 +27,7 @@ import {
   projectCheckoutPathOnHost,
   resolveProjectWorkspaceTarget,
 } from "../projects/project-workspace.js";
-import { resolveDefaultWorktreeBaseBranch } from "../projects/worktree-base-branch.js";
+import { selectWorktreeBaseBranch } from "bb-environment-provider-host/base-branch";
 import {
   checkoutProviderInputs,
   worktreeProviderInputs,
@@ -314,7 +314,7 @@ export async function resolveProjectDefaultThreadEnvironment(
       remoteRefresh: "background",
     },
   });
-  const baseBranch = resolveDefaultWorktreeBaseBranch(checkout);
+  const baseBranch = selectWorktreeBaseBranch(checkout);
   if (baseBranch === null) {
     return {
       type: "provider",

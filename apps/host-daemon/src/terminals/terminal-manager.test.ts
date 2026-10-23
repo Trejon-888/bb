@@ -257,15 +257,8 @@ function createFakeRuntime(): AgentRuntime {
 
 function createFakeWorkspace(path: string): HostWorkspace {
   return {
-    descriptor: {
-      path: path,
-      repoRoot: true ? path : null,
-      isGitRepo: true,
-      isWorktree: false,
-      branchName: true ? "main" : null,
-      defaultBranch: true ? "main" : null,
-    },
     path,
+    repoRoot: path,
     isGitRepo: true,
     isWorktree: false,
     getCurrentBranch: vi.fn(async () => "main"),
