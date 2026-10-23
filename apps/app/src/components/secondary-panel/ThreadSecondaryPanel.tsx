@@ -220,7 +220,7 @@ export interface ThreadSecondaryPanelProps {
   onOpenNewTab: () => void;
   pendingGitDiffCommitSha?: string | null;
   pendingGitDiffScrollPath?: string | null;
-  workspaceRootPath?: string | null;
+  repositoryRootPath?: string | null;
   onOpenFileInEditor?: (path: string) => void;
   onOpenFilePreview?: (path: string) => void;
   onSelectionAddToChat?: (text: string) => void;
@@ -266,7 +266,7 @@ function ThreadSecondaryPanelContent({
   onRetryGitDiffEligibility,
   pendingGitDiffCommitSha,
   pendingGitDiffScrollPath,
-  workspaceRootPath,
+  repositoryRootPath,
   onOpenFileInEditor,
   onOpenFilePreview,
   onSelectionAddToChat,
@@ -372,7 +372,7 @@ function ThreadSecondaryPanelContent({
     onOpenFileInEditor,
     onOpenFilePreview,
     onSelectionAddToChat,
-    workspaceRootPath,
+    repositoryRootPath,
     isDiffPanelLive:
       resolvedGitDiffTabStatus === "eligible" &&
       isGitDiffFixedPanelTab(activeFixedTab?.tab) &&

@@ -290,7 +290,7 @@ type MergeBasePickerOpenChangeHandler = NonNullable<
 type OpenInEditorHandler = NonNullable<
   ReturnType<typeof buildOpenInEditorHandler>
 >;
-type OpenFilePreviewHandler = (relativePath: string) => void;
+type OpenFilePreviewHandler = (repositoryPath: string) => void;
 
 interface SentMessageEditSession {
   draft: PromptDraftState;
@@ -2140,23 +2140,45 @@ function ThreadDetailViewInternal(
     ],
   );
   const handleOpenFilePreview = useCallback<OpenFilePreviewHandler>(
-    (relativePath) => {
+    (repositoryPath) => {
       if (
         thread?.environmentId === null ||
         thread?.environmentId === undefined
       ) {
         return;
       }
+      const location =
+        repository === null
+          ? null
+          : locateRepositoryFile(repository, repositoryPath);
+      if (
+        location?.kind === "repository" &&
+        repository !== null &&
+        environment !== undefined
+      ) {
+        openLiveFilePreview({
+          target: {
+            kind: "host",
+            hostId: environment.hostId,
+            path: buildAbsoluteFilePath({
+              rootPath: repository.root,
+              path: location.path,
+            }),
+          },
+          location: null,
+        });
+        return;
+      }
       openLiveFilePreview({
         target: {
           kind: "workspace",
           environmentId: thread.environmentId,
-          path: relativePath,
+          path: location?.path ?? repositoryPath,
         },
         location: null,
       });
     },
-    [openLiveFilePreview, thread?.environmentId],
+    [environment, openLiveFilePreview, repository, thread?.environmentId],
   );
 
   if (threadQueryState.status === "loading") {
@@ -2808,7 +2830,7 @@ function ThreadDetailViewInternal(
               canUseGitUi,
               gitDiffTabStatus,
               environmentId: thread.environmentId ?? undefined,
-              workspaceRootPath: environment?.path,
+              repositoryRootPath: repository?.root ?? environment?.path,
               tabs: panelTabs,
               fixedTabs: secondaryPanelFixedTabs,
               splitPanelStateId: thread.id,
