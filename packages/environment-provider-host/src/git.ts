@@ -762,7 +762,10 @@ export async function readWorkTreeLocation(
   if (separator < 0 || !root) {
     return null;
   }
-  return { root, workspacePrefix: output.slice(separator + 1) };
+  return {
+    root: path.resolve(root),
+    workspacePrefix: output.slice(separator + 1),
+  };
 }
 
 export function parseOriginHeadBranchName(output: string): string | undefined {
