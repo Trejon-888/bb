@@ -82,7 +82,7 @@ Organize → Rows → Provider icons toggles the icon before each thread title.
 provider ids have no icon.
 
 Organize → Rows → Metadata adds a line under each thread's title where plugins
-draw row items, such as GitHub PR Status's pull request number. Rows grow to
+draw metadata, such as GitHub PR Status's pull request number. Rows grow to
 two lines only when a plugin shows something for them. `showRowMetadata`
 defaults to `false`; use `bb thread-list prefs set showRowMetadata true` to
 turn it on.

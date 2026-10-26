@@ -128,8 +128,8 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         experimental: true,
       },
       {
-        id: "thread-row-items",
-        title: "Thread row items",
+        id: "thread-row-metadata",
+        title: "Thread row metadata",
         summary:
           "Add a small badge on the metadata line under each thread's title in the sidebar. With this, a plugin can:",
         bullets: [
@@ -138,10 +138,10 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "Appear on plugin-built thread lists too, and on bb's rows once Metadata is turned on",
         ],
         apiSymbols: [
-          "ExperimentalThreadRowItemRegistration",
-          "ExperimentalThreadRowItemProps",
-          "experimental_ThreadRowItems",
-          "ExperimentalThreadRowItemsProps",
+          "ExperimentalThreadRowMetadataRegistration",
+          "ExperimentalThreadRowMetadataProps",
+          "experimental_ThreadRowMetadata",
+          "ExperimentalThreadRowMetadataLineProps",
         ],
         firstParty: ["GitHub PR Status"],
         experimental: true,
@@ -187,7 +187,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "PluginThreadTitleProps",
           "experimental_ThreadStatusGlyph",
           "PluginThreadStatusGlyphProps",
-          "experimental_ThreadRowItems",
+          "experimental_ThreadRowMetadata",
           "useEnvironmentProviders",
           "PluginEnvironmentProvidersState",
           "useSdk",

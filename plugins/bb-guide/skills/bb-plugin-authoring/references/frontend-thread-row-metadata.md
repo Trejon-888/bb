@@ -1,19 +1,19 @@
-# Items on thread rows
+# Thread row metadata
 
-`app.slots.experimental_threadRowItem` adds a small item to the metadata line
-under each thread row's title in bb's sidebar. The sidebar draws that line only
-while the user turns on Organize → Rows → Metadata (off by default), and only on
-rows where an item shows something. Plugin-built lists
-draw the same items with `experimental_ThreadRowItems` (see "bb's row items on
-your row"). The GitHub PR Status plugin's pull request badge is one.
+`app.slots.experimental_threadRowMetadata` adds a small item to the metadata
+line under each thread row's title in bb's sidebar. The sidebar draws that line
+only while the user turns on Organize → Rows → Metadata (off by default), and
+only on rows where an item shows something. Plugin-built lists draw the same
+items with `experimental_ThreadRowMetadata` (see "bb's row metadata on your
+row"). The GitHub PR Status plugin's pull request badge is one.
 
 ```tsx
-app.slots.experimental_threadRowItem({
+app.slots.experimental_threadRowMetadata({
   id: "deploy",
   order: 10,
   component: DeployBadge,
 });
-function DeployBadge({ thread, isLive }: ExperimentalThreadRowItemProps) {
+function DeployBadge({ thread, isLive }: ExperimentalThreadRowMetadataProps) {
   const key = thread.environment?.id;
   const { data } = experimental_useRpcKeyedQuery({
     contract,
@@ -40,10 +40,10 @@ it is hidden while the row is renamed or customized, and a click on it opens
 the thread. Items sort by `order` (unset last), then
 registration order. A crash removes only that item on that row.
 
-## bb's row items on your row
+## bb's row metadata on your row
 
-A plugin-built thread list renders every plugin's `experimental_threadRowItem`
-(bb's pull request badge among them) by placing `experimental_ThreadRowItems`
+A plugin-built thread list renders every plugin's `experimental_threadRowMetadata`
+(bb's pull request badge among them) by placing `experimental_ThreadRowMetadata`
 with the row's `thread` on its own line under the title, in a flex parent as
 wide as the line. That parent element is what bb watches for visibility, so
 give it a box (not `display: contents`). It renders nothing when no plugin contributes an item. Clicks on an item reach

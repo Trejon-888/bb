@@ -41,7 +41,7 @@ import {
   experimental_ThreadActionsContextMenu as ThreadActionsContextMenu,
   experimental_ThreadActionsMenu as ThreadActionsMenu,
   experimental_ThreadStatusGlyph as ThreadStatusGlyph,
-  experimental_ThreadRowItems as ThreadRowItems,
+  experimental_ThreadRowMetadata as ThreadRowMetadata,
   experimental_THREAD_ACTION_GROUPS,
   experimental_useThreadActions,
   experimental_useSidebarThreadSplit,
@@ -602,7 +602,7 @@ function ThreadRowComponent({
         if (!(event.target instanceof Element)) return;
         if (
           !event.target.closest(
-            "[data-sidebar-thread-trailing], [data-thread-row-items]",
+            "[data-sidebar-thread-trailing], [data-thread-row-metadata]",
           )
         )
           return;
@@ -777,7 +777,7 @@ function ThreadRowComponent({
               provider !== undefined && "pl-[1.375rem]",
             )}
           >
-            <ThreadRowItems thread={thread} />
+            <ThreadRowMetadata thread={thread} />
           </span>
         )}
       </span>

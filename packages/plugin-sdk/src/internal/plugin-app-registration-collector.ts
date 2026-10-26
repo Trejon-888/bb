@@ -33,7 +33,7 @@ import type {
   ExperimentalThreadContextSegmentRegistration,
   PluginThreadHeaderActionRegistration,
   ExperimentalThreadInfoRowRegistration,
-  ExperimentalThreadRowItemRegistration,
+  ExperimentalThreadRowMetadataRegistration,
   ExperimentalThreadInfoSectionRegistration,
   PluginThreadActionRegistration,
   ExperimentalPluginBrowserToolbarActionRegistration,
@@ -306,7 +306,7 @@ export interface CollectedPluginAppRegistrations {
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   threadContextSegments: ExperimentalThreadContextSegmentRegistration[];
   threadInfoRows: ExperimentalThreadInfoRowRegistration[];
-  threadRowItems: ExperimentalThreadRowItemRegistration[];
+  threadRowMetadata: ExperimentalThreadRowMetadataRegistration[];
   threadInfoSections: ExperimentalThreadInfoSectionRegistration[];
   threadActions: PluginThreadActionRegistration<unknown>[];
   browserToolbarActions: ExperimentalPluginBrowserToolbarActionRegistration[];
@@ -446,7 +446,7 @@ export function collectPluginAppRegistrations(
     threadHeaderActions: [],
     threadContextSegments: [],
     threadInfoRows: [],
-    threadRowItems: [],
+    threadRowMetadata: [],
     threadInfoSections: [],
     threadActions: [],
     browserToolbarActions: [],
@@ -483,7 +483,7 @@ export function collectPluginAppRegistrations(
     threadHeaderAction: new Set<string>(),
     threadContextSegment: new Set<string>(),
     threadInfoRow: new Set<string>(),
-    threadRowItem: new Set<string>(),
+    threadRowMetadata: new Set<string>(),
     threadInfoSection: new Set<string>(),
     threadAction: new Set<string>(),
     browserToolbarAction: new Set<string>(),
@@ -939,11 +939,11 @@ export function collectPluginAppRegistrations(
             : {}),
         });
       },
-      experimental_threadRowItem(registration) {
-        const kind = "slots.experimental_threadRowItem";
+      experimental_threadRowMetadata(registration) {
+        const kind = "slots.experimental_threadRowMetadata";
         const id = requireSlotId(kind, registration?.id);
-        requireUniqueId(kind, seenIds.threadRowItem, id);
-        collected.threadRowItems.push({
+        requireUniqueId(kind, seenIds.threadRowMetadata, id);
+        collected.threadRowMetadata.push({
           id,
           ...requireOptionalOrder(kind, registration.order),
           component: requireComponent(kind, registration.component),

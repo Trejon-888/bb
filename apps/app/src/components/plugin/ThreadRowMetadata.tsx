@@ -1,19 +1,19 @@
 import { memo, useLayoutEffect, useRef } from "react";
 import type {
-  ExperimentalThreadRowItemsProps,
+  ExperimentalThreadRowMetadataLineProps,
   PluginSidebarThread,
 } from "@get-bb/plugin-sdk";
 import { PluginSlotMount } from "@/components/plugin/PluginSlotMount";
 import { compareGroupedPlacement } from "@/lib/grouped-placement";
 import {
   usePluginSlots,
-  type PluginThreadRowItemSlot,
+  type PluginThreadRowMetadataSlot,
 } from "@/lib/plugin-slots";
 import { useThreadRowLive } from "@/lib/thread-row-visibility";
 
-function sortThreadRowItems(
-  slots: readonly PluginThreadRowItemSlot[],
-): PluginThreadRowItemSlot[] {
+function sortThreadRowMetadata(
+  slots: readonly PluginThreadRowMetadataSlot[],
+): PluginThreadRowMetadataSlot[] {
   return slots
     .map((slot, index) => ({ slot, index }))
     .sort((left, right) =>
@@ -29,17 +29,17 @@ function sortThreadRowItems(
 
 const itemsWithContent = new Set<string>();
 
-export function resetThreadRowItemsForTest(): void {
+export function resetThreadRowMetadataForTest(): void {
   itemsWithContent.clear();
 }
 
-function itemKey(slot: PluginThreadRowItemSlot, threadId: string): string {
+function itemKey(slot: PluginThreadRowMetadataSlot, threadId: string): string {
   return `${slot.pluginId}/${slot.id}/${slot.generation}/${threadId}`;
 }
 
 function recordItemContent(
   container: HTMLElement,
-  rendered: { slots: readonly PluginThreadRowItemSlot[]; threadId: string },
+  rendered: { slots: readonly PluginThreadRowMetadataSlot[]; threadId: string },
 ): void {
   const roots = container.querySelectorAll(":scope > [data-bb-plugin-root]");
   let hasItems = false;
@@ -53,12 +53,12 @@ function recordItemContent(
   container.toggleAttribute("data-has-items", hasItems);
 }
 
-function MountedThreadRowItems({
+function MountedThreadRowMetadata({
   thread,
   slots,
 }: {
   thread: PluginSidebarThread;
-  slots: readonly PluginThreadRowItemSlot[];
+  slots: readonly PluginThreadRowMetadataSlot[];
 }) {
   const anchor = useRef<HTMLSpanElement>(null);
   const isLive = useThreadRowLive(anchor);
@@ -83,7 +83,7 @@ function MountedThreadRowItems({
   return (
     <span
       ref={anchor}
-      data-thread-row-items=""
+      data-thread-row-metadata=""
       className="pointer-events-auto relative z-[31] hidden min-w-0 flex-1 items-center gap-2 overflow-hidden data-[has-items]:flex"
     >
       {mounted.map((slot) => {
@@ -92,7 +92,7 @@ function MountedThreadRowItems({
           <PluginSlotMount
             key={`${slot.pluginId}/${slot.id}/${slot.generation}`}
             pluginId={slot.pluginId}
-            slotKind="threadRowItem"
+            slotKind="threadRowMetadata"
             slotId={slot.id}
             instanceId={thread.id}
             crashFallback={null}
@@ -105,15 +105,15 @@ function MountedThreadRowItems({
   );
 }
 
-export const ThreadRowItems = memo(function ThreadRowItems({
+export const ThreadRowMetadata = memo(function ThreadRowMetadata({
   thread,
-}: ExperimentalThreadRowItemsProps) {
-  const { threadRowItems } = usePluginSlots();
-  if (threadRowItems.length === 0) return null;
+}: ExperimentalThreadRowMetadataLineProps) {
+  const { threadRowMetadata } = usePluginSlots();
+  if (threadRowMetadata.length === 0) return null;
   return (
-    <MountedThreadRowItems
+    <MountedThreadRowMetadata
       thread={thread}
-      slots={sortThreadRowItems(threadRowItems)}
+      slots={sortThreadRowMetadata(threadRowMetadata)}
     />
   );
 });

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, waitFor } from "@testing-library/react";
 import type {
-  ExperimentalThreadRowItemProps,
+  ExperimentalThreadRowMetadataProps,
   PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
 import { loadPluginApp, renderSlot } from "@get-bb/plugin-sdk/testing/app";
@@ -108,8 +108,8 @@ const passingChecks: PullRequest["checks"] = {
   pendingCount: 0,
 };
 
-const Item = app.threadRowItems[0]!.component;
-function Row(props: ExperimentalThreadRowItemProps) {
+const Item = app.threadRowMetadata[0]!.component;
+function Row(props: ExperimentalThreadRowMetadataProps) {
   return (
     <TooltipProvider delayDuration={0}>
       <Item {...props} />
@@ -118,11 +118,11 @@ function Row(props: ExperimentalThreadRowItemProps) {
 }
 
 function renderRow(
-  props: ExperimentalThreadRowItemProps,
+  props: ExperimentalThreadRowMetadataProps,
   rows: Record<string, EnvironmentPullRequest>,
 ) {
   return renderSlot<
-    ExperimentalThreadRowItemProps,
+    ExperimentalThreadRowMetadataProps,
     typeof pullRequestsReadContract
   >({ component: Row }, props, {
     experimental_rpcContract: pullRequestsReadContract,
@@ -133,7 +133,7 @@ function renderRow(
   });
 }
 
-describe("pull request row item", () => {
+describe("pull request row metadata", () => {
   it("reads nothing until the row is live, then draws the current-branch PR's state and checks", async () => {
     const pr = pullRequest();
     const rows: Record<string, EnvironmentPullRequest> = {

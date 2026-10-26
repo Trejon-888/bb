@@ -2580,7 +2580,7 @@ Docs: `frontend-registration.md`.
    `hostId` ride on router state; confirm that stays the right transport, and
    audit the `hostId` selection semantics.
 7. **Pull requests on a row.** `experimental_useSidebarThreadPullRequest` was
-   removed; rows render `experimental_ThreadRowItems` for bb's badge or read
+   removed; rows render `experimental_ThreadRowMetadata` for bb's badge or read
    the GitHub PR Status plugin's keyed `pullRequests` method. See
    "Retired `experimental_useSidebarThreadPullRequest` runtime member".
 8. **`experimental_useSidebarThreadSplit`.** Gives a custom row the built-in
@@ -2688,12 +2688,12 @@ Docs: `frontend-registration.md`, `frontend-components.md`.
    `[data-info-section]`, so a section that renders without
    `experimental_InfoSection` gets no separator. Confirm that is acceptable.
 
-## `app.slots.experimental_threadRowItem` / `experimental_ThreadRowItems` (`@get-bb/plugin-sdk/app`)
+## `app.slots.experimental_threadRowMetadata` / `experimental_ThreadRowMetadata` (`@get-bb/plugin-sdk/app`)
 
 A registration is `{ id, order?, component }`. The component receives
 `{ thread, isLive }` (`thread` is the row's `PluginSidebarThread`) and renders
 a small item on that thread's metadata line, under the title.
-`experimental_ThreadRowItems({ thread })` renders every registration for one
+`experimental_ThreadRowMetadata({ thread })` renders every registration for one
 row, sorted by `order` (unset last) then registration order, each in its own
 crash boundary keyed by thread, left to right in one line container that fills
 its parent, clips at the row's edge and is hidden while empty. It renders
@@ -2715,7 +2715,7 @@ and rows scrolled past read nothing. The GitHub PR Status badge reads with
 background.
 
 **Core callers.** bb's sidebar (`plugins/thread-list`, `ThreadRow.tsx`) renders
-`experimental_ThreadRowItems` on a line under each row's title, the same call a
+`experimental_ThreadRowMetadata` on a line under each row's title, the same call a
 plugin-built list makes, only while the user turns on Organize → Rows →
 Metadata (`showRowMetadata`, off by default). The row grows to two lines only
 while an item draws something, the line is hidden while the row is renamed or
@@ -2727,7 +2727,7 @@ PR has conflicts (passing checks show nothing), read through `experimental_useRp
 `enabled: isLive`. No core row indicator moved into the slot: the status
 glyph, split mini-map, shortcut pill and hover actions share the row's fixed
 trailing box, the cross-project icon depends on the row's position in the
-list, and the provider icon and child chevron sit elsewhere. Contract tests: `ThreadRowItems.test.tsx`,
+list, and the provider icon and child chevron sit elsewhere. Contract tests: `ThreadRowMetadata.test.tsx`,
 `plugins/github-pr-status/app.test.tsx`.
 
 Docs: `frontend-registration.md`, `frontend-pull-requests.md`.
@@ -3751,7 +3751,7 @@ Stabilize after exercising producer cancellation, reload, reconnect and byte lim
 
 ## Retired `experimental_useSidebarThreadPullRequest` runtime member
 
-`experimental_useSidebarThreadPullRequest(threadId)` and its `PluginSidebarPullRequest` and `PluginSidebarThreadPullRequestState` types are gone from `@get-bb/plugin-sdk/app`, the Plugin Guide and the authoring docs. Published bundles resolve `@get-bb/plugin-sdk/app` exports by name on `globalThis.__bbPluginRuntime.pluginSdkApp`, so the app installs `retiredPluginSdkAppMembers` (`apps/app/src/lib/plugin-sdk-app-impl.tsx`) next to the implementation. The member keeps its old shape, reads the GitHub PR Status plugin's `pullRequests` row for the thread's environment through `useRetiredSidebarEnvironmentPullRequest` (`apps/app/src/lib/retired-sidebar-pull-request.ts`), main's hook kept for it: a cached row refetches on mount and a stale row on page show. It returns `{ isLoading: false, pullRequest: null }` when the plugin is disabled or the read fails. The GitHub PR Status plugin's own segment and Info row use the plugin's copy of that hook. Both copies announce each refetch they start with `PULL_REQUESTS_REFETCH_EVENT` on `window` and recheck staleness before a page-show refetch, so a row shown by both is read once. The name leaves only the typings. `bb-plugin-build` keeps it in the `@get-bb/plugin-sdk/app` runtime shim's export list (`RETIRED_PLUGIN_SDK_APP_EXPORTS` in `packages/plugin-build/src/build-plugin-app.ts`), so plugins that still import it build and run, because git-sourced marketplace plugins are built by bb at install and update and path and builtin plugins rebuild when the SDK version changes. An import of it is a build warning carrying the replacement call: `bb plugin build` and `bb plugin dev` print it, and the server writes it to the plugin's log and the server log when it builds the plugin. Callers are marketplace plugins written against the old SDK (t3sidebar, dockside, gtd-sidebar, thread-inbox, radar-sidebar, bb-sidebar, sidebar-plus, cursor-sidebar, switchboard, vantage, jb-flow, tinted-threads among them). Their migration path is `experimental_ThreadRowItems` in the row, which draws the GitHub PR Status badge as bb's sidebar does; the build warning names it. Remove the runtime member and the shim entry only after those plugins have migrated.
+`experimental_useSidebarThreadPullRequest(threadId)` and its `PluginSidebarPullRequest` and `PluginSidebarThreadPullRequestState` types are gone from `@get-bb/plugin-sdk/app`, the Plugin Guide and the authoring docs. Published bundles resolve `@get-bb/plugin-sdk/app` exports by name on `globalThis.__bbPluginRuntime.pluginSdkApp`, so the app installs `retiredPluginSdkAppMembers` (`apps/app/src/lib/plugin-sdk-app-impl.tsx`) next to the implementation. The member keeps its old shape, reads the GitHub PR Status plugin's `pullRequests` row for the thread's environment through `useRetiredSidebarEnvironmentPullRequest` (`apps/app/src/lib/retired-sidebar-pull-request.ts`), main's hook kept for it: a cached row refetches on mount and a stale row on page show. It returns `{ isLoading: false, pullRequest: null }` when the plugin is disabled or the read fails. The GitHub PR Status plugin's own segment and Info row use the plugin's copy of that hook. Both copies announce each refetch they start with `PULL_REQUESTS_REFETCH_EVENT` on `window` and recheck staleness before a page-show refetch, so a row shown by both is read once. The name leaves only the typings. `bb-plugin-build` keeps it in the `@get-bb/plugin-sdk/app` runtime shim's export list (`RETIRED_PLUGIN_SDK_APP_EXPORTS` in `packages/plugin-build/src/build-plugin-app.ts`), so plugins that still import it build and run, because git-sourced marketplace plugins are built by bb at install and update and path and builtin plugins rebuild when the SDK version changes. An import of it is a build warning carrying the replacement call: `bb plugin build` and `bb plugin dev` print it, and the server writes it to the plugin's log and the server log when it builds the plugin. Callers are marketplace plugins written against the old SDK (t3sidebar, dockside, gtd-sidebar, thread-inbox, radar-sidebar, bb-sidebar, sidebar-plus, cursor-sidebar, switchboard, vantage, jb-flow, tinted-threads among them). Their migration path is `experimental_ThreadRowMetadata` in the row, which draws the GitHub PR Status badge as bb's sidebar does; the build warning names it. Remove the runtime member and the shim entry only after those plugins have migrated.
 
 ## Retired environment git reads (`bb.sdk.environments.status`, `diff`, `diffFiles`, `diffPatch`, `diffFile`, `diffBranches`)
 

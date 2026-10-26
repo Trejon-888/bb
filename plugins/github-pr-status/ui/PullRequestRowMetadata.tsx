@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   experimental_useRpcKeyedQuery,
-  type ExperimentalThreadRowItemProps,
+  type ExperimentalThreadRowMetadataProps,
 } from "@get-bb/plugin-sdk/app";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -117,10 +117,10 @@ export function PullRequestBadge({
 
 const ROW_READ_INPUT = { maxAgeMs: PULL_REQUESTS_ANY_AGE_MS };
 
-export function PullRequestRowItem({
+export function PullRequestRowMetadata({
   thread,
   isLive,
-}: ExperimentalThreadRowItemProps) {
+}: ExperimentalThreadRowMetadataProps) {
   const environmentId = thread.environment?.id ?? null;
   const query = experimental_useRpcKeyedQuery({
     contract: pullRequestsReadContract,

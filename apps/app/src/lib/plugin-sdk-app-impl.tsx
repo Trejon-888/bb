@@ -116,7 +116,7 @@ import {
   InfoSection,
 } from "@/components/secondary-panel/info/info-list";
 import { DetailRow } from "@/components/ui/detail-card";
-import { ThreadRowItems } from "@/components/plugin/ThreadRowItems";
+import { ThreadRowMetadata } from "@/components/plugin/ThreadRowMetadata";
 
 function PluginInfoListRow({
   onSelect,
@@ -189,7 +189,7 @@ export const pluginSdkAppImplementation = {
   experimental_SourceCode: LazyPluginSourceCode,
   experimental_Diff: LazyPluginDiff,
   experimental_InfoSection: InfoSection,
-  experimental_ThreadRowItems: ThreadRowItems,
+  experimental_ThreadRowMetadata: ThreadRowMetadata,
   experimental_DetailRow: DetailRow,
   experimental_InfoList: InfoList,
   experimental_InfoListRow: PluginInfoListRow,

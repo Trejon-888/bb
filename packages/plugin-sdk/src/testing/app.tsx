@@ -118,8 +118,8 @@ import {
   type PluginThreadActionsContextMenuProps,
   type PluginThreadActionsMenuProps,
   type PluginThreadStatusGlyphProps,
-  type ExperimentalThreadRowItemsProps,
-  type ExperimentalThreadRowItemRegistration,
+  type ExperimentalThreadRowMetadataLineProps,
+  type ExperimentalThreadRowMetadataRegistration,
   type PluginThreadActionsOptions,
   type PluginThreadActionTarget,
   type ExperimentalPluginBrowserToolbarActionRegistration,
@@ -539,11 +539,11 @@ function TestThreadStatusGlyph({
 }
 
 /**
- * `experimental_ThreadRowItems` marks where a row renders other plugins' row
+ * `experimental_ThreadRowMetadata` marks where a row renders other plugins' row
  * items; the test runtime knows no other plugins, so it renders a marker.
  */
-function TestThreadRowItems({ thread }: ExperimentalThreadRowItemsProps) {
-  return <span data-thread-row-items={thread.id} />;
+function TestThreadRowMetadata({ thread }: ExperimentalThreadRowMetadataLineProps) {
+  return <span data-thread-row-metadata={thread.id} />;
 }
 
 function SlotLifecycleGuard({
@@ -1865,7 +1865,7 @@ const testPluginSdkApp = {
   },
   ThreadTitle: TestThreadTitle,
   experimental_ThreadStatusGlyph: TestThreadStatusGlyph,
-  experimental_ThreadRowItems: TestThreadRowItems,
+  experimental_ThreadRowMetadata: TestThreadRowMetadata,
   useEnvironmentProviders(): PluginEnvironmentProvidersState {
     return useSlotEnv("useEnvironmentProviders").environmentProviders;
   },
@@ -1965,7 +1965,7 @@ export interface CapturedPluginApp {
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   threadContextSegments: ExperimentalThreadContextSegmentRegistration[];
   threadInfoRows: ExperimentalThreadInfoRowRegistration[];
-  threadRowItems: ExperimentalThreadRowItemRegistration[];
+  threadRowMetadata: ExperimentalThreadRowMetadataRegistration[];
   threadInfoSections: ExperimentalThreadInfoSectionRegistration[];
   threadActions: PluginThreadActionRegistration<unknown>[];
   browserToolbarActions: ExperimentalPluginBrowserToolbarActionRegistration[];

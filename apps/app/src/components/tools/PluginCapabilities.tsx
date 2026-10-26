@@ -305,7 +305,7 @@ function pluginAppSurfaceItems(
     ),
     ...namedSlotItems(
       pluginId,
-      slots.threadRowItems,
+      slots.threadRowMetadata,
       "thread-row-item",
       "Adds an item to each thread row in the sidebar.",
     ),

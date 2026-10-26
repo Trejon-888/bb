@@ -2,22 +2,22 @@
 
 The bundled GitHub PR Status plugin
 (`bb--github-pr-status`) owns pull request data and draws bb's pull request
-badge on thread rows through the `experimental_threadRowItem` slot.
+badge on thread rows through the `experimental_threadRowMetadata` slot.
 
 ## Show bb's badge on your rows
 
-A plugin-built thread list renders the same row items bb's sidebar draws by
-placing `experimental_ThreadRowItems` on a line under each row's title. The
+A plugin-built thread list renders the same row metadata bb's sidebar draws by
+placing `experimental_ThreadRowMetadata` on a line under each row's title. The
 GitHub PR Status badge (state icon in the state's color and a muted `#number`,
 a yellow dot while checks run or a red cross when they fail or the PR has
 conflicts, and the title in the tooltip)
-then appears on your rows, along with any other plugin's row items. It renders
+then appears on your rows, along with any other plugin's row metadata. It renders
 nothing when no plugin contributes an item.
 
 ```tsx
 import {
   ThreadTitle,
-  experimental_ThreadRowItems as ThreadRowItems,
+  experimental_ThreadRowMetadata as ThreadRowMetadata,
   type PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
 
@@ -28,7 +28,7 @@ function Row({ thread }: { thread: PluginSidebarThread }) {
         <ThreadTitle threadId={thread.id} />
       </span>
       <span className="flex min-w-0">
-        <ThreadRowItems thread={thread} />
+        <ThreadRowMetadata thread={thread} />
       </span>
     </a>
   );
@@ -53,7 +53,7 @@ row is `available` with the current branch's `pullRequest`, `absent`, or
 Treat a query error, `absent` and `unavailable` as nothing to show. While a
 key is held by a mounted hook the plugin re-checks pending pull requests about
 every 30 seconds and refreshes the row only when it changes. Hold keys only for
-rows on screen: register your own `experimental_threadRowItem` and pass
+rows on screen: register your own `experimental_threadRowMetadata` and pass
 `enabled: isLive`, or gate the hook on your list's windowing.
 
 ```tsx
@@ -112,7 +112,7 @@ names this replacement, and bb writes the same warning to the plugin's log
 when it builds the plugin at install, update or SDK change. The runtime member
 reads the same data and returns `{ isLoading: false, pullRequest: null }` when
 GitHub PR Status is disabled. To migrate a row that drew its own pull request
-badge, render `experimental_ThreadRowItems` in the row instead (see "Show bb's
+badge, render `experimental_ThreadRowMetadata` in the row instead (see "Show bb's
 badge on your rows"). To keep your own display, read `pullRequests`
 as above with `thread.environment?.id` in place of the thread id. Fields map as follows:
 `number`, `title`, `url`, `state` and `attention` keep their names;

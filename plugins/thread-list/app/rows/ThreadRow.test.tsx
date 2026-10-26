@@ -1271,22 +1271,22 @@ describe("ThreadRow", () => {
     expect(clickLink).toHaveBeenCalledTimes(2);
   });
 
-  it("draws other plugins' row items only while Metadata is on", () => {
+  it("draws other plugins' metadata only while Metadata is on", () => {
     const slot = renderThreadRow();
-    expect(slot.container.querySelector("[data-thread-row-items]")).toBeNull();
+    expect(slot.container.querySelector("[data-thread-row-metadata]")).toBeNull();
 
     act(() => getDefaultStore().set(sidebarShowRowMetadataAtom, true));
     expect(
-      slot.container.querySelector("[data-thread-row-items]"),
+      slot.container.querySelector("[data-thread-row-metadata]"),
     ).not.toBeNull();
   });
 
-  it("routes a click on other plugins' row items like the rest of the row", () => {
+  it("routes a click on other plugins' metadata like the rest of the row", () => {
     getDefaultStore().set(sidebarShowRowMetadataAtom, true);
     const slot = renderThreadRow({ experiments: ["sidebarMultiSelect"] });
     const link = screen.getByRole("link", { name: "Open Thread" });
     const row = link.closest("[data-sidebar-rename-row]");
-    const items = row?.querySelector("[data-thread-row-items]");
+    const items = row?.querySelector("[data-thread-row-metadata]");
     expect(items).not.toBeNull();
     const clickLink = vi.spyOn(link, "click");
 

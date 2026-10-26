@@ -1762,11 +1762,11 @@ export interface PluginThreadHeaderActionRegistration {
 }
 
 /**
- * Props passed to an `experimental_threadRowItem` component, rendered on a
+ * Props passed to an `experimental_threadRowMetadata` component, rendered on a
  * thread's row in a thread list: bb's sidebar and any list that draws
- * {@link PluginSdkApp.experimental_ThreadRowItems}.
+ * {@link PluginSdkApp.experimental_ThreadRowMetadata}.
  */
-export interface ExperimentalThreadRowItemProps {
+export interface ExperimentalThreadRowMetadataProps {
   /** The row's thread, the same value the list renders. */
   thread: PluginSidebarThread;
   /**
@@ -1793,7 +1793,7 @@ export interface ExperimentalThreadRowItemProps {
  * thread like the rest of the row. A crash removes only this item for that
  * row.
  */
-export interface ExperimentalThreadRowItemRegistration {
+export interface ExperimentalThreadRowMetadataRegistration {
   /** Unique within the plugin; letters, digits, `-`, `_`. */
   id: string;
   /**
@@ -1801,11 +1801,11 @@ export interface ExperimentalThreadRowItemRegistration {
    * first item starts the line.
    */
   order?: number;
-  component: ComponentType<ExperimentalThreadRowItemProps>;
+  component: ComponentType<ExperimentalThreadRowMetadataProps>;
 }
 
-/** Props for {@link PluginSdkApp.experimental_ThreadRowItems}. */
-export interface ExperimentalThreadRowItemsProps {
+/** Props for {@link PluginSdkApp.experimental_ThreadRowMetadata}. */
+export interface ExperimentalThreadRowMetadataLineProps {
   thread: PluginSidebarThread;
 }
 
@@ -3603,11 +3603,11 @@ export interface PluginAppSlots {
   /**
    * Add a small item to the metadata line of every thread row in thread
    * lists (see
-   * {@link ExperimentalThreadRowItemRegistration}). Experimental: see
+   * {@link ExperimentalThreadRowMetadataRegistration}). Experimental: see
    * docs/api_to_audit.md.
    */
-  experimental_threadRowItem(
-    registration: ExperimentalThreadRowItemRegistration,
+  experimental_threadRowMetadata(
+    registration: ExperimentalThreadRowMetadataRegistration,
   ): void;
   /**
    * Add a row to the thread Info tab's details block (see
@@ -5472,8 +5472,8 @@ export interface PluginSdkApp {
    */
   experimental_ThreadStatusGlyph: ComponentType<PluginThreadStatusGlyphProps>;
   /**
-   * Every `experimental_threadRowItem` contribution for one thread row (see
-   * {@link ExperimentalThreadRowItemRegistration}), the items bb's sidebar
+   * Every `experimental_threadRowMetadata` contribution for one thread row (see
+   * {@link ExperimentalThreadRowMetadataRegistration}), the items bb's sidebar
    * draws on its rows' metadata line. Render it under your row's title, in
    * a flex parent as wide as the line; that parent element is what bb
    * watches for visibility, so give it a box (not `display: contents`). Badges
@@ -5481,7 +5481,7 @@ export interface PluginSdkApp {
    * bb's. It renders nothing when no plugin contributes an item.
    * Experimental: see docs/api_to_audit.md.
    */
-  experimental_ThreadRowItems: ComponentType<ExperimentalThreadRowItemsProps>;
+  experimental_ThreadRowMetadata: ComponentType<ExperimentalThreadRowMetadataLineProps>;
   /**
    * bb's environment provider catalog (see
    * {@link PluginEnvironmentProvidersState}), the directory a thread's

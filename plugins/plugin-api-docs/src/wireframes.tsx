@@ -573,7 +573,7 @@ const SIDEBAR_SECTION_RENDERERS: Record<string, () => ReactNode> = {
             <span className="truncate">{thread.title}</span>
             {thread.pullRequest ? (
               <Mark
-                id="thread-row-items"
+                id="thread-row-metadata"
                 label="A pull request badge a plugin added to the row's metadata line"
                 chip="side"
                 className="z-[2] flex h-4 w-28 items-center gap-1 text-xs tabular-nums text-success"
