@@ -1,0 +1,49 @@
+name: Diagnose Windows process and Git failures
+on:
+  push:
+    branches: [bb/diagnose-ci-windows-processes]
+permissions:
+  contents: read
+jobs:
+  observe:
+    runs-on: blacksmith-4vcpu-windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.x
+          package-manager-cache: false
+      - run: npm install --global pnpm@9.15.0 --ignore-scripts
+      - uses: ./.github/actions/windows-dependency-cache
+        continue-on-error: true
+      - name: Install dependencies
+        shell: bash
+        run: bash .github/actions/setup-workspace/install-dependencies.sh --ignore-scripts --filter '!@bb/mobile'
+      - name: Record underlying identity and Git errors
+        shell: node {0}
+        run: |
+          const fs = require('node:fs');
+          const file = 'packages/process-utils/src/process-info.ts';
+          const source = fs.readFileSync(file, 'utf8');
+          const boundary = source.indexOf('async function readWindowsProcess');
+          const tail = source.slice(boundary).replace('} catch {', '} catch (error) { console.error("WINDOWS_IDENTITY_DIAGNOSTIC", error);');
+          fs.writeFileSync(file, source.slice(0, boundary) + tail);
+          const test = 'packages/host-workspace/test/git.test.ts';
+          const before = fs.readFileSync(test, 'utf8');
+          const needle = 'readGitBlob(repoPath, "HEAD", "large.txt", 4),';
+          if (!before.includes(needle)) throw new Error('Blob assertion not found');
+          fs.writeFileSync(test, before.replace(needle, 'readGitBlob(repoPath, "HEAD", "large.txt", 4).catch((error) => { console.error("GIT_BLOB_DIAGNOSTIC", error, error.cause); throw error; }),'));
+      - name: Repeat both complete package suites
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/windows-process-observation"
+          for iteration in $(seq 1 10); do
+            pnpm exec turbo run test --filter=@bb/config --filter=@bb/host-workspace --force --continue --concurrency=2 --output-logs=full > "$RUNNER_TEMP/windows-process-observation/repeat-$iteration.log" 2>&1 || exit "$?"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        timeout-minutes: 2
+        with:
+          name: windows-process-observation
+          path: ${{ runner.temp }}/windows-process-observation/
