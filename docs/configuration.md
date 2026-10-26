@@ -1380,7 +1380,3 @@ These operate on the specified desktop profile on the CLI's machine, not a
 remote phone or browser. The Node SDK exports `listLocalApplicationLinkApprovals`
 and `revokeLocalApplicationLinkApproval` for the same store. Granting an approval
 requires the viewing client's confirmation; there is no grant command.
-
-The dev-only `/application-links-prototype.html` page provides editable examples
-and follows the same experiment setting. See
-[implementation and verification](application-links-prototype.md).
