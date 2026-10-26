@@ -178,12 +178,11 @@ experiment (Settings → Experiments). `applicationLinks` enables explicit
 Markdown links to apps such as Linear and Reflect, with confirmation on the
 viewing device unless that scheme was previously allowed. It defaults on for early adopters.
 Choose Always allow to save an approval on that device. Settings → General →
-Application link approvals can revoke one or all approvals. Native approvals
-span BB servers in that app; browser approvals are scoped to the current site.
-`bb settings application-links list --desktop-data-dir <Electron-userData-path> --json`
-reads the specified local desktop profile; `bb settings application-links revoke
-<scheme|all> --desktop-data-dir <path>` makes it ask again. These commands do not
-change approvals on remote devices. No command grants approval.
+Application link approvals can revoke one or all approvals. All clients store
+approvals locally for the current BB site and device profile. They do not sync
+across devices or server addresses. The Plugin SDK can list and revoke the
+viewing client's approvals; there is no CLI command that reads or modifies a
+remote client's localStorage.
 `changelogPreview` shows the latest
 release notes as a dismissible card on Settings → Updates. Experiments that
 gate a feature are documented with it: `serverMove` in `bb guide machines`,

@@ -182,37 +182,6 @@ describe("buildBridgeInjectionScript", () => {
     }
   });
 
-  it("keeps an application request pending while the user reads the native prompt", async () => {
-    vi.useFakeTimers();
-    try {
-      const { native, posted, run } = installBridge({ bridgeVersion: 3 });
-      const result = native.request("open-application", {
-        url: "reflect://note/Project%20X",
-      });
-      const rejected = vi.fn();
-      void result.catch(rejected);
-      await vi.advanceTimersByTimeAsync(30_001);
-      expect(rejected).not.toHaveBeenCalled();
-      const parsed = parsePageToShellMessage(posted.at(-1));
-      if (!parsed.ok || parsed.message.type !== "request")
-        throw new Error("Invalid request");
-      expect(parsed.message.request).toEqual({
-        kind: "open-application",
-        payload: { url: "reflect://note/Project%20X" },
-      });
-      run(
-        buildBridgeEventScript({
-          type: "response",
-          id: parsed.message.id,
-          response: { ok: true, result: null },
-        }),
-      );
-      await expect(result).resolves.toBeNull();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   it("updates the safe area and notifies subscribers on rotation", () => {
     const { native, run } = installBridge();
     const seen: unknown[] = [];

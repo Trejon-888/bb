@@ -91,9 +91,6 @@ export interface BbDesktopApi extends BbDesktopInfo {
   openDataDirectory?(): Promise<void>;
   openExternalUrl(url: string): void;
   openApplicationUrl?(url: string): Promise<void>;
-  applicationLinkApprovals?(
-    request: { action: "list" } | { action: "revoke"; scheme: string | null },
-  ): Promise<string[]>;
   openServerDaemonLogs?(): Promise<void>;
   reloadWindow?(): void;
   setSplitNavigationEnabled?(

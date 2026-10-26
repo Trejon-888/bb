@@ -1,4 +1,3 @@
-import { applicationLinkApprovalsSchema } from "@bb/domain/application-link-approvals";
 import {
   bbDesktopServerChoicesSchema,
   MACOS_TRAFFIC_LIGHT_INSET_PX,
@@ -60,7 +59,6 @@ import {
   BB_DESKTOP_INSTALL_UPDATE_CHANNEL,
   BB_DESKTOP_OPEN_EXTERNAL_URL_CHANNEL,
   BB_DESKTOP_OPEN_APPLICATION_URL_CHANNEL,
-  BB_DESKTOP_APPLICATION_LINK_APPROVALS_CHANNEL,
   BB_DESKTOP_SET_THEME_CHANNEL,
   BB_DESKTOP_ZOOM_CHANGED_CHANNEL,
   BB_DESKTOP_ZOOM_COMMAND_CHANNEL,
@@ -512,13 +510,6 @@ const bbDesktopApi: BbDesktopApi = {
   },
   async openDataDirectory(): Promise<void> {
     await ipcRenderer.invoke(BB_DESKTOP_OPEN_DATA_DIRECTORY_CHANNEL);
-  },
-  async applicationLinkApprovals(request) {
-    const result: unknown = await ipcRenderer.invoke(
-      BB_DESKTOP_APPLICATION_LINK_APPROVALS_CHANNEL,
-      request,
-    );
-    return applicationLinkApprovalsSchema.parse(result);
   },
   async openApplicationUrl(url: string): Promise<void> {
     await ipcRenderer.invoke(BB_DESKTOP_OPEN_APPLICATION_URL_CHANNEL, url);

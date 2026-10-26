@@ -904,7 +904,10 @@ describe("MarkdownPreview", () => {
       );
 
       expect(
-        Array.from(container.querySelectorAll("code"), (node) => node.textContent),
+        Array.from(
+          container.querySelectorAll("code"),
+          (node) => node.textContent,
+        ),
       ).toEqual([
         "$",
         "singleDollarTextMath: false",
@@ -1040,6 +1043,8 @@ describe("application links", () => {
         });
       });
       fireEvent.click(await screen.findByRole("link", { name: "Review note" }));
+      expect(openApplicationUrl).not.toHaveBeenCalled();
+      resolveApplicationUrlConfirmation("open");
       await waitFor(() => expect(openApplicationUrl).toHaveBeenCalledOnce());
       act(() => {
         appQueryClient.setQueryData(systemConfigQueryKey(), {
@@ -1073,11 +1078,13 @@ describe("application links", () => {
       expect(link.getAttribute("href")).toBe(url);
       expect(openApplicationUrl).not.toHaveBeenCalled();
       fireEvent.click(link);
+      resolveApplicationUrlConfirmation("open");
       await waitFor(() => expect(openApplicationUrl).toHaveBeenCalledWith(url));
       fireEvent(
         screen.getByRole("link", { name: "Linear" }),
         new MouseEvent("auxclick", { bubbles: true, button: 1 }),
       );
+      resolveApplicationUrlConfirmation("open");
       await waitFor(() =>
         expect(openApplicationUrl).toHaveBeenCalledWith(
           "linear://issue/ABC-123",

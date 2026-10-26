@@ -5032,9 +5032,9 @@ export interface ExperimentalRpcMutationState<
  * shims the specifier to that object on `globalThis.__bbPluginRuntime`.
  */
 export interface PluginSdkApp {
-  /** List URL schemes approved on the viewing client. Native approvals span this app's BB servers; browser approvals are site-local. Core Settings uses the same implementation. */
+  /** List URL schemes approved for this BB site in the viewing client's localStorage. Core Settings uses the same implementation. */
   experimental_getApplicationLinkApprovals(): Promise<string[]>;
-  /** Revoke one scheme, or all with null, on this client. Does not grant permission. Rejects when an older native client lacks management support. */
+  /** Revoke one scheme, or all with null, for this BB site on this client. Does not grant permission. */
   experimental_revokeApplicationLinkApproval(
     scheme: string | null,
   ): Promise<string[]>;

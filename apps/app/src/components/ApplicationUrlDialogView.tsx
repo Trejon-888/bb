@@ -37,7 +37,7 @@ export function ApplicationUrlDialogView() {
             Open this {confirmation?.target.scheme} link?
           </DialogTitle>
           <DialogDescription>
-            This will ask your browser to open an application on this device.
+            This will open an application on this device.
           </DialogDescription>
         </DialogHeader>
         <p className="break-all text-sm select-text">
@@ -50,7 +50,8 @@ export function ApplicationUrlDialogView() {
               setRememberedConfirmation(checked === true ? confirmation : null)
             }
           />
-          Always allow {confirmation?.target.scheme} links in this browser
+          Always allow {confirmation?.target.scheme} links for this BB site on
+          this device
         </label>
         <DialogFooter>
           <Button

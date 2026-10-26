@@ -1946,9 +1946,6 @@ importers:
       fs-native-extensions:
         specifier: 1.5.0
         version: 1.5.0
-      proper-lockfile:
-        specifier: ^4.1.2
-        version: 4.1.2
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -1959,9 +1956,6 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.10
-      '@types/proper-lockfile':
-        specifier: ^4.1.4
-        version: 4.1.4
       tsrs:
         specifier: 0.18.0-ts7.1.0-dev.20260929
         version: 0.18.0-ts7.1.0-dev.20260929
@@ -11269,9 +11263,6 @@ packages:
 
   '@types/prismjs@1.26.6':
     resolution: {integrity: sha512-vqlvI7qlMvcCBbVe0AKAb4f97//Hy0EBTaiW8AalRnG/xAN5zOiWWyrNqNXeq8+KAuvRewjCVY1+IPxk4RdNYw==}
-
-  '@types/proper-lockfile@4.1.4':
-    resolution: {integrity: sha512-uo2ABllncSqg9F1D4nugVl9v93RmjxF6LJzQLMLDdPaXCUIDPeOJ21Gbqi43xNKzBi/WQ0Q0dICqufzQbMjipQ==}
 
   '@types/qrcode@1.5.6':
     resolution: {integrity: sha512-te7NQcV2BOvdj2b1hCAHzAoMNuj65kNBMz0KBaxM6c3VGBOhU0dURQKOtH8CFNI/dsKkwlv32p26qYQTWoB5bw==}
@@ -23492,10 +23483,6 @@ snapshots:
   '@types/picomatch@4.0.3': {}
 
   '@types/prismjs@1.26.6': {}
-
-  '@types/proper-lockfile@4.1.4':
-    dependencies:
-      '@types/retry': 0.12.2
 
   '@types/qrcode@1.5.6':
     dependencies:

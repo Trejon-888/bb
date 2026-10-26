@@ -1,8 +1,5 @@
 import { spawnHostProcess as spawn, hostToolchain } from "@bb/process-utils";
-import {
-  desktopApplicationLinkApprovals,
-  openApplicationUrl,
-} from "./application-url.js";
+import { openApplicationUrl } from "./application-url.js";
 import { createDesktopLogger } from "./desktop-logger.js";
 import { attachServerUpdateControl } from "./server-update-control.js";
 import { registerServerChoiceIpc } from "./server-choice-ipc.js";
@@ -213,7 +210,6 @@ import {
   BB_DESKTOP_INSTALL_UPDATE_CHANNEL,
   BB_DESKTOP_OPEN_EXTERNAL_URL_CHANNEL,
   BB_DESKTOP_OPEN_APPLICATION_URL_CHANNEL,
-  BB_DESKTOP_APPLICATION_LINK_APPROVALS_CHANNEL,
   BB_DESKTOP_SET_THEME_CHANNEL,
   BB_DESKTOP_ZOOM_COMMAND_CHANNEL,
 } from "./desktop-update-ipc.js";
@@ -2475,33 +2471,6 @@ function registerDesktopUpdateIpc(): void {
     }
   });
   ipcMain.handle(
-    BB_DESKTOP_APPLICATION_LINK_APPROVALS_CHANNEL,
-    async (event, value: unknown) => {
-      const owner = resolveApplicationWindow(event.sender);
-      if (
-        owner === null ||
-        owner.webContents !== event.sender ||
-        event.senderFrame !== event.sender.mainFrame
-      )
-        throw new Error("Application window is unavailable.");
-      const request = z
-        .discriminatedUnion("action", [
-          z.object({ action: z.literal("list") }).strict(),
-          z
-            .object({
-              action: z.literal("revoke"),
-              scheme: z.string().max(100).nullable(),
-            })
-            .strict(),
-        ])
-        .parse(value);
-      const approvals = desktopApplicationLinkApprovals();
-      if (request.action === "revoke") await approvals.revoke(request.scheme);
-      return approvals.list();
-    },
-  );
-
-  ipcMain.handle(
     BB_DESKTOP_OPEN_APPLICATION_URL_CHANNEL,
     async (event, value: unknown) => {
       const owner = resolveApplicationWindow(event.sender);
@@ -2511,7 +2480,7 @@ function registerDesktopUpdateIpc(): void {
         event.senderFrame !== event.sender.mainFrame
       )
         throw new Error("Application window is unavailable.");
-      await openApplicationUrl(owner, value);
+      await openApplicationUrl(value);
     },
   );
 

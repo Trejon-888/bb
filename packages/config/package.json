@@ -157,11 +157,6 @@
       "source": "./src/node-network.ts",
       "types": "./src/node-network.ts",
       "default": "./src/node-network.ts"
-    },
-    "./application-link-approvals": {
-      "source": "./src/application-link-approvals.ts",
-      "types": "./src/application-link-approvals.ts",
-      "default": "./src/application-link-approvals.ts"
     }
   },
   "scripts": {
@@ -174,13 +169,11 @@
     "@bb/domain": "workspace:*",
     "@bb/process-utils": "workspace:*",
     "fs-native-extensions": "1.5.0",
-    "proper-lockfile": "^4.1.2",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@bb/tsconfig": "workspace:*",
     "@types/node": "^22.0.0",
-    "@types/proper-lockfile": "^4.1.4",
     "tsrs": "0.18.0-ts7.1.0-dev.20260929",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   }

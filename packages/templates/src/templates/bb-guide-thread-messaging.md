@@ -161,8 +161,10 @@ Application links in messages:
   launches an application. Bare custom-scheme text is not auto-linked.
 
   Enable with `bb settings experiment applicationLinks true` or Settings →
-  Experiments → Application links. BB asks before every launch and never saves
-  approval. Executable web schemes and reserved editor-action
+  Experiments → Application links. BB asks before launching unless the user
+  chose Always allow for that scheme on this BB site and device. Settings →
+  General → Application link approvals can revoke saved choices. Executable
+  web schemes and reserved editor-action
   schemes remain blocked. Existing editor file links keep their file-opening
   behavior. Desktop and native mobile clients need application-link support
   (mobile bridge version 3); older clients show an update message. Web browsers

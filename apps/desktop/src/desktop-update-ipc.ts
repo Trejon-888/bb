@@ -11,5 +11,3 @@ export const BB_DESKTOP_OPEN_EXTERNAL_URL_CHANNEL =
 
 export const BB_DESKTOP_OPEN_APPLICATION_URL_CHANNEL =
   "bb-desktop:open-application-url";
-export const BB_DESKTOP_APPLICATION_LINK_APPROVALS_CHANNEL =
-  "bb-desktop-application-link-approvals";

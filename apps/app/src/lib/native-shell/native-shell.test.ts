@@ -10,7 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultExperiments } from "@bb/domain";
 import { appQueryClient } from "../app-query-client";
 import { systemConfigQueryKey } from "@/hooks/queries/query-keys";
-import { openApplicationUrl } from "../application-url";
+import {
+  openApplicationUrl,
+  resolveApplicationUrlConfirmation,
+} from "../application-url";
 import { appToast } from "@/components/ui/app-toast";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { createElement } from "react";
@@ -166,6 +169,9 @@ describe("application link compatibility", () => {
         .spyOn(appToast, "error")
         .mockImplementation(() => "toast");
       openApplicationUrl("reflect://note/Project%20X");
+      expect(posted).toEqual([]);
+      resolveApplicationUrlConfirmation("open");
+      await act(async () => {});
       if (bridgeVersion === 2) {
         await waitFor(() =>
           expect(error).toHaveBeenCalledWith("Couldn't open application link", {

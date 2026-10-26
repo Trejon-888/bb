@@ -20,14 +20,13 @@ a "Docs:" line has no owning doc, so it keeps the essential contract itself.
 viewing client. `experimental_revokeApplicationLinkApproval(scheme)` removes one;
 `null` resets all. Both return the remaining scheme list. They use the same
 `applicationLinkApprovals` implementation as core Settings → General →
-Application link approvals. Native stores belong to the app/device across servers;
-browser storage belongs to the current origin. Neither API can grant approvals.
-Native clients without management support report an update error. Mobile bridge
-version 4 adds management without changing version 3 opening support.
+Application link approvals. All clients use web localStorage scoped to the
+current origin and device profile. Neither API can grant approvals. The shared
+web UI owns consent; native clients validate and launch the approved URL.
 
 Docs: Plugin Guide, Host components (`plugins/plugin-api-docs/src/surfaces.ts`).
 Before stabilization, verify consent and revoke flows on all supported native
-platforms, cross-server scope, old-client errors, and storage recovery. Core
+platforms, per-origin scope, old-client launch errors, and storage recovery. Core
 callers are `ApplicationLinkApprovalsSettings` and the URL confirmation dispatcher.
 
 ## Composer popups

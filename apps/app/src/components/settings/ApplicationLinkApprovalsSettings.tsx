@@ -28,9 +28,8 @@ export function ApplicationLinkApprovalsSettings() {
   return (
     <SettingsSection title="Application link approvals">
       <p className="text-sm text-muted-foreground">
-        Apps you've allowed to open without asking on this device. Browser
-        approvals apply only to this BB site in this browser. These choices
-        don't sync to other devices.
+        Apps you've allowed to open without asking for this BB site on this
+        device. These choices don't sync to other devices or BB sites.
       </p>
       {approvals.isPending ? (
         <p className="text-sm">Loading approvals…</p>

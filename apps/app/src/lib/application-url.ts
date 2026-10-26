@@ -4,7 +4,6 @@ import {
 } from "@/hooks/cache-owners/application-link-approvals-cache-owner";
 import {
   createApplicationLinkApprovals,
-  applicationLinkApprovalsSchema,
   APPLICATION_LINK_APPROVALS_STORAGE_KEY,
 } from "@bb/domain/application-link-approvals";
 import { useQuery } from "@tanstack/react-query";
@@ -19,47 +18,18 @@ import { getBbDesktopInfo } from "./bb-desktop";
 import { getNativeShell } from "./native-shell";
 import { appToast } from "@/components/ui/app-toast";
 
-const browserApprovals = createApplicationLinkApprovals({
+const deviceApprovals = createApplicationLinkApprovals({
   read: () =>
     window.localStorage.getItem(APPLICATION_LINK_APPROVALS_STORAGE_KEY),
   write: (value) =>
     window.localStorage.setItem(APPLICATION_LINK_APPROVALS_STORAGE_KEY, value),
 });
 
-async function manageApplicationLinkApprovals(
-  request: { action: "list" } | { action: "revoke"; scheme: string | null },
-): Promise<string[]> {
-  const desktop = getBbDesktopInfo();
-  if (desktop !== null) {
-    if (!desktop.applicationLinkApprovals)
-      throw new Error(
-        "Update the BB desktop app to manage application link approvals.",
-      );
-    return applicationLinkApprovalsSchema.parse(
-      await desktop.applicationLinkApprovals(request),
-    );
-  }
-  const native = getNativeShell();
-  if (native !== null) {
-    if (native.handshake.bridgeVersion < 4)
-      throw new Error(
-        "Update the BB mobile app to manage application link approvals.",
-      );
-    return applicationLinkApprovalsSchema.parse(
-      await native.request("application-link-approvals", request),
-    );
-  }
-  if (request.action === "revoke") browserApprovals.revoke(request.scheme);
-  return browserApprovals.list();
-}
-
 export const applicationLinkApprovals = {
-  list: () => manageApplicationLinkApprovals({ action: "list" }),
+  list: async () => deviceApprovals.list(),
   revoke: async (scheme: string | null) => {
-    const remaining = await manageApplicationLinkApprovals({
-      action: "revoke",
-      scheme,
-    });
+    deviceApprovals.revoke(scheme);
+    const remaining = deviceApprovals.list();
     writeApplicationLinkApprovals(appQueryClient, remaining);
     return remaining;
   },
@@ -107,21 +77,19 @@ export function applicationLinksEnabled(): boolean {
   );
 }
 
-const openBrowserApplicationUrl = createApplicationUrlOpener({
-  approvals: browserApprovals,
+const openConfirmedApplicationUrl = createApplicationUrlOpener({
+  approvals: deviceApprovals,
   confirm: (target) =>
     new Promise<ApplicationUrlDecision>((resolve) => {
       confirmation = { target, resolve };
       for (const listener of listeners) listener();
     }),
-  open: (url) => {
-    window.location.assign(url);
-  },
+  open: dispatchApplicationUrl,
 });
 
 export function openApplicationUrl(url: string): void {
   if (!applicationLinksEnabled()) return;
-  void dispatchApplicationUrl(url)
+  void openConfirmedApplicationUrl(url)
     .finally(() => {
       invalidateApplicationLinkApprovals(appQueryClient);
     })
@@ -150,5 +118,5 @@ async function dispatchApplicationUrl(url: string): Promise<void> {
     await native.request("open-application", { url });
     return;
   }
-  await openBrowserApplicationUrl(url);
+  window.location.assign(url);
 }

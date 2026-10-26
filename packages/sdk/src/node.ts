@@ -121,8 +121,3 @@ export type {
 } from "./transport.js";
 export type { BbHttpErrorArgs } from "./response.js";
 export type * from "./public-types.js";
-
-export {
-  listLocalApplicationLinkApprovals,
-  revokeLocalApplicationLinkApproval,
-} from "./application-link-approvals.js";

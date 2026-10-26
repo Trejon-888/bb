@@ -23,11 +23,7 @@ import {
   type UiPreferenceKey,
   type UiPreferenceValue,
 } from "@bb/domain";
-import {
-  BbHttpError,
-  listLocalApplicationLinkApprovals,
-  revokeLocalApplicationLinkApproval,
-} from "@bb/sdk";
+import { BbHttpError } from "@bb/sdk";
 import type {
   SystemAiServicesResponse,
   SystemCliCommandStatus,
@@ -391,54 +387,6 @@ export function registerSettingsCommands(
   const settings = program
     .command("settings")
     .description("Inspect and update BB settings");
-  const applicationLinks = settings
-    .command("application-links")
-    .description(
-      "Inspect or revoke this computer's desktop app-link approvals; never grants permission",
-    );
-  applicationLinks
-    .command("list")
-    .requiredOption(
-      "--desktop-data-dir <path>",
-      "Electron user-data directory on this computer (not the BB server data directory)",
-    )
-    .option("--json", "Print machine-readable JSON output")
-    .action(
-      action(async (opts: JsonOptions & { desktopDataDir: string }) => {
-        const schemes = listLocalApplicationLinkApprovals(opts.desktopDataDir);
-        if (!outputJson(opts, { schemes }))
-          console.log(
-            schemes.length ? schemes.join("\n") : "No saved approvals.",
-          );
-      }),
-    );
-  applicationLinks
-    .command("revoke <scheme>")
-    .description(
-      "Ask again for a URL scheme, or pass all to reset every approval",
-    )
-    .requiredOption(
-      "--desktop-data-dir <path>",
-      "Electron user-data directory on this computer",
-    )
-    .option("--json", "Print machine-readable JSON output")
-    .action(
-      action(
-        async (
-          scheme: string,
-          opts: JsonOptions & { desktopDataDir: string },
-        ) => {
-          const schemes = await revokeLocalApplicationLinkApproval(
-            opts.desktopDataDir,
-            scheme === "all" ? null : scheme,
-          );
-          if (!outputJson(opts, { schemes }))
-            console.log(
-              "Approval reset. BB will ask on the next matching link.",
-            );
-        },
-      ),
-    );
 
   settings
     .command("show")

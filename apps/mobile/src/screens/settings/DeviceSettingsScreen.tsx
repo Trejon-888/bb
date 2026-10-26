@@ -1,4 +1,3 @@
-import { applicationLinkApprovals } from "@/lib/shell/application-url";
 import { nativeApplicationVersion, nativeBuildVersion } from "expo-application";
 import { useProfiles } from "@/app-shell";
 import { sendShellCommand } from "@/lib/shell";
@@ -39,16 +38,6 @@ export function DeviceSettingsScreen() {
           title="This device"
           footnote="Preferences for this phone."
         >
-          <GroupedRow
-            title="Reset application link approvals"
-            subtitle="Ask again before opening apps"
-            badge={{ icon: "Globe", symbol: "link", color: colors.blue }}
-            onPress={() => {
-              applicationLinkApprovals.revoke(null);
-              toast.success("BB will ask before opening apps again");
-            }}
-            testID="device-reset-application-links"
-          />
           <HapticsSettingsRow />
           <LinkRow
             title="Appearance"

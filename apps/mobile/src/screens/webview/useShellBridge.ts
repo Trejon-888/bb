@@ -1,7 +1,4 @@
-import {
-  applicationLinkApprovals,
-  openApplicationUrl,
-} from "@/lib/shell/application-url";
+import { openApplicationUrl } from "@/lib/shell/application-url";
 import {
   buildBridgeEventScript,
   parsePageToShellMessage,
@@ -74,20 +71,6 @@ export function useShellBridge(
           return;
         }
         case "request": {
-          if (message.request.kind === "application-link-approvals") {
-            try {
-              const request = message.request.payload;
-              if (request.action === "revoke")
-                applicationLinkApprovals.revoke(request.scheme);
-              respond(message.id, {
-                ok: true,
-                result: applicationLinkApprovals.list(),
-              });
-            } catch (error) {
-              respond(message.id, { ok: false, error: describeError(error) });
-            }
-            return;
-          }
           if (message.request.kind === "open-application") {
             try {
               await openApplicationUrl(message.request.payload.url);
