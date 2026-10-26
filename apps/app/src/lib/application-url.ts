@@ -1,4 +1,8 @@
 import {
+  invalidateApplicationLinkApprovals,
+  writeApplicationLinkApprovals,
+} from "@/hooks/cache-owners/application-link-approvals-cache-owner";
+import {
   createApplicationLinkApprovals,
   applicationLinkApprovalsSchema,
   APPLICATION_LINK_APPROVALS_STORAGE_KEY,
@@ -56,10 +60,7 @@ export const applicationLinkApprovals = {
       action: "revoke",
       scheme,
     });
-    appQueryClient.setQueryData(
-      ["device-application-link-approvals"],
-      remaining,
-    );
+    writeApplicationLinkApprovals(appQueryClient, remaining);
     return remaining;
   },
 };
@@ -122,9 +123,7 @@ export function openApplicationUrl(url: string): void {
   if (!applicationLinksEnabled()) return;
   void dispatchApplicationUrl(url)
     .finally(() => {
-      void appQueryClient.invalidateQueries({
-        queryKey: ["device-application-link-approvals"],
-      });
+      invalidateApplicationLinkApprovals(appQueryClient);
     })
     .catch((error: unknown) => {
       appToast.error("Couldn't open application link", {

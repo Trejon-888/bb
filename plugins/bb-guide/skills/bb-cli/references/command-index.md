@@ -23,6 +23,7 @@ This index lists every command path that the core CLI registers, including alias
 - `bb settings replay-onboarding`
 - `bb settings completed-turns`
 - `bb settings experiment`
+- `bb settings application-links`
 - `bb settings application-links list`
 - `bb settings application-links revoke`
 - `bb settings keyboard`

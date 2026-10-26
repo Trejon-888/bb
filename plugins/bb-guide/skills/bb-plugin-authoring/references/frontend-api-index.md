@@ -94,6 +94,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `useSdk`
 - `experimental_useProviders`
 - `experimental_useCodeTheme`
+- `experimental_getApplicationLinkApprovals`
+- `experimental_revokeApplicationLinkApproval`
 - `experimental_copyToClipboard`
 - `experimental_saveFile`
 

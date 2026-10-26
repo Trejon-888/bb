@@ -1,22 +1,24 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { appQueryClient } from "@/lib/app-query-client";
+import { applicationLinkApprovalsQueryKey } from "@/hooks/cache-owners/application-link-approvals-cache-owner";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@bb/shared-ui/button";
 import { applicationLinkApprovals } from "@/lib/application-url";
 import { appToast } from "@/components/ui/app-toast";
 import { SettingsSection } from "@/components/ui/settings-section";
 
 export function ApplicationLinkApprovalsSettings() {
-  const queryClient = useQueryClient();
-  const queryKey = ["device-application-link-approvals"];
-  const approvals = useQuery({
-    queryKey,
-    queryFn: applicationLinkApprovals.list,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-  });
+  const approvals = useQuery(
+    {
+      queryKey: applicationLinkApprovalsQueryKey,
+      queryFn: applicationLinkApprovals.list,
+      staleTime: 0,
+      refetchOnWindowFocus: true,
+    },
+    appQueryClient,
+  );
   const revoke = async (scheme: string | null) => {
     try {
-      const remaining = await applicationLinkApprovals.revoke(scheme);
-      queryClient.setQueryData(queryKey, remaining);
+      await applicationLinkApprovals.revoke(scheme);
     } catch (error) {
       appToast.error("Couldn't reset application link approvals", {
         description: error instanceof Error ? error.message : "Try again.",
