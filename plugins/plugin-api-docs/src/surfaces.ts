@@ -1565,9 +1565,8 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         bullets: [
           "Embed a thread, a new-thread prompt box, or a textarea with editable voice input",
           "Render Markdown, code, diffs, and file links, and copy text and save files, the way bb does",
-          "Use navigate.openUrl for web links and application links when the applicationLinks experiment is enabled; each app launch requires device confirmation, and a true return means the request was handled, not that an app launched",
-          "Add or override app icons",
-          "Match bb's styling with no extra work",
+          "Open app links with device confirmation when the Application links experiment is enabled",
+          "Add or override app icons while matching bb's styling",
         ],
         apiSymbols: [
           "experimental_Icon",
