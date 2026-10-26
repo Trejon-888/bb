@@ -1,12 +1,21 @@
-import { WorkspaceError } from "bb-environment-provider-host/git";
+import { EventEmitter } from "node:events";
+import {
+  WorkspaceError,
+  inspectGitRepository,
+} from "bb-environment-provider-host/git";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runGit } from "../src/git.js";
 
 const execPortableFileMock = vi.hoisted(() => vi.fn());
+const spawnPortableOutputProcessMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@bb/process-utils", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@bb/process-utils")>();
-  return { ...actual, execPortableFile: execPortableFileMock };
+  return {
+    ...actual,
+    execPortableFile: execPortableFileMock,
+    spawnPortableOutputProcess: spawnPortableOutputProcessMock,
+  };
 });
 
 const STATUS_DLL_INIT_FAILED = 0xc0000142;
@@ -31,8 +40,23 @@ function processFailure(
   });
 }
 
+function exitedProcess(exitCode: number, stdout = ""): EventEmitter {
+  const child = Object.assign(new EventEmitter(), {
+    pid: undefined,
+    stdout: new EventEmitter(),
+    stderr: new EventEmitter(),
+    kill: vi.fn(),
+  });
+  setImmediate(() => {
+    if (stdout) child.stdout.emit("data", Buffer.from(stdout));
+    child.emit("close", exitCode);
+  });
+  return child;
+}
+
 afterEach(() => {
   execPortableFileMock.mockReset();
+  spawnPortableOutputProcessMock.mockReset();
 });
 
 describe("runGit Windows startup crash retries", () => {
@@ -101,5 +125,33 @@ describe("runGit Windows startup crash retries", () => {
 
     expect(result.exitCode).toBe(STATUS_DLL_INIT_FAILED);
     expect(execPortableFileMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("shared git runner Windows startup crash retries", () => {
+  it("does not mistake a silent startup crash for a non-Git folder", async () => {
+    spawnPortableOutputProcessMock
+      .mockImplementationOnce(() => exitedProcess(STATUS_DLL_INIT_FAILED))
+      .mockImplementationOnce(() =>
+        exitedProcess(0, `true\nfalse\n${process.cwd()}\n${process.cwd()}\n`),
+      );
+
+    await expect(inspectGitRepository(process.cwd())).resolves.toEqual({
+      isGitRepo: true,
+      isWorktree: false,
+    });
+    expect(spawnPortableOutputProcessMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after bounded attempts", async () => {
+    spawnPortableOutputProcessMock.mockImplementation(() =>
+      exitedProcess(STATUS_DLL_INIT_FAILED),
+    );
+
+    await expect(inspectGitRepository(process.cwd())).resolves.toEqual({
+      isGitRepo: false,
+      isWorktree: false,
+    });
+    expect(spawnPortableOutputProcessMock).toHaveBeenCalledTimes(3);
   });
 });

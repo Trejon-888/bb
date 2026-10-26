@@ -161,6 +161,20 @@ describe("provisionWorkspace", () => {
       },
     );
 
+    it.skipIf(process.platform === "win32")(
+      "reports a subfolder whose name contains a newline",
+      async () => {
+        const repo = await initRepo(await makeTempDir("bb-newline-"));
+        const subfolder = path.join(repo, "line\none");
+        await fs.mkdir(subfolder);
+        const ws = await provisionWorkspace({ path: subfolder });
+        expect(ws.repository).toEqual({
+          root: await fs.realpath(repo),
+          workspacePrefix: "line\none/",
+        });
+      },
+    );
+
     it("throws for non-existent path", async () => {
       await expect(
         provisionWorkspace({

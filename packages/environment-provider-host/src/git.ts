@@ -8,6 +8,9 @@ import fs from "node:fs/promises";
 
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const USES_PROCESS_GROUPS = process.platform !== "win32";
+const WINDOWS_STARTUP_CRASH_ATTEMPTS = 3;
+const WINDOWS_STARTUP_CRASH_RETRY_DELAY_MS = 150;
+const STATUS_DLL_INIT_FAILED = 0xc0000142;
 
 export class WorkspaceError extends Error {
   readonly code: string;
@@ -140,17 +143,52 @@ export function runGit(
     );
   }
 
-  return runVcsProcess("git", args, () => runGitAdmitted(args, options), {
-    signal: options.signal,
-    priority: "background",
-  }).catch((error: unknown) => {
+  return runVcsProcess(
+    "git",
+    args,
+    () => runGitWithStartupRetries(args, options),
+    {
+      signal: options.signal,
+      priority: "background",
+    },
+  ).catch((error: unknown) => {
     if (options.signal?.aborted)
       throw createGitCommandCancelledError(args, error);
     throw error;
   });
 }
 
-function runGitAdmitted(
+function isWindowsStartupCrash(result: GitCommandResult): boolean {
+  return (
+    result.exitCode === STATUS_DLL_INIT_FAILED &&
+    result.stdout === "" &&
+    result.stderr === ""
+  );
+}
+
+async function runGitWithStartupRetries(
+  args: string[],
+  options: RunGitOptions,
+): Promise<GitCommandResult> {
+  for (let attempt = 1; ; attempt += 1) {
+    const result = await runGitProcess(args, options);
+    if (
+      attempt < WINDOWS_STARTUP_CRASH_ATTEMPTS &&
+      isWindowsStartupCrash(result)
+    ) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, WINDOWS_STARTUP_CRASH_RETRY_DELAY_MS * attempt),
+      );
+      continue;
+    }
+    if (result.exitCode === 0 || options.allowFailure === true) {
+      return result;
+    }
+    throw createGitCommandFailedError(args, trimOutput(result.stderr));
+  }
+}
+
+function runGitProcess(
   args: string[],
   options: RunGitOptions,
 ): Promise<GitCommandResult> {
@@ -257,16 +295,11 @@ function runGitAdmitted(
         );
         return;
       }
-      const result: GitCommandResult = {
+      succeed({
         stdout: stdout.read(),
         stderr: stderr.read(),
         exitCode: code ?? 1,
-      };
-      if (result.exitCode === 0 || options.allowFailure === true) {
-        succeed(result);
-        return;
-      }
-      fail(createGitCommandFailedError(args, trimOutput(result.stderr)));
+      });
     });
 
     if (options.timeoutMs !== undefined) {
@@ -745,26 +778,28 @@ export async function readWorkTreeLocation(
   cwd: string,
   options: GitTimeoutOptions = {},
 ): Promise<WorkTreeLocation | null> {
-  const result = await runGit(
-    ["rev-parse", "--show-toplevel", "--show-prefix"],
-    {
+  const [rootResult, prefixResult] = await Promise.all([
+    runGit(["rev-parse", "--show-toplevel"], {
       cwd,
       ...options,
       allowFailure: true,
-    },
-  );
-  if (result.exitCode !== 0) {
+    }),
+    runGit(["rev-parse", "--show-prefix"], {
+      cwd,
+      ...options,
+      allowFailure: true,
+    }),
+  ]);
+  if (rootResult.exitCode !== 0 || prefixResult.exitCode !== 0) {
     return null;
   }
-  const output = result.stdout.replace(/\r?\n$/u, "");
-  const separator = output.lastIndexOf("\n");
-  const root = output.slice(0, separator).replace(/\r$/u, "");
-  if (separator < 0 || !root) {
+  const root = rootResult.stdout.replace(/\r?\n$/u, "");
+  if (!root) {
     return null;
   }
   return {
     root: path.resolve(root),
-    workspacePrefix: output.slice(separator + 1),
+    workspacePrefix: prefixResult.stdout.replace(/\r?\n$/u, ""),
   };
 }
 
