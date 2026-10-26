@@ -1,3 +1,8 @@
+import {
+  createApplicationLinkApprovals,
+  applicationLinkApprovalsSchema,
+  APPLICATION_LINK_APPROVALS_STORAGE_KEY,
+} from "@bb/domain/application-link-approvals";
 import { useQuery } from "@tanstack/react-query";
 import { systemConfigQueryOptions } from "@/hooks/queries/system-queries";
 import { appQueryClient } from "./app-query-client";
@@ -9,6 +14,55 @@ import {
 import { getBbDesktopInfo } from "./bb-desktop";
 import { getNativeShell } from "./native-shell";
 import { appToast } from "@/components/ui/app-toast";
+
+const browserApprovals = createApplicationLinkApprovals({
+  read: () =>
+    window.localStorage.getItem(APPLICATION_LINK_APPROVALS_STORAGE_KEY),
+  write: (value) =>
+    window.localStorage.setItem(APPLICATION_LINK_APPROVALS_STORAGE_KEY, value),
+});
+
+async function manageApplicationLinkApprovals(
+  request: { action: "list" } | { action: "revoke"; scheme: string | null },
+): Promise<string[]> {
+  const desktop = getBbDesktopInfo();
+  if (desktop !== null) {
+    if (!desktop.applicationLinkApprovals)
+      throw new Error(
+        "Update the BB desktop app to manage application link approvals.",
+      );
+    return applicationLinkApprovalsSchema.parse(
+      await desktop.applicationLinkApprovals(request),
+    );
+  }
+  const native = getNativeShell();
+  if (native !== null) {
+    if (native.handshake.bridgeVersion < 4)
+      throw new Error(
+        "Update the BB mobile app to manage application link approvals.",
+      );
+    return applicationLinkApprovalsSchema.parse(
+      await native.request("application-link-approvals", request),
+    );
+  }
+  if (request.action === "revoke") browserApprovals.revoke(request.scheme);
+  return browserApprovals.list();
+}
+
+export const applicationLinkApprovals = {
+  list: () => manageApplicationLinkApprovals({ action: "list" }),
+  revoke: async (scheme: string | null) => {
+    const remaining = await manageApplicationLinkApprovals({
+      action: "revoke",
+      scheme,
+    });
+    appQueryClient.setQueryData(
+      ["device-application-link-approvals"],
+      remaining,
+    );
+    return remaining;
+  },
+};
 
 let confirmation: {
   target: ApplicationUrl;
@@ -53,6 +107,7 @@ export function applicationLinksEnabled(): boolean {
 }
 
 const openBrowserApplicationUrl = createApplicationUrlOpener({
+  approvals: browserApprovals,
   confirm: (target) =>
     new Promise<ApplicationUrlDecision>((resolve) => {
       confirmation = { target, resolve };
@@ -65,14 +120,20 @@ const openBrowserApplicationUrl = createApplicationUrlOpener({
 
 export function openApplicationUrl(url: string): void {
   if (!applicationLinksEnabled()) return;
-  void dispatchApplicationUrl(url).catch((error: unknown) => {
-    appToast.error("Couldn't open application link", {
-      description:
-        error instanceof Error
-          ? error.message
-          : "Check that the destination app is installed.",
+  void dispatchApplicationUrl(url)
+    .finally(() => {
+      void appQueryClient.invalidateQueries({
+        queryKey: ["device-application-link-approvals"],
+      });
+    })
+    .catch((error: unknown) => {
+      appToast.error("Couldn't open application link", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Check that the destination app is installed.",
+      });
     });
-  });
 }
 
 async function dispatchApplicationUrl(url: string): Promise<void> {

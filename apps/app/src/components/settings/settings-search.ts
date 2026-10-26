@@ -63,6 +63,18 @@ export const SETTINGS_SEARCH_INDEX: Record<
         keywords: ["onboarding", "getting started", "welcome"],
       },
       {
+        title: "Application link approvals",
+        keywords: [
+          "always allow",
+          "native apps",
+          "linear",
+          "reflect",
+          "ask again",
+          "reset approvals",
+          "permissions",
+        ],
+      },
+      {
         title: "Open links in the in-app browser",
         keywords: ["url", "web"],
         when: "desktopBrowser",

@@ -12,6 +12,7 @@ const native = vi.hoisted(() => ({
       ) => void
     >(),
   open: vi.fn(),
+  storage: new Map<string, string>(),
 }));
 
 vi.mock("react-native", () => ({
@@ -19,9 +20,20 @@ vi.mock("react-native", () => ({
   Linking: { openURL: native.open },
 }));
 
-import { openApplicationUrl } from "./application-url";
+vi.mock("@/lib/native/preferences-storage", () => ({
+  getPreferencesStorage: () => ({
+    getString: (key: string) => native.storage.get(key),
+    set: (key: string, value: string) => native.storage.set(key, value),
+  }),
+}));
+
+import {
+  applicationLinkApprovals,
+  openApplicationUrl,
+} from "./application-url";
 
 beforeEach(() => {
+  native.storage.clear();
   native.alert.mockReset();
   native.open.mockReset().mockResolvedValue(undefined);
 });
@@ -46,4 +58,19 @@ it("settles native dismissal and cancellation without launching, then allows a c
   await openApplicationUrl("reflect://note/Project%20X");
   expect(native.alert).toHaveBeenCalledTimes(4);
   expect(native.open).toHaveBeenLastCalledWith("reflect://note/Project%20X");
+});
+
+it("saves the native Always allow action and asks again after device reset", async () => {
+  native.alert.mockImplementation((_title, _message, buttons) =>
+    buttons
+      .find((button) => button.text === "Always allow on this device")
+      ?.onPress?.(),
+  );
+  await openApplicationUrl("reflect://note/one");
+  await openApplicationUrl("reflect://note/two");
+  expect(native.alert).toHaveBeenCalledOnce();
+  expect(native.open).toHaveBeenCalledTimes(2);
+  applicationLinkApprovals.revoke(null);
+  await openApplicationUrl("reflect://note/three");
+  expect(native.alert).toHaveBeenCalledTimes(2);
 });

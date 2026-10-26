@@ -8,8 +8,13 @@ Change it in Settings → Experiments or with
 `bb settings experiment applicationLinks true|false`; SDK clients use
 `sdk.system.updateExperiments({ applicationLinks: true })`.
 
-Every click asks for confirmation on the viewing device. Rendering and sending
-messages never launch applications. Approval is not saved. Bare custom schemes
+Clicks ask for confirmation on the viewing device unless the user chose Always
+allow for that URL scheme. Rendering and sending messages never launch apps.
+Approvals persist in the native app's local store (across BB servers), or in
+browser localStorage scoped to this BB origin. Settings lists approved schemes
+and can revoke one or all; native mobile also has a device reset action. Native
+launch failure does not save a new grant. Browser handoff cannot report launch
+success reliably. Revocation invalidates remember choices still pending. Bare custom schemes
 are not automatically linkified. HTTP(S) and existing editor file links retain
 their existing routing.
 
@@ -29,8 +34,12 @@ cache. While disabled or not yet loaded, Markdown leaves application links
 inert and `navigate.openUrl` declines them. The shared dispatcher also checks
 the experiment before admitting a request. Changes affect new requests;
 a confirmation already presented can finish. The setting uses the existing
-server experiment store: no migration, host-daemon wire change, or per-device
-permission data is added.
+server experiment store: no database migration or host-daemon wire change is needed.
+No server permission data is added. A local revision and scheme list track device
+approvals. Desktop persists atomically under its user-data directory with a file
+lock; mobile uses MMKV. The Node SDK and CLI can list/revoke the local desktop
+store. Plugin surfaces use `navigate.openUrl` or shared Markdown for opening;
+experimental app SDK APIs list/revoke through the same path as core Settings.
 
 Executable web schemes, local-file launch schemes, selected dangerous OS
 schemes, and editor schemes already handled as BB file links remain blocked
@@ -44,8 +53,8 @@ timeout, instead of the default ten seconds.
 
 The desktop method is optional in the shared contract, and the mobile bridge
 version is checked before dispatch. Older native clients show an update message
-rather than falling back to browser navigation. Existing mobile capabilities
-remain unchanged so older web clients can still parse the handshake.
+rather than falling back to browser navigation. Approval management requires bridge version 4; opening still works with version 3.
+Existing mobile capabilities remain unchanged so older web clients can still parse the handshake.
 
 ## Review demo
 
@@ -56,6 +65,23 @@ is for development and is not a production route. Reload the demo after
 changing the experiment in another client.
 
 ## Verification and release limits
+
+Restored approvals: focused domain, file-store, native adapter, Settings/plugin
+SDK, bridge, and Plugin Guide tests passed, along with affected Turbo typechecks
+and lint. Chromium exercised remember, reload, bypass, revoke, and fresh unchecked
+confirmation at desktop and compact widths. Source CLI list/revoke used the same
+local desktop file store. The rebuilt iOS app passed a real native Always allow →
+Messages → restart BB → reopen without a prompt → Ask again → fresh native prompt
+flow. Choosing Always allow for the uninstalled scheme left no saved approval;
+the brief error toast was not captured in that rerun. Rebuilt Android passed the
+same flow, including persistence across a cold emulator restart, reopening the
+installed Messages app without confirmation, and revocation followed by a fresh
+native prompt. Its initial System UI hang and disconnected ADB transport were
+resolved by a cold restart of the isolated emulator.
+
+The rebuilt desktop displayed its new native checkbox, but its checked/open flow
+still needs a manual click: macOS explicitly denied assistive access to automation.
+The historical native runs below predate restoring remembered approvals.
 
 Focused tests cover blocked schemes, original URL preservation, cancellation,
 repeat confirmation, failed-launch retries, overlapping requests, plain/HTML

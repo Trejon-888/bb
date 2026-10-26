@@ -1355,17 +1355,31 @@ backup before rolling back to a build predating the tolerant-reader fix #5286.
 
 Enable Application links in Settings → Experiments or run
 `bb settings experiment applicationLinks true`. The experiment is a server
-setting shared by its clients; approvals are requested on the viewing device
-for every launch and are never saved. Disable it with
+setting shared by its clients. Each viewing device asks before opening an app;
+choose Always allow to remember that URL scheme. Native apps save approvals
+locally across BB servers; browser approvals apply to this site in this browser.
+They do not sync between devices. Settings → General → Application link
+approvals lists saved schemes; Ask again revokes one, Reset all revokes all.
+Mobile also offers Reset application link approvals under This device. Disable it with
 `bb settings experiment applicationLinks false`.
 
 Explicit Markdown links such as `[Review note](reflect://note/Project%20X)`
 become clickable while enabled. Bare custom-scheme text is not auto-linked.
-Desktop and mobile ask natively before handing the original URL to the OS.
+Desktop and mobile use native confirmation before handing the original URL to
+the OS, unless the scheme was approved previously. Failed native launches do
+not save new approvals. Resetting approvals invalidates pending remember choices.
 Old native clients show an update message. Web browsers control their own
 handoff and may show a second prompt; BB cannot reliably detect missing apps
 in a browser. Executable web schemes, local-file launch schemes, and reserved
 editor-action schemes remain blocked.
+
+The local desktop store can also be inspected or revoked with
+`bb settings application-links list --desktop-data-dir <Electron-userData-path> --json`
+and `bb settings application-links revoke <scheme|all> --desktop-data-dir <path>`.
+These operate on the specified desktop profile on the CLI's machine, not a
+remote phone or browser. The Node SDK exports `listLocalApplicationLinkApprovals`
+and `revokeLocalApplicationLinkApproval` for the same store. Granting an approval
+requires the viewing client's confirmation; there is no grant command.
 
 The dev-only `/application-links-prototype.html` page provides editable examples
 and follows the same experiment setting. See

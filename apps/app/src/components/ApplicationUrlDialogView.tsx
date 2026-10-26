@@ -1,4 +1,5 @@
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { Checkbox } from "@bb/shared-ui/checkbox";
 import { Button } from "@bb/shared-ui/button";
 import {
   Dialog,
@@ -19,6 +20,10 @@ export function ApplicationUrlDialogView() {
     subscribeApplicationUrlConfirmation,
     getApplicationUrlConfirmation,
   );
+  const [rememberedConfirmation, setRememberedConfirmation] =
+    useState<typeof confirmation>(null);
+  const remember =
+    confirmation !== null && rememberedConfirmation === confirmation;
   return (
     <Dialog
       open={confirmation !== null}
@@ -38,6 +43,15 @@ export function ApplicationUrlDialogView() {
         <p className="break-all text-sm select-text">
           {confirmation?.target.url}
         </p>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={remember}
+            onCheckedChange={(checked) =>
+              setRememberedConfirmation(checked === true ? confirmation : null)
+            }
+          />
+          Always allow {confirmation?.target.scheme} links in this browser
+        </label>
         <DialogFooter>
           <Button
             variant="outline"
@@ -50,7 +64,7 @@ export function ApplicationUrlDialogView() {
           </Button>
           <Button
             onClick={() => {
-              resolveApplicationUrlConfirmation("open");
+              resolveApplicationUrlConfirmation(remember ? "always" : "open");
             }}
           >
             Open

@@ -1567,6 +1567,10 @@ function captureClipboardWrites(
 }
 
 const testPluginSdkApp = {
+  experimental_getApplicationLinkApprovals: async (): Promise<string[]> => [],
+  experimental_revokeApplicationLinkApproval: async (
+    _scheme: string | null,
+  ): Promise<string[]> => [],
   definePluginApp,
   ...createRpcQueryHooks(() => useSlotEnv("rpc query").rpcQueryHost),
   useRpc<

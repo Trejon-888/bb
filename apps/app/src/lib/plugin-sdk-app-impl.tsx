@@ -1,3 +1,4 @@
+import { applicationLinkApprovals } from "./application-url";
 import {
   LazyPluginMarkdown,
   LazyPluginDiff,
@@ -137,6 +138,8 @@ function useArchiveEnvironmentThreads(): (
 }
 
 export const pluginSdkAppImplementation = {
+  experimental_getApplicationLinkApprovals: applicationLinkApprovals.list,
+  experimental_revokeApplicationLinkApproval: applicationLinkApprovals.revoke,
   definePluginApp,
   experimental_Icon: Icon,
   experimental_ProviderIcon: ProviderIcon,

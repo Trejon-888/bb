@@ -1,3 +1,4 @@
+import { ApplicationLinkApprovalsSettings } from "@/components/settings/ApplicationLinkApprovalsSettings";
 import { MobileAppSection } from "@/components/settings/MobileAppSection";
 import { MachineEnvironmentSettings } from "@/components/settings/MachineEnvironmentSettings";
 import { MachineAccessSettings } from "@/components/settings/MachineAccessSettings";
@@ -1053,6 +1054,7 @@ export function GeneralSettingsSection({
           </div>
         </SettingsSection>
       ) : null}
+      <ApplicationLinkApprovalsSettings />
       <SettingsSection title="Terminals">
         <SettingsWithControl
           label="Copy on select"

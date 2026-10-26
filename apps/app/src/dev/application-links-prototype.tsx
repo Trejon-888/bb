@@ -1,3 +1,4 @@
+import { ApplicationLinkApprovalsSettings } from "@/components/settings/ApplicationLinkApprovalsSettings";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MarkdownPreview } from "@/components/ui/markdown-preview";
@@ -40,6 +41,7 @@ function ApplicationLinksPrototype() {
         <div className="rounded-xl border bg-card p-6">
           <MarkdownPreview content={content} allowHtml />
         </div>
+        <ApplicationLinkApprovalsSettings />
         <label className="block space-y-2 text-sm">
           <span>Message</span>
           <textarea
@@ -53,7 +55,7 @@ function ApplicationLinksPrototype() {
           Application links are{" "}
           {config.data?.experiments.applicationLinks ? "enabled" : "disabled"}.
           Enable Application links in Settings → Experiments to try this page.
-          Every launch requires confirmation.
+          You can remember approvals and revoke them below.
         </p>
         <p className="text-sm text-muted-foreground">
           In a web browser, the browser controls app handoff and may show its

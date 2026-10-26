@@ -37,6 +37,30 @@ describe("parsePageToShellMessage", () => {
       { type: "open-native", screen: "device-settings" },
       {
         type: "request",
+        id: "approval-list",
+        request: {
+          kind: "application-link-approvals",
+          payload: { action: "list" },
+        },
+      },
+      {
+        type: "request",
+        id: "approval-revoke",
+        request: {
+          kind: "application-link-approvals",
+          payload: { action: "revoke", scheme: "linear" },
+        },
+      },
+      {
+        type: "request",
+        id: "approval-reset",
+        request: {
+          kind: "application-link-approvals",
+          payload: { action: "revoke", scheme: null },
+        },
+      },
+      {
+        type: "request",
         id: "r1-app",
         request: {
           kind: "open-application",
@@ -56,6 +80,22 @@ describe("parsePageToShellMessage", () => {
       const parsed = parsePageToShellMessage(json(value));
       expect(parsed.ok, JSON.stringify(value)).toBe(true);
     }
+  });
+
+  it.each([
+    { action: "allow", scheme: "linear" },
+    { action: "list", allow: ["linear"] },
+    { action: "revoke" },
+  ])("rejects approval requests that could bypass consent: %j", (payload) => {
+    expect(
+      parsePageToShellMessage(
+        json({
+          type: "request",
+          id: "approval",
+          request: { kind: "application-link-approvals", payload },
+        }),
+      ).ok,
+    ).toBe(false);
   });
 
   it("rejects a payload that is not a JSON string", () => {

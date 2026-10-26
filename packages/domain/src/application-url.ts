@@ -1,3 +1,5 @@
+import type { ApplicationLinkApprovals } from "./application-link-approvals.js";
+
 const BLOCKED_SCHEMES = new Set([
   "http",
   "https",
@@ -52,14 +54,16 @@ export function parseApplicationUrl(value: unknown): ApplicationUrl | null {
   }
 }
 
-export type ApplicationUrlDecision = "cancel" | "open";
+export type ApplicationUrlDecision = "cancel" | "open" | "always";
 
 export function createApplicationUrlOpener({
   confirm,
   open,
+  approvals,
 }: {
   confirm: (target: ApplicationUrl) => Promise<ApplicationUrlDecision>;
   open: (url: string) => void | Promise<void>;
+  approvals?: ApplicationLinkApprovals;
 }): (value: unknown) => Promise<void> {
   let pending = false;
   return async (value) => {
@@ -69,9 +73,14 @@ export function createApplicationUrlOpener({
     if (pending) return;
     pending = true;
     try {
-      const decision = await confirm(target);
+      const revision = approvals?.revision();
+      const decision = approvals?.list().includes(target.scheme)
+        ? "open"
+        : await confirm(target);
       if (decision === "cancel") return;
       await open(target.url);
+      if (decision === "always" && revision !== undefined)
+        await approvals?.allow(target.scheme, revision);
     } finally {
       pending = false;
     }

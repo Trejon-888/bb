@@ -334,3 +334,10 @@ export const experimental_copyToClipboard = runtimeFunction(
   "experimental_copyToClipboard",
 );
 export const experimental_saveFile = runtimeFunction("experimental_saveFile");
+
+export const experimental_getApplicationLinkApprovals = runtimeFunction(
+  "experimental_getApplicationLinkApprovals",
+);
+export const experimental_revokeApplicationLinkApproval = runtimeFunction(
+  "experimental_revokeApplicationLinkApproval",
+);

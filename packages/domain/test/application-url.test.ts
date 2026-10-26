@@ -1,3 +1,4 @@
+import { createApplicationLinkApprovals } from "../src/application-link-approvals.js";
 import { describe, expect, it, vi } from "vitest";
 import {
   createApplicationUrlOpener,
@@ -112,5 +113,102 @@ describe("application links", () => {
     settle("open");
     await first;
     expect(open.mock.calls).toEqual([["linear://issue/123"]]);
+  });
+});
+
+describe("remembered application approvals", () => {
+  function storage() {
+    let value: string | null = null;
+    return {
+      read: () => value,
+      write: (next: string) => {
+        value = next;
+      },
+    };
+  }
+
+  it("persists by scheme, scopes other apps, and asks again after one or all approvals are revoked", async () => {
+    const disk = storage();
+    const approvals = createApplicationLinkApprovals(disk);
+    const confirm = vi.fn(
+      async (): Promise<ApplicationUrlDecision> => "always",
+    );
+    const open = vi.fn();
+    await createApplicationUrlOpener({ approvals, confirm, open })(
+      "LINEAR://issue/1",
+    );
+    const reloaded = createApplicationLinkApprovals(disk);
+    const opener = createApplicationUrlOpener({
+      approvals: reloaded,
+      confirm,
+      open,
+    });
+    await opener("linear://issue/2");
+    expect(confirm).toHaveBeenCalledTimes(1);
+    await opener("reflect://note/test");
+    expect(confirm).toHaveBeenCalledTimes(2);
+    reloaded.revoke("linear");
+    await opener("linear://issue/3");
+    expect(confirm).toHaveBeenCalledTimes(3);
+    reloaded.revoke(null);
+    await opener("reflect://note/test");
+    expect(confirm).toHaveBeenCalledTimes(4);
+    expect(open).toHaveBeenCalledTimes(5);
+  });
+
+  it("does not remember cancelled or failed launches", async () => {
+    const approvals = createApplicationLinkApprovals(storage());
+    const open = vi.fn().mockRejectedValue(new Error("Missing app"));
+    const confirm = vi.fn(
+      async (): Promise<ApplicationUrlDecision> => "always",
+    );
+    confirm.mockResolvedValueOnce("cancel");
+    const opener = createApplicationUrlOpener({ approvals, confirm, open });
+    await opener("linear://issue/1");
+    expect(approvals.list()).toEqual([]);
+    await expect(opener("linear://issue/1")).rejects.toThrow("Missing app");
+    expect(approvals.list()).toEqual([]);
+    await expect(opener("linear://issue/2")).rejects.toThrow("Missing app");
+    expect(confirm).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not restore a grant after revocation while an app launch is pending", async () => {
+    const approvals = createApplicationLinkApprovals(storage());
+    let finish: () => void = () => {};
+    const launched = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const opener = createApplicationUrlOpener({
+      approvals,
+      confirm: async () => "always",
+      open: () => launched,
+    });
+    const pending = opener("linear://issue/1");
+    approvals.revoke(null);
+    finish();
+    await pending;
+    expect(approvals.list()).toEqual([]);
+  });
+
+  it.each([
+    "not json",
+    '{"revision":0,"schemes":["javascript"]}',
+    '{"revision":0,"schemes":["LINEAR"]}',
+  ])("fails closed for corrupt persisted approvals: %s", async (raw) => {
+    const approvals = createApplicationLinkApprovals({
+      read: () => raw,
+      write: () => {},
+    });
+    const confirm = vi.fn(
+      async (): Promise<ApplicationUrlDecision> => "cancel",
+    );
+    const open = vi.fn();
+    const opener = createApplicationUrlOpener({ approvals, confirm, open });
+    await opener("linear://issue/1");
+    await expect(opener("javascript:alert(1)")).rejects.toThrow(
+      "blocked or invalid",
+    );
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(open).not.toHaveBeenCalled();
   });
 });
