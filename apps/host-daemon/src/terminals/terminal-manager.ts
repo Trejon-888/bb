@@ -9,7 +9,6 @@ import type { TerminalSessionCloseReason } from "@bb/domain";
 import type { HostDaemonDaemonWsMessage } from "@bb/host-daemon-contract";
 import { HOST_DAEMON_TERMINAL_EXIT_RETENTION_MS } from "@bb/host-daemon-contract/protocol";
 import {
-  deprioritizeAgentWorkload,
   killProcessGroup,
   sanitizeInheritedChildProcessEnv,
 } from "@bb/process-utils";
@@ -255,7 +254,6 @@ const nodePtyAdapter: TerminalPtyAdapter = {
       name: "xterm-256color",
       rows: args.rows,
     });
-    deprioritizeAgentWorkload(pty.pid);
     return {
       dispose: () => disposeNodePty(pty),
       kill: (signal) => {
