@@ -1,13 +1,13 @@
-name: Compare Windows cold dependency installation
+name: Compare Windows plugin dependency scope
 on:
   push:
-    branches: [bb/benchmark-ci-cold-install]
+    branches: [bb/benchmark-ci-plugin-install]
 permissions:
   contents: read
 jobs:
   compare:
     runs-on: blacksmith-4vcpu-windows-2025
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -26,5 +26,5 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: cold-install-${{ matrix.order }}
+          name: plugin-install-${{ matrix.order }}
           path: ${{ runner.temp }}/cold-install-results/
