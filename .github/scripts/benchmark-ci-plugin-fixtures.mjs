@@ -21,12 +21,13 @@ const results = [];
 for (const [index, variant] of sequence.entries()) {
   files.forEach((file, i) => writeFileSync(file, (variant === "baseline" ? baseline : candidate)[i]));
   const fd = openSync(join(output, `${index}-${variant}.log`), "w");
-  const args = ["exec", "turbo", "run", "test", "--filter=bb-plugin-*", "--filter=!bb-plugin-provider-*", "--filter=!bb-plugin-tasks", "--filter=!bb-plugin-connect", "--filter=!bb-plugin-thread-list", "--only", "--force", "--env-mode=loose", "--continue", "--output-logs=full", "--concurrency=2"];
+  const balanced = variant === "candidate" && process.env.BENCHMARK_MODE === "balanced-workers";
+  const args = ["exec", "turbo", "run", "test", "--filter=bb-plugin-*", "--filter=!bb-plugin-provider-*", "--filter=!bb-plugin-tasks", "--filter=!bb-plugin-connect", "--filter=!bb-plugin-thread-list", "--only", "--force", "--env-mode=loose", "--continue", "--output-logs=full", `--concurrency=${balanced ? 4 : 2}`];
   const started = performance.now();
-  const result = spawnSync("pnpm", args, { shell: true, stdio: ["ignore", fd, fd] });
+  const result = spawnSync("pnpm", args, { shell: true, env: { ...process.env, ...(balanced ? { VITEST_MAX_WORKERS: "1" } : {}) }, stdio: ["ignore", fd, fd] });
   const seconds = (performance.now() - started) / 1000;
   closeSync(fd);
-  results.push({ variant, seconds, status: result.status, error: result.error?.message });
+  results.push({ variant, balanced, seconds, status: result.status, error: result.error?.message });
   writeFileSync(join(output, "results.json"), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results.at(-1)));
 }

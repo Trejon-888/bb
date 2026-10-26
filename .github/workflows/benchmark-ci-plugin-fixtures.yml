@@ -12,6 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         order: [baseline-first, candidate-first]
+        mode: [fixtures, balanced-workers]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -27,18 +28,16 @@ jobs:
       - name: Warm the complete plugin test group and its prerequisites
         continue-on-error: true
         shell: bash
-        env:
-          VITEST_MAX_WORKERS: "2"
         run: |
           mkdir -p "$RUNNER_TEMP/plugin-fixture-results"
           pnpm exec turbo run test --filter="bb-plugin-*" --filter="!bb-plugin-provider-*" --filter="!bb-plugin-tasks" --filter="!bb-plugin-connect" --filter="!bb-plugin-thread-list" --continue --concurrency=2 --output-logs=new-only > "$RUNNER_TEMP/plugin-fixture-results/warmup.log" 2>&1
       - name: Compare the full plugins-2 test group
         env:
           BENCHMARK_ORDER: ${{ matrix.order }}
-          VITEST_MAX_WORKERS: "2"
+          BENCHMARK_MODE: ${{ matrix.mode }}
         run: node .github/scripts/benchmark-ci-plugin-fixtures.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: plugin-fixtures-${{ matrix.order }}
+          name: plugin-fixtures-${{ matrix.mode }}-${{ matrix.order }}
           path: ${{ runner.temp }}/plugin-fixture-results/
