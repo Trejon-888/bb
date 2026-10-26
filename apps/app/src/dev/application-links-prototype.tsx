@@ -17,6 +17,8 @@ const examples = `[Open Linear issue](linear://issue/ABC-123)
 
 [Open Things](things:///show?id=example)
 
+[Open Messages](sms:)
+
 [Try an uninstalled app](bb-link-test-uninstalled://example)
 
 [Blocked JavaScript](javascript:alert(1)) · [Blocked file launch](file:///Applications/Calculator.app)`;

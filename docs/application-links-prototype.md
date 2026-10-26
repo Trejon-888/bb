@@ -84,9 +84,22 @@ After attaching the dialog to its originating window, the real macOS sheet
 was displayed and cancelled twice without launching an app. The missing-app
 error path has automated coverage but was not completed manually.
 
-Native iOS/Android dispatch has adapter coverage and typechecks but has not
-been exercised in a rebuilt app.
-Before release, verify installed and missing destination apps, cancellation,
-repeat prompts, and old-client update messages in the supported native builds.
+Rebuilt Release apps were exercised through Maestro on iOS 26.5 Simulator
+(iPhone 17 Pro) and Android 16/API 36 (Pixel 9 emulator). Both displayed native
+confirmation, kept BB open on Cancel, showed an error toast for
+`bb-link-test-uninstalled://example`, and allowed another confirmation after
+the failed launch. Both opened the installed Messages app through `sms:`;
+returning to BB and tapping again required fresh confirmation. Android Back
+also dismissed the alert without launching and allowed a subsequent attempt.
+These checks used the real native bridge and OS URL handlers, with no mocked
+consent or launch result. The review demo includes Messages for this check.
+
+The iOS build used normal simulator signing and disabled Xcode's SDK stat
+cache for this local run after that tool stalled. Android used the standalone
+`bb dev` APK. The split development API and Vite frontend were served through
+a temporary loopback proxy, with Android ports forwarded through adb.
+
+Physical-device checks, other desktop platforms, the manual desktop
+missing-app check, and live old-client update messages remain unverified.
 Browser handoff may show a second prompt and cannot reliably report whether an
 application was installed or opened. Safari checks are not native BB checks.
