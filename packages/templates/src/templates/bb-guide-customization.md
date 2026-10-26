@@ -174,7 +174,10 @@ existing threads too, including `bb thread log`. Settings → Providers has the
 same per-provider switch.
 
 Experiments: `bb settings experiment <key> <true|false>` toggles a default-off
-experiment (Settings → Experiments). `changelogPreview` shows the latest
+experiment (Settings → Experiments). `applicationLinks` enables explicit
+Markdown links to apps such as Linear and Reflect, with confirmation on the
+viewing device for every launch. It defaults on for early adopters.
+`changelogPreview` shows the latest
 release notes as a dismissible card on Settings → Updates. Experiments that
 gate a feature are documented with it: `serverMove` in `bb guide machines`,
 `performanceDiagnostics` under Server performance diagnostics below.
@@ -191,7 +194,7 @@ final assistant message of a turn that finished while you were away, instead of
 before its first tool call.
 `bb settings general earlyAdopter on` (Settings → Experiments → Become an early
 adopter) turns on the experiments marked Early adopter, currently
-`timelinePush`, `compactExpiredCache`, and `sidebarMultiSelect`; an experiment you set yourself keeps
+`applicationLinks`, `timelinePush`, `compactExpiredCache`, and `sidebarMultiSelect`; an experiment you set yourself keeps
 your value.
 
 Launcher settings

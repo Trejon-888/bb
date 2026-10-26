@@ -237,6 +237,10 @@ export const SETTINGS_SEARCH_INDEX: Record<
     keywords: ["beta", "preview", "labs", "feature flags"],
     settings: [
       { title: "Early adopter", keywords: ["beta", "opt in", "preview"] },
+      {
+        title: "Application links",
+        keywords: ["deep links", "linear", "reflect", "things", "URL schemes"],
+      },
       { title: "Changelog preview", keywords: ["release notes", "updates"] },
       {
         title: "Server performance diagnostics",

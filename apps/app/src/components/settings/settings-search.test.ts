@@ -127,6 +127,7 @@ describe("searchSettings", () => {
   it("lists a plugin's page before the settings inside it", () => {
     expect(searchTitles("linear")).toEqual([
       "Plugin settings › Linear",
+      "Experiments › Application links",
       "Linear › API key",
       "Linear › Default team",
     ]);

@@ -852,11 +852,15 @@ bb stores only the experiments you set; the others follow the shipped default.
 The `earlyAdopter` general setting (the Become an early adopter banner on
 Settings → Experiments, `bb settings general earlyAdopter on`) switches the
 shipped default to the early adopter default: experiments marked Early adopter
-(currently `timelinePush`, `compactExpiredCache`, and `sidebarMultiSelect`) turn on, and the rest stay
+(currently `applicationLinks`, `timelinePush`, `compactExpiredCache`, and `sidebarMultiSelect`) turn on, and the rest stay
 off. An experiment you set yourself keeps your value either way.
 `/system/config` and `sdk.system.config()` return the resolved values in
 `experiments`.
 
+- `applicationLinks` (on for early adopters) enables explicit app links such as `linear://` and
+  `reflect://` in chat and the plugin `navigate.openUrl` path. Each launch asks
+  for confirmation on the viewing device.
+  See [application link approval](#application-link-approval).
 - `changelogPreview` shows the latest release notes as a dismissible card on
   Settings → Updates.
 - `compactExpiredCache` (on for early adopters) reports `compactionOfferAt` on a thread's context
@@ -1346,3 +1350,23 @@ metadata is preserved. This is a desktop-local preference, with no server
 settings CLI/SDK endpoint. Builds with tolerant readers ignore the field and
 may drop it on save; older strict readers can reject the whole file, so keep a
 backup before rolling back to a build predating the tolerant-reader fix #5286.
+
+## Application link approval
+
+Enable Application links in Settings → Experiments or run
+`bb settings experiment applicationLinks true`. The experiment is a server
+setting shared by its clients; approvals are requested on the viewing device
+for every launch and are never saved. Disable it with
+`bb settings experiment applicationLinks false`.
+
+Explicit Markdown links such as `[Review note](reflect://note/Project%20X)`
+become clickable while enabled. Bare custom-scheme text is not auto-linked.
+Desktop and mobile ask natively before handing the original URL to the OS.
+Old native clients show an update message. Web browsers control their own
+handoff and may show a second prompt; BB cannot reliably detect missing apps
+in a browser. Executable web schemes, local-file launch schemes, and reserved
+editor-action schemes remain blocked.
+
+The dev-only `/application-links-prototype.html` page provides editable examples
+and follows the same experiment setting. See
+[implementation and verification](application-links-prototype.md).

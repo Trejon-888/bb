@@ -1135,6 +1135,11 @@ const EXPERIMENT_DEFINITIONS: Record<
   ExperimentKey,
   { label: string; description: string }
 > = {
+  applicationLinks: {
+    label: "Application links",
+    description:
+      "Open links such as linear:// and reflect:// in apps on the viewing device. Ask for confirmation every time. Requires an updated native BB app.",
+  },
   changelogPreview: {
     label: "Changelog preview",
     description:
