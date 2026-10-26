@@ -281,7 +281,7 @@
       "labels": {
         "anchor": ["Ship dark mode"]
       },
-      "fixtureClassAnchors": ["size-4", "size-1.5", "rounded-full"],
+      "fixtureClassAnchors": ["size-3", "tabular-nums", "bg-attention"],
       "sources": [
         {
           "path": "apps/app/src/components/plugin/ThreadRowItems.tsx",
@@ -289,12 +289,12 @@
             "data-thread-row-items=\"\"",
             "slotKind=\"threadRowItem\"",
             "crashFallback={null}",
-            "max-w-20"
+            "min-w-0 flex-1"
           ]
         },
         {
           "path": "plugins/thread-list/app/rows/ThreadRow.tsx",
-          "anchors": ["<ThreadRowItems thread={thread} />"]
+          "anchors": ["<ThreadRowItems thread={thread} />", "showRowMetadata"]
         },
         {
           "path": "plugins/github-pr-status/app.tsx",

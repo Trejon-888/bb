@@ -37,7 +37,10 @@ import {
   makeSidebarThread,
   makePluginProject,
 } from "../model/fixtures.js";
-import { sidebarShowProviderIconsAtom } from "../preferences/atoms.js";
+import {
+  sidebarShowProviderIconsAtom,
+  sidebarShowRowMetadataAtom,
+} from "../preferences/atoms.js";
 import { SidebarProjectsContext } from "../model/use-sidebar-data.js";
 import type { ThreadRowOptions } from "./ThreadRow.js";
 import {
@@ -1268,7 +1271,18 @@ describe("ThreadRow", () => {
     expect(clickLink).toHaveBeenCalledTimes(2);
   });
 
+  it("draws other plugins' row items only while Metadata is on", () => {
+    const slot = renderThreadRow();
+    expect(slot.container.querySelector("[data-thread-row-items]")).toBeNull();
+
+    act(() => getDefaultStore().set(sidebarShowRowMetadataAtom, true));
+    expect(
+      slot.container.querySelector("[data-thread-row-items]"),
+    ).not.toBeNull();
+  });
+
   it("routes a click on other plugins' row items like the rest of the row", () => {
+    getDefaultStore().set(sidebarShowRowMetadataAtom, true);
     const slot = renderThreadRow({ experiments: ["sidebarMultiSelect"] });
     const link = screen.getByRole("link", { name: "Open Thread" });
     const row = link.closest("[data-sidebar-rename-row]");

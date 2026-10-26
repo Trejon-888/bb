@@ -22,18 +22,6 @@ import {
   type GithubCheckStatus,
 } from "./display";
 
-const CHECK_DOT_CLASS: Record<GithubCheckStatus, string> = {
-  success: "bg-success",
-  failure: "bg-destructive",
-  pending: "bg-warning",
-};
-
-const CHECK_LABEL: Record<GithubCheckStatus, string> = {
-  success: "checks passing",
-  failure: "checks failing",
-  pending: "checks running",
-};
-
 function checkCounts(pullRequest: PullRequest): string | null {
   const { totalCount, passedCount, failedCount, pendingCount } =
     pullRequest.checks;
@@ -47,6 +35,25 @@ function checkCounts(pullRequest: PullRequest): string | null {
     .join(", ");
 }
 
+const CHECKS_LABEL: Record<GithubCheckStatus, string> = {
+  success: "checks passing",
+  failure: "checks failing",
+  pending: "checks running",
+};
+
+function AttentionGlyph({ kind }: { kind: "blocked" | "running" }) {
+  return kind === "running" ? (
+    <span className="flex size-3 shrink-0 items-center justify-center">
+      <span className="size-1.5 rounded-full bg-attention" />
+    </span>
+  ) : (
+    <Icon
+      name="X"
+      className="size-3 shrink-0 text-destructive-text [&_path]:stroke-[2.75]"
+    />
+  );
+}
+
 export function PullRequestBadge({
   pullRequest,
 }: {
@@ -56,39 +63,45 @@ export function PullRequestBadge({
   const state = PULL_REQUEST_STATE_DISPLAY[pullRequest.state];
   const checks = getPullRequestGithubCheckStatus(pullRequest);
   const counts = checks === null ? null : checkCounts(pullRequest);
+  const conflicts =
+    (pullRequest.state === "open" || pullRequest.state === "draft") &&
+    pullRequest.attention === "conflicts";
+  const glyph =
+    conflicts || checks === "failure"
+      ? "blocked"
+      : checks === "pending"
+        ? "running"
+        : null;
   const label = [
     `Pull request #${pullRequest.number}`,
     state.label.toLowerCase(),
-    checks === null ? null : CHECK_LABEL[checks],
+    conflicts ? "conflicts" : null,
+    checks === null ? null : CHECKS_LABEL[checks],
   ]
     .filter((part) => part !== null)
     .join(", ");
-  const glyph = (
+  const badge = (
     <span
       role="img"
       aria-label={label}
       data-pull-request-badge={pullRequest.state}
-      data-pull-request-checks={checks ?? undefined}
-      className="relative flex size-4 shrink-0 items-center justify-center"
+      className={cn(
+        "flex shrink-0 items-center gap-1 text-xs leading-4 tabular-nums",
+        state.className,
+      )}
       onPointerEnter={hovered ? undefined : () => setHovered(true)}
     >
-      <Icon name={state.icon} className={cn("size-3.5", state.className)} />
-      {checks === null ? null : (
-        <span
-          aria-hidden
-          className={cn(
-            "absolute -bottom-px -right-px size-1.5 rounded-full ring-1 ring-sidebar",
-            CHECK_DOT_CLASS[checks],
-            checks === "pending" && "animate-pulse",
-          )}
-        />
-      )}
+      <Icon name={state.icon} className="size-3 shrink-0" />
+      <span className="font-mono text-muted-foreground">
+        #{pullRequest.number}
+      </span>
+      {glyph === null ? null : <AttentionGlyph kind={glyph} />}
     </span>
   );
-  if (!hovered) return glyph;
+  if (!hovered) return badge;
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{glyph}</TooltipTrigger>
+      <TooltipTrigger asChild>{badge}</TooltipTrigger>
       <TooltipContent side="top" className="max-w-72">
         <div className="truncate">
           #{pullRequest.number} {pullRequest.title}

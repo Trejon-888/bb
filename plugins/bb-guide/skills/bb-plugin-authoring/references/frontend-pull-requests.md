@@ -7,10 +7,12 @@ badge on thread rows through the `experimental_threadRowItem` slot.
 ## Show bb's badge on your rows
 
 A plugin-built thread list renders the same row items bb's sidebar draws by
-placing `experimental_ThreadRowItems` in each row's title area, after the
-title. The GitHub PR Status badge (state icon plus a checks dot, number and
-title in the tooltip) then appears on your rows, along with any other
-plugin's row items. It renders nothing when no plugin contributes an item.
+placing `experimental_ThreadRowItems` on a line under each row's title. The
+GitHub PR Status badge (state icon in the state's color and a muted `#number`,
+a yellow dot while checks run or a red cross when they fail or the PR has
+conflicts, and the title in the tooltip)
+then appears on your rows, along with any other plugin's row items. It renders
+nothing when no plugin contributes an item.
 
 ```tsx
 import {
@@ -21,11 +23,13 @@ import {
 
 function Row({ thread }: { thread: PluginSidebarThread }) {
   return (
-    <a href={thread.href} className="flex min-w-0 items-center gap-1.5">
-      <span className="min-w-0 flex-1 truncate">
+    <a href={thread.href} className="flex min-w-0 flex-col">
+      <span className="min-w-0 truncate">
         <ThreadTitle threadId={thread.id} />
       </span>
-      <ThreadRowItems thread={thread} />
+      <span className="flex min-w-0">
+        <ThreadRowItems thread={thread} />
+      </span>
     </a>
   );
 }

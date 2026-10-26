@@ -564,28 +564,28 @@ const SIDEBAR_SECTION_RENDERERS: Record<string, () => ReactNode> = {
       {SIDEBAR_THREADS.map((thread) => (
         <span
           key={thread.title}
-          className="flex h-6.5 items-center gap-2 rounded-md px-2"
+          className={cn(
+            "flex items-center gap-2 rounded-md px-2",
+            thread.pullRequest ? "py-1" : "h-6.5",
+          )}
         >
-          <span className="min-w-0 flex-1 truncate">{thread.title}</span>
-          {thread.pullRequest ? (
-            <Mark
-              id="thread-row-items"
-              label="A pull request badge a plugin added to the row"
-              chip="outside-above"
-              className="z-[2] flex h-5 w-9 shrink-0 items-center justify-start pl-0.5"
-            >
-              <span className="relative flex size-4 items-center justify-center">
-                <MiniIcon
-                  icon="GitPullRequestArrow"
-                  className="size-3.5 text-success"
-                />
-                <span
-                  aria-hidden
-                  className="absolute -bottom-px -right-px size-1.5 rounded-full bg-warning"
-                />
-              </span>
-            </Mark>
-          ) : null}
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate">{thread.title}</span>
+            {thread.pullRequest ? (
+              <Mark
+                id="thread-row-items"
+                label="A pull request badge a plugin added to the row's metadata line"
+                chip="side"
+                className="z-[2] flex h-4 w-28 items-center gap-1 text-xs tabular-nums text-success"
+              >
+                <MiniIcon icon="GitPullRequestArrow" className="size-3" />
+                <span className="font-mono text-muted-foreground">#412</span>
+                <span className="flex size-3 items-center justify-center">
+                  <span className="size-1.5 rounded-full bg-attention" />
+                </span>
+              </Mark>
+            ) : null}
+          </span>
           {thread.glyph === "spin" ? (
             <Mark
               id="thread-row-status"

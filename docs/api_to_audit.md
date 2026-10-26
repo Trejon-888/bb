@@ -2692,11 +2692,12 @@ Docs: `frontend-registration.md`, `frontend-components.md`.
 
 A registration is `{ id, order?, component }`. The component receives
 `{ thread, isLive }` (`thread` is the row's `PluginSidebarThread`) and renders
-a small item on that thread's row, after the title and before the status
-glyph. `experimental_ThreadRowItems({ thread })` renders every registration for
-one row, sorted by `order` (unset last) then registration order, each in its
-own crash boundary keyed by thread, inside one container capped at 80 px that
-is hidden while empty. It renders nothing when no plugin registers an item.
+a small item on that thread's metadata line, under the title.
+`experimental_ThreadRowItems({ thread })` renders every registration for one
+row, sorted by `order` (unset last) then registration order, each in its own
+crash boundary keyed by thread, left to right in one line container that fills
+its parent, clips at the row's edge and is hidden while empty. It renders
+nothing when no plugin registers an item.
 
 Visibility is the host's (`apps/app/src/lib/thread-row-visibility.ts`). An item
 mounts once its row is live; an item that has drawn something mounts with its
@@ -2714,15 +2715,19 @@ and rows scrolled past read nothing. The GitHub PR Status badge reads with
 background.
 
 **Core callers.** bb's sidebar (`plugins/thread-list`, `ThreadRow.tsx`) renders
-`experimental_ThreadRowItems` in each row's title area, the same call a
-plugin-built list makes, hidden while the row is renamed or customized, with
-clicks forwarded to the row link. The GitHub PR Status plugin registers the
-first item, the current-branch pull request's state icon and checks dot, read
-through `experimental_useRpcKeyedQuery` with `enabled: isLive`. No core row
-indicator moved into the slot: the status glyph, split mini-map, shortcut pill
-and hover actions share the row's fixed trailing box, the cross-project icon
-depends on the row's position in the list, and the provider icon and child
-chevron sit elsewhere. Contract tests: `ThreadRowItems.test.tsx`,
+`experimental_ThreadRowItems` on a line under each row's title, the same call a
+plugin-built list makes, only while the user turns on Organize → Rows →
+Metadata (`showRowMetadata`, off by default). The row grows to two lines only
+while an item draws something, the line is hidden while the row is renamed or
+customized, and clicks on it go through the row's own click handling. The
+GitHub PR Status plugin registers the first item: the current-branch pull
+request's state icon in the state's color and its muted `#number`, plus a yellow
+dot while an open or draft PR's checks run or a red cross when they fail or the
+PR has conflicts (passing checks show nothing), read through `experimental_useRpcKeyedQuery` with
+`enabled: isLive`. No core row indicator moved into the slot: the status
+glyph, split mini-map, shortcut pill and hover actions share the row's fixed
+trailing box, the cross-project icon depends on the row's position in the
+list, and the provider icon and child chevron sit elsewhere. Contract tests: `ThreadRowItems.test.tsx`,
 `plugins/github-pr-status/app.test.tsx`.
 
 Docs: `frontend-registration.md`, `frontend-pull-requests.md`.
@@ -2732,8 +2737,9 @@ Docs: `frontend-registration.md`, `frontend-pull-requests.md`.
 1. **Props.** Items get the list's thread snapshot. Decide whether row context
    (selected, depth, compact, collapsed children) belongs in the props, since
    core's own indicators that depend on it stayed out of the slot.
-2. **Width.** All items share 80 px and titles truncate first. Confirm the cap
-   holds once several plugins contribute, or whether items need a priority.
+2. **Width.** Items share one line and the line clips at the row's edge, so a
+   late item can disappear. Decide whether items need a width cap, a
+   priority, or a per-item toggle once several plugins contribute.
 3. **Visibility contract.** `isLive` is advisory: the host does not block a
    read from an item that is not live, and a row that leaves the screen stays
    live until the next scroll pause. Decide whether the SDK should enforce it.

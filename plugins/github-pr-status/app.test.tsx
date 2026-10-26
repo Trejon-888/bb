@@ -100,6 +100,14 @@ function pullRequest(overrides: Partial<PullRequest> = {}): PullRequest {
   };
 }
 
+const passingChecks: PullRequest["checks"] = {
+  state: "passing",
+  totalCount: 14,
+  passedCount: 14,
+  failedCount: 0,
+  pendingCount: 0,
+};
+
 const Item = app.threadRowItems[0]!.component;
 function Row(props: ExperimentalThreadRowItemProps) {
   return (
@@ -143,7 +151,7 @@ describe("pull request row item", () => {
       name: "Pull request #6143, open, checks running",
     });
     expect(badge.dataset.pullRequestBadge).toBe("open");
-    expect(badge.dataset.pullRequestChecks).toBe("pending");
+    expect(badge.textContent).toBe("#6143");
     expect(view.inspection.rpcCalls).toMatchObject([
       {
         method: "pullRequests",
@@ -167,21 +175,54 @@ describe("pull request row item", () => {
     expect(view.queryByRole("img")).toBeNull();
   });
 
-  it("draws merged PRs without a checks dot", async () => {
-    const pr = pullRequest({ state: "merged", attention: "merged" });
+  it.each<[Partial<PullRequest>, string]>([
+    [{ checks: passingChecks }, "open, checks passing"],
+    [{ checks: { ...passingChecks, state: "failing" } }, "open, checks failing"],
+    [{ attention: "conflicts" }, "open, conflicts, checks running"],
+    [{ checks: { ...passingChecks, state: "no_checks" } }, "open"],
+    [{ state: "draft", checks: { ...passingChecks, state: "failing" } }, "draft, checks failing"],
+    [{ state: "merged", attention: "merged" }, "merged"],
+])("labels %o as %s", async (overrides, expected) => {
     const view = renderRow(
       { thread: thread("env_row"), isLive: true },
       {
         env_row: {
           outcome: "available",
-          pullRequest: pr,
+          pullRequest: pullRequest(overrides),
         },
       },
     );
-    const badge = await view.findByRole("img", {
-      name: "Pull request #6143, merged",
-    });
-    expect(badge.dataset.pullRequestChecks).toBeUndefined();
+    expect(
+      await view.findByRole("img", { name: `Pull request #6143, ${expected}` }),
+    ).toBeTruthy();
+  });
+
+  it("draws a glyph only while checks run, after they fail, or on conflicts", async () => {
+    const glyphs = async (overrides: Partial<PullRequest>) => {
+      const view = renderRow(
+        { thread: thread("env_row"), isLive: true },
+        {
+          env_row: {
+            outcome: "available",
+            pullRequest: pullRequest(overrides),
+          },
+        },
+      );
+      const badge = await view.findByRole("img", { name: /Pull request #6143/ });
+      const count = badge.childNodes.length;
+      view.unmount();
+      return count;
+    };
+    expect(await glyphs({ checks: passingChecks })).toBe(2);
+    expect(
+      await glyphs({ checks: { ...passingChecks, state: "failing" } }),
+    ).toBe(3);
+    expect(
+      await glyphs({ checks: { ...passingChecks, state: "pending" } }),
+    ).toBe(3);
+    expect(
+      await glyphs({ attention: "conflicts", checks: passingChecks }),
+    ).toBe(3);
   });
 
   it("shows the number, title and check counts in a tooltip on hover", async () => {

@@ -1781,22 +1781,24 @@ export interface ExperimentalThreadRowItemProps {
 }
 
 /**
- * A small item on each thread row, beside the title and before the row's
- * status glyph: a badge, not a control. The host mounts the component once
- * its row is live, and with the row from then on while it shows something,
- * so cached content draws in the row's first frame. It caps the row's items
- * at 80 px together, hides
- * them while the row is renamed or customized, and keeps them visible on
- * hover. Render null to show nothing for a thread. Keep it to an icon-sized
- * glyph with a tooltip; clicks on it open the thread like the rest of the
- * row. A crash removes only this item for that row.
+ * A small item on a thread row's metadata line, under the title: a badge, not
+ * a control. Items share one line, left to right, and the line clips at the
+ * row's edge. bb's sidebar draws the line only while the user turns on
+ * Organize → Rows → Metadata, and only on rows where an item shows something.
+ * The host mounts the component once its row is live, and with the row from
+ * then on while it shows something, so cached content draws in the row's
+ * first frame. It hides the line while the row is renamed or customized and
+ * keeps it visible on hover. Render null to show nothing for a thread. Keep
+ * it to an icon and a few characters with a tooltip; clicks on it open the
+ * thread like the rest of the row. A crash removes only this item for that
+ * row.
  */
 export interface ExperimentalThreadRowItemRegistration {
   /** Unique within the plugin; letters, digits, `-`, `_`. */
   id: string;
   /**
    * Items sort by `order` (unset sorts last), then registration order. The
-   * first item sits nearest the title.
+   * first item starts the line.
    */
   order?: number;
   component: ComponentType<ExperimentalThreadRowItemProps>;
@@ -3599,7 +3601,8 @@ export interface PluginAppSlots {
     registration: ExperimentalThreadContextSegmentRegistration,
   ): void;
   /**
-   * Add a small item to every thread row in thread lists (see
+   * Add a small item to the metadata line of every thread row in thread
+   * lists (see
    * {@link ExperimentalThreadRowItemRegistration}). Experimental: see
    * docs/api_to_audit.md.
    */
@@ -5471,10 +5474,11 @@ export interface PluginSdkApp {
   /**
    * Every `experimental_threadRowItem` contribution for one thread row (see
    * {@link ExperimentalThreadRowItemRegistration}), the items bb's sidebar
-   * draws on its rows. Render it inside your row's title area, after the
-   * title; its parent element is what bb watches for visibility, so give it
-   * a box (not `display: contents`), so badges such as a pull request's status appear on your rows as
-   * they do on bb's. It renders nothing when no plugin contributes an item.
+   * draws on its rows' metadata line. Render it under your row's title, in
+   * a flex parent as wide as the line; that parent element is what bb
+   * watches for visibility, so give it a box (not `display: contents`). Badges
+   * such as a pull request's status then appear on your rows as they do on
+   * bb's. It renders nothing when no plugin contributes an item.
    * Experimental: see docs/api_to_audit.md.
    */
   experimental_ThreadRowItems: ComponentType<ExperimentalThreadRowItemsProps>;

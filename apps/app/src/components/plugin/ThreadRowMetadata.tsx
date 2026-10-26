@@ -84,7 +84,7 @@ function MountedThreadRowItems({
     <span
       ref={anchor}
       data-thread-row-items=""
-      className="pointer-events-auto relative z-[31] ml-auto hidden max-w-20 shrink-0 items-center gap-1 overflow-hidden data-[has-items]:flex"
+      className="pointer-events-auto relative z-[31] hidden min-w-0 flex-1 items-center gap-2 overflow-hidden data-[has-items]:flex"
     >
       {mounted.map((slot) => {
         const Component = slot.component;

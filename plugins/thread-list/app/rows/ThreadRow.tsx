@@ -67,6 +67,7 @@ import {
 import { useSidebarProjectName } from "../model/use-sidebar-data.js";
 import {
   sidebarShowProviderIconsAtom,
+  sidebarShowRowMetadataAtom,
   threadRowActionsAtom,
 } from "../preferences/atoms.js";
 import { ShortcutPill } from "@/components/ui/shortcut-pill";
@@ -392,6 +393,7 @@ function ThreadRowComponent({
   const multiSelection = useMultiSelectionContaining(thread.id);
   const selectionMenu = useThreadSelectionMenu(multiSelection);
   const showProviderIcons = useAtomValue(sidebarShowProviderIconsAtom);
+  const showRowMetadata = useAtomValue(sidebarShowRowMetadataAtom);
   const providers = useContext(SidebarProvidersContext);
   const provider = showProviderIcons
     ? providers.find((candidate) => candidate.id === thread.providerId)
@@ -559,6 +561,8 @@ function ThreadRowComponent({
     options.isCompact
       ? COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS
       : COARSE_POINTER_ROW_HEIGHT_CLASS,
+    showRowMetadata &&
+      "h-auto min-h-[var(--bb-sidebar-row-height)] max-md:pointer-coarse:h-auto max-md:pointer-coarse:min-h-[var(--bb-sidebar-row-height-coarse)]",
     showActive
       ? SIDEBAR_ROW_SELECTED_STATE_CLASS
       : SIDEBAR_ROW_INTERACTIVE_STATE_CLASS,
@@ -634,6 +638,7 @@ function ThreadRowComponent({
       <span
         className={cn(
           "relative flex min-w-0 flex-1 items-center gap-1.5 self-stretch",
+          showRowMetadata && "flex-wrap content-center gap-y-0 py-1",
           !isActionsOpen &&
             "group-data-[sidebar-touch-armed=true]/thread-row:hidden",
           !shortcut &&
@@ -765,8 +770,15 @@ function ThreadRowComponent({
             revealOnHover={!isParentCollapsed}
           />
         ) : null}
-        {isEditing || isCustomizingActions ? null : (
-          <ThreadRowItems thread={thread} />
+        {!showRowMetadata || isEditing || isCustomizingActions ? null : (
+          <span
+            className={cn(
+              "flex min-w-0 basis-full",
+              provider !== undefined && "pl-[1.375rem]",
+            )}
+          >
+            <ThreadRowItems thread={thread} />
+          </span>
         )}
       </span>
       {rowDragBindings && !rowDragBindings.disabled && !isActionsOpen ? (
