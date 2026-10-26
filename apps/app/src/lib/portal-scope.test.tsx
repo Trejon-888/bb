@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PluginContext } from "@/components/plugin/plugin-context";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { Dialog, DialogContent, DialogTitle } from "@bb/shared-ui/dialog";
 import {
   Tooltip,
@@ -46,6 +47,30 @@ function openDialog() {
 afterEach(cleanup);
 
 describe("usePortalScopeProps", () => {
+  it.each([null, "test-plugin"])(
+    "preserves lightbox portal ownership for plugin %s",
+    (pluginId) => {
+      const { container } = render(
+        <PluginContext.Provider value={pluginId}>
+          <ImageLightbox
+            imageSrc="/scope-check.png"
+            imageAlt="Scope check"
+            title="Scope check"
+            onClose={() => {}}
+          />
+        </PluginContext.Provider>,
+      );
+
+      const dialog = screen.getByRole("dialog", { name: "Scope check" });
+      expect(container.contains(dialog)).toBe(false);
+      expect(dialog.getAttribute("data-bb-portaled-overlay")).toBe("");
+      expect({
+        root: dialog.getAttribute("data-bb-plugin-root"),
+        plugin: dialog.getAttribute("data-bb-plugin"),
+      }).toEqual({ root: pluginId === null ? null : "", plugin: pluginId });
+    },
+  );
+
   it("stamps portaled dialog content + overlay inside a plugin slot", () => {
     const { baseElement } = render(inPluginScope(openDialog()));
 

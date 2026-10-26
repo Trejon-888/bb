@@ -10,7 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { Button } from "@bb/shared-ui/button";
 import { usePersistentOverlayFocus } from "@bb/shared-ui/responsive-overlay";
-import { usePortalScopeProps } from "@bb/shared-ui/lib/portal-scope";
+import { usePortalScopeProps } from "@/lib/portal-scope";
 import { useBrowserDimmingOverlay } from "@/hooks/useBrowserDimmingModal";
 import { Icon } from "@bb/shared-ui/icon";
 
