@@ -1,0 +1,40 @@
+name: Diagnose CI profiling worker exit
+on:
+  push:
+    branches: [bb/diagnose-ci-profiler]
+permissions:
+  contents: read
+jobs:
+  observe:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: [1, 2]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/setup-workspace-tools
+        with:
+          node-version: 22.x
+          pnpm-version: 9.15.0
+      - run: bash .github/actions/setup-workspace/install-dependencies.sh --ignore-scripts --filter '!@bb/mobile'
+      - name: Preserve worker exit diagnostics
+        run: |
+          mkdir -p "$RUNNER_TEMP/profiler-observation"
+          node .github/scripts/observe-profiler-exit.mjs
+      - name: Repeat unchanged process utility tests
+        env:
+          NODE_OPTIONS: --report-on-fatalerror --report-uncaught-exception
+        run: |
+          pnpm exec turbo run test --filter=@bb/process-utils --force --env-mode=loose > "$RUNNER_TEMP/profiler-observation/initial.log" 2>&1
+          for iteration in $(seq 1 20); do
+            pnpm exec turbo run test --filter=@bb/process-utils --only --force --env-mode=loose > "$RUNNER_TEMP/profiler-observation/repeat-$iteration.log" 2>&1 || exit "$?"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: profiler-observation-${{ matrix.replica }}
+          path: |
+            ${{ runner.temp }}/profiler-observation/
+            **/report.*.json
