@@ -2702,8 +2702,11 @@ nothing when no plugin registers an item.
 Visibility is the host's (`apps/app/src/lib/thread-row-visibility.ts`). An item
 mounts once its row is live; an item that has drawn something mounts with its
 row from then on, so cached data draws in the row's first frame, and rows
-scrolled past mount nothing. The container shows while any item draws
-something (a MutationObserver keeps a `data-has-items` attribute current). One
+scrolled past mount nothing. Every mounted line keeps each registering
+plugin's stylesheet loaded, so scrolling through rows whose items are not
+mounted does not unload and reload it (each costs a whole-document restyle).
+The container shows while any item draws something (a MutationObserver keeps a
+`data-has-items` attribute current). One
 viewport IntersectionObserver
 watches each row (the items container's parent element), and `isLive` changes
 only at a scroll pause: 200 ms after the last row entered or left the screen,

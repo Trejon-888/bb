@@ -1,10 +1,11 @@
-import { memo, useLayoutEffect, useRef } from "react";
+import { memo, useInsertionEffect, useLayoutEffect, useRef } from "react";
 import type {
   ExperimentalThreadRowMetadataLineProps,
   PluginSidebarThread,
 } from "@get-bb/plugin-sdk";
 import { PluginSlotMount } from "@/components/plugin/PluginSlotMount";
 import { compareGroupedPlacement } from "@/lib/grouped-placement";
+import { retainPluginCss } from "@/lib/plugin-css";
 import {
   usePluginSlots,
   type PluginThreadRowMetadataSlot,
@@ -62,6 +63,15 @@ function MountedThreadRowMetadata({
 }) {
   const anchor = useRef<HTMLSpanElement>(null);
   const isLive = useThreadRowLive(anchor);
+  const pluginIds = [...new Set(slots.map((slot) => slot.pluginId))].join(
+    "\n",
+  );
+  useInsertionEffect(() => {
+    const releases = pluginIds.split("\n").map(retainPluginCss);
+    return () => {
+      for (const release of releases) release();
+    };
+  }, [pluginIds]);
   const mounted = slots.filter(
     (slot) => isLive || itemsWithContent.has(itemKey(slot, thread.id)),
   );

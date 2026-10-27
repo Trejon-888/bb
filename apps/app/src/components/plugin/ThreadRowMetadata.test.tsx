@@ -11,6 +11,7 @@ import {
 } from "@/lib/plugin-slots";
 import { toPluginSidebarThread } from "@/lib/plugin-sidebar-threads";
 import { THREAD_ROW_SETTLE_MS } from "@/lib/thread-row-visibility";
+import { applyPluginCss, resetPluginCssForTest } from "@/lib/plugin-css";
 import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
 import { ThreadRowMetadata, resetThreadRowMetadataForTest } from "./ThreadRowMetadata";
 
@@ -89,6 +90,7 @@ afterEach(() => {
   removePluginSlotRegistrations("demo");
   resetAllCrashedPluginSlotsForTest();
   resetThreadRowMetadataForTest();
+  resetPluginCssForTest();
   vi.unstubAllGlobals();
   vi.useRealTimers();
   Reflect.deleteProperty(document, "visibilityState");
@@ -179,6 +181,25 @@ describe("thread row metadata", () => {
     });
     expect(screen.getByTestId("late")).toBeTruthy();
     expect(container.hasAttribute("data-has-items")).toBe(true);
+  });
+
+  it("keeps a plugin's stylesheet loaded while its line is on a row, with no item mounted", () => {
+    setPluginSlotRegistrations(
+      "demo",
+      makePluginRegistrationSet({
+        threadRowMetadata: [{ id: "badge", component: item("badge") }],
+      }),
+    );
+    applyPluginCss("demo", "/demo.css");
+    const stylesheet = () =>
+      document.head.querySelector('link[rel="stylesheet"][data-bb-plugin-css="demo"]');
+    const { unmount } = renderRow();
+    expect(seen).toEqual([]);
+    expect(stylesheet()).not.toBeNull();
+
+    unmount();
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(stylesheet()).toBeNull();
   });
 
   it("mounts nothing for rows that scroll past without a pause", () => {
