@@ -41,6 +41,8 @@ const entrypoints = [
   ["bb", "bb.js"],
   ["bb-server", "bb-server.js"],
   ["bb-host-daemon", "bb-host-daemon.js"],
+  ["ix-app", "ix-app.js"],
+  ["ix", "ix.js"],
 ];
 
 for (const [sourceName, outputName] of entrypoints) {

@@ -59,6 +59,8 @@ import {
   type BbAppManagedEnvConfig,
   type BbAppManagedEnvFile,
 } from "@bb/config/bb-app-managed-config";
+import { productCliProgramName } from "@bb/config/product-name";
+import { applyIxEnvAliases } from "./ix-env-aliases.js";
 import {
   formatClientConfigPath,
   normalizeClientServerOrigin,
@@ -3095,11 +3097,12 @@ function installTerminationSignalForwarding(
 }
 
 function printBbAppHelp(): void {
-  process.stdout.write(`bb-app
+  const programName = productCliProgramName("-app");
+  process.stdout.write(`${programName}
 
 Usage:
-  bb-app [--data-dir <path>] [--server-bind-host <host>] [--server-port <port>] [--host-daemon-port <port>] [--no-in-app-updates] [--bundled]
-  bb-app start
+  ${programName} [--data-dir <path>] [--server-bind-host <host>] [--server-port <port>] [--host-daemon-port <port>] [--no-in-app-updates] [--bundled]
+  ${programName} start
 
   --perf-diagnostics permits CPU profiles and detailed logs when the performanceDiagnostics experiment is also on.
   Settings → Updates and bb updates app can update and restart bb. bb-app
@@ -4382,6 +4385,7 @@ export async function runBbApp(
 }
 
 export function runLauncherEntry(entry: () => Promise<void>): void {
+  applyIxEnvAliases(process.env);
   void entry().catch((error) => {
     const message =
       error instanceof Error ? (error.stack ?? error.message) : String(error);

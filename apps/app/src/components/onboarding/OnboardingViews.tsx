@@ -25,6 +25,7 @@ import {
   type SignInGuide,
 } from "./onboarding-model";
 import bbLogoUrl from "../../../../../assets/bb-logo.svg";
+import { useProductName } from "@/lib/ix/brand";
 
 const CONTENT_COLUMN_CLASS =
   "mx-auto w-full max-w-[600px] px-4 @min-[36rem]/onboarding:px-6";
@@ -66,6 +67,7 @@ export function OnboardingLayout({
   onSelectStep,
   onSkipAll,
 }: OnboardingLayoutProps) {
+  const productName = useProductName();
   const activeIndex = ONBOARDING_STEPS.findIndex((entry) => entry.id === step);
   return (
     <div
@@ -85,7 +87,7 @@ export function OnboardingLayout({
       >
         <img
           src={bbLogoUrl}
-          alt="bb"
+          alt={productName}
           draggable={false}
           className="h-5 w-6 shrink-0 select-none object-contain dark:invert"
         />

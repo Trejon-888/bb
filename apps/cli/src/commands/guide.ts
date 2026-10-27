@@ -3,6 +3,7 @@ import { createGuideArea } from "@bb/sdk/node";
 import { action, CliUsageError } from "../action.js";
 import { CORE_COMMAND_GROUPS } from "../command-groups.js";
 import { outputJson } from "./helpers.js";
+import { productCliName } from "@bb/config/product-name";
 
 interface GuideCommandOptions {
   json?: boolean;
@@ -80,7 +81,7 @@ function formatCommandIndexLine(
   withOptions: boolean,
 ): string {
   const names = [entry.path, ...entry.aliases.map((alias) => `|${alias}`)];
-  const head = [`bb ${names.join("")}`, entry.arguments]
+  const head = [`${productCliName()} ${names.join("")}`, entry.arguments]
     .filter((part) => part.length > 0)
     .join(" ");
   const options =

@@ -40,6 +40,8 @@
   "bin": {
     "bb-app": "dist/bb-app.js",
     "bb": "dist/bb.js",
+    "ix-app": "dist/ix-app.js",
+    "ix": "dist/ix.js",
     "bb-server": "dist/bb-server.js",
     "bb-host-daemon": "dist/bb-host-daemon.js"
   },

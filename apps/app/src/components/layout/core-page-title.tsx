@@ -19,6 +19,7 @@ import { resolveToolsBreadcrumbs } from "@/components/tools/tools-navigation";
 import { pluginDetailKeyFromRoute } from "@/components/plugin/plugin-detail-key";
 import { resolvePluginDetailKey } from "@/components/plugin/management/installed-plugin-catalog";
 import { pluginBrowseShelves } from "@/components/plugin/management/plugin-browse-discovery";
+import { productName } from "@/lib/ix/brand";
 
 function routeParameter(pattern: string, key: string, pathname: string) {
   const value = matchPath(pattern, pathname)?.params[key];
@@ -90,7 +91,7 @@ export function useCorePageTitle({
       : null;
   const trail = breadcrumbs.slice(1);
   if (shelf && trail.length === 1) trail.push({ label: shelf.label });
-  const sectionLabel = breadcrumbs[0]?.label ?? "BB";
+  const sectionLabel = breadcrumbs[0]?.label ?? productName();
   const leaf = trail.at(-1)?.label ?? sectionLabel;
   return {
     ...(trail.length === 1 ? { title: leaf } : { breadcrumbs: trail }),

@@ -8,6 +8,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import type { ExperimentalSidebarNavigationSlot } from "@/lib/plugin-slots";
 import { useSidebarHeaderControlAxisClass } from "./SidebarChrome";
 import type { ResolvedSidebarNavigation } from "./sidebarNavigationProvider";
+import { productName } from "@/lib/ix/brand";
 
 const SIDEBAR_HEADER_SLOT_KIND = "sidebarHeader";
 const DEFAULT_CONTROL_SIZE = 28;
@@ -122,7 +123,7 @@ function PluginNavigationHeader({
             description:
               fallbackHeader === null
                 ? `${slot.title} (${pluginId}) stopped working.`
-                : `${slot.title} (${pluginId}) stopped working, so bb drew the ${fallbackHeader} header instead.`,
+                : `${slot.title} (${pluginId}) stopped working, so ${productName()} drew the ${fallbackHeader} header instead.`,
           });
         }}
       />

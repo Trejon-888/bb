@@ -92,6 +92,7 @@ import {
   type OnboardingEntry,
 } from "./onboarding-telemetry";
 import { useOnboardingProjectImport } from "./useOnboardingProjectImport";
+import { useProductName } from "@/lib/ix/brand";
 
 const SIGN_IN_POLL_INTERVAL_MS = 3_000;
 const SIGN_IN_TERMINAL_COLS = 200;
@@ -778,6 +779,7 @@ function PluginsStepContainer({
   onContinue: () => void;
   onSkip: () => void;
 }) {
+  const productName = useProductName();
   const catalogQuery = usePluginCatalogSearch("", { enabled: true });
   const listQuery = usePluginList({ enabled: true });
   const { refetch: refetchCatalog } = catalogQuery;
@@ -809,7 +811,7 @@ function PluginsStepContainer({
     <OnboardingLayout
       {...chrome}
       step="plugins"
-      title="Make bb yours"
+      title={`Make ${productName} yours`}
       description="Most of bb is plugins. These ones are off until you want them, and you can change your mind in Plugins."
       primaryLabel="Continue"
       secondaryLabel="Skip"
@@ -854,6 +856,7 @@ function DevicesStepContainer({
   onFinish: () => void;
   onLeave: () => void;
 }) {
+  const productName = useProductName();
   const configQuery = useSystemConfig();
   const hostsQuery = useHosts();
   const [connectSetupOpen, setConnectSetupOpen] = useState(false);
@@ -872,7 +875,7 @@ function DevicesStepContainer({
     <OnboardingLayout
       {...chrome}
       step="devices"
-      title="Use bb from anywhere"
+      title={`Use ${productName} from anywhere`}
       description="All optional. Everything here also lives in Settings → Machines."
       primaryLabel="Start using bb"
       onPrimary={onFinish}

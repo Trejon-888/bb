@@ -27,4 +27,24 @@ check apps/app/src/components/settings/settings-nav.tsx 'settingsSectionAllowed(
 for f in apps/server/src/ix/auth-service.ts apps/server/src/ix/middleware.ts apps/server/src/ix/routes.ts apps/server/src/ix/context.ts apps/server/src/ix/config.ts apps/server/src/ix/kv.ts apps/server/src/ix/brand.ts apps/server/src/ix/sso.ts apps/server/src/ix/test-harness.ts apps/server/src/ix/brand.test.ts apps/server/src/ix/sso.test.ts apps/app/src/components/ix/IxAuthGate.tsx apps/app/src/components/ix/ix-auth.ts; do
   if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi
 done
+check packages/config/package.json '"./product-name"'
+check packages/bb-app/package.json '"ix": "dist/ix.js"'
+check packages/bb-app/package.json '"ix-app": "dist/ix-app.js"'
+check packages/bb-app/scripts/build.mjs '["ix", "ix.js"]'
+check packages/bb-app/scripts/build.mjs '["ix-app", "ix-app.js"]'
+check packages/bb-app/src/launcher.ts 'applyIxEnvAliases(process.env);'
+check packages/bb-app/src/launcher.ts 'productCliProgramName("-app")'
+check apps/cli/src/index.ts '.name(productCliName())'
+check apps/cli/src/commands/guide.ts '`${productCliName()} ${names.join("")}`'
+check apps/app/src/components/layout/AppLayout.tsx 'const productName = useProductName();'
+check apps/app/src/components/layout/AppLayout.tsx 'location.pathname === "/" ? productName'
+check apps/app/src/components/layout/core-page-title.tsx '?? productName()'
+check apps/app/src/components/onboarding/OnboardingViews.tsx 'alt={productName}'
+check apps/app/src/components/onboarding/OnboardingFlow.tsx 'title={`Make ${productName} yours`}'
+check apps/app/src/components/onboarding/OnboardingFlow.tsx 'title={`Use ${productName} from anywhere`}'
+check apps/app/src/components/sidebar/SidebarNavigationHeader.tsx 'so ${productName()} drew'
+check apps/app/src/components/settings/UpdatesSettingsSection.tsx 'aria-label={productName}'
+for f in packages/config/src/product-name.ts packages/bb-app/src/ix-env-aliases.ts packages/bb-app/src/bin/ix.ts packages/bb-app/src/bin/ix-app.ts apps/app/src/lib/ix/brand.ts; do
+  if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi
+done
 exit $fail

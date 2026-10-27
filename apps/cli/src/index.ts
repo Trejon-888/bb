@@ -9,6 +9,7 @@ import {
 } from "./command-groups.js";
 import { resolveBbCliVersion } from "./version.js";
 import type { CliRuntimeContext } from "./context-env.js";
+import { productCliName } from "@bb/config/product-name";
 
 if (process.env.FORCE_COLOR !== undefined) {
   delete process.env.NO_COLOR;
@@ -19,8 +20,10 @@ maybeReexecViaBbCli();
 const program = new Command();
 
 program
-  .name("bb")
-  .description("BB CLI - manage your AI coding agents")
+  .name(productCliName())
+  .description(
+    `${productCliName().toUpperCase()} CLI - manage your AI coding agents`,
+  )
   .enablePositionalOptions()
   .exitOverride()
   .showSuggestionAfterError(false)

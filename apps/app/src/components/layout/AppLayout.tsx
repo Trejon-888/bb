@@ -130,6 +130,7 @@ import { useAppSettingsRouteMemory } from "@/hooks/useAppSettingsRouteMemory";
 import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import { BackToAppCommandHandler } from "./BackToAppCommandHandler";
 import { HistoryCommandHandlers } from "./HistoryCommandHandlers";
+import { useProductName } from "@/lib/ix/brand";
 
 const SIDEBAR_WIDTH_KEY = "bb.sidebar.width";
 const SIDEBAR_OPEN_KEY = "bb.sidebar.open";
@@ -673,6 +674,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
               }
             : (resolveRouteTitle(location.pathname) ?? { title: "" });
 
+  const productName = useProductName();
   const documentTitle = (() => {
     if (focusedPageTitle) {
       if (focusedPageTitle.windowTitle !== undefined)
@@ -700,8 +702,8 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     if (projectId) {
       return projectLabel ?? projectId;
     }
-    const routeTitle = resolveRouteTitle(location.pathname)?.title;
-    return routeTitle && routeTitle.length > 0 ? routeTitle : "BB";
+    const routeTitle = location.pathname === "/" ? productName : resolveRouteTitle(location.pathname)?.title;
+    return routeTitle && routeTitle.length > 0 ? routeTitle : productName;
   })();
   const currentThreadPendingInteractionsQuery = useThreadPendingInteractions(
     threadId ?? "",

@@ -104,6 +104,7 @@ import {
 } from "@/hooks/queries/system-queries";
 import { sdk } from "@/lib/sdk";
 import { rawStringLocalStorage } from "@/lib/browser-storage";
+import { useProductName } from "@/lib/ix/brand";
 
 const CHANGELOG_URL = "https://getbb.app/changelog";
 const CHANGELOG_STALE_TIME_MS = 5 * 60_000;
@@ -1721,8 +1722,9 @@ export function MachineUpdateRow({
 }
 
 export function BbUpdatesCard({ children }: { children: ReactNode }) {
+  const productName = useProductName();
   return (
-    <section aria-label="bb" data-updates-domain="bb">
+    <section aria-label={productName} data-updates-domain="bb">
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="divide-y divide-border">{children}</div>
       </div>

@@ -157,6 +157,11 @@
       "source": "./src/node-network.ts",
       "types": "./src/node-network.ts",
       "default": "./src/node-network.ts"
+    },
+    "./product-name": {
+      "source": "./src/product-name.ts",
+      "types": "./src/product-name.ts",
+      "default": "./src/product-name.ts"
     }
   },
   "scripts": {
