@@ -1158,12 +1158,17 @@ const EXPERIMENT_DEFINITIONS: Record<
   sidebarMultiSelect: {
     label: "Select multiple sidebar threads",
     description:
-      "In the built-in thread list sidebar, Cmd/Ctrl-click and Shift-click threads to select several, right-click for bulk actions, and drag them together into a section, under a thread, into Pinned, or into a composer as mentions.",
+      "In the built-in thread list sidebar, Cmd/Ctrl+Shift-click and Shift-click threads to select several, right-click for bulk actions, and drag them together into a section, under a thread, into Pinned, or into a composer as mentions.",
   },
   timelinePush: {
     label: "Pushed timeline updates",
     description:
       "Send an open thread's timeline changes over the live connection instead of reloading the latest window after each update.",
+  },
+  unreadDividerAtAnswer: {
+    label: "NEW divider before final assistant message",
+    description:
+      "When you open a thread whose turn finished while you were away, place the NEW divider before the turn's final assistant message, or the error that ended it, instead of before its first tool call. The turn's work stays above the divider.",
   },
 };
 export function visibleExperimentKeys(
