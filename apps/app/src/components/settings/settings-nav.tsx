@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { settingsSectionAllowed } from "@/components/ix/ix-auth";
 import { matchPath, useLocation } from "react-router-dom";
 import { useHostDaemon, useLocalHostDaemonAccess } from "@/hooks/useHostDaemon";
 import type { LocalHostDaemonAccessState } from "@/lib/local-host-daemon-access";
@@ -40,10 +41,11 @@ export function filterSettingsNavSections({
 }): readonly SettingsNavSection[] {
   return SETTINGS_NAV_SECTIONS.filter(
     (section) =>
-      section.id !== "files" ||
-      hasDaemon ||
-      accessState !== "unavailable" ||
-      fileOpenerCount > 0,
+      settingsSectionAllowed(section.id) &&
+      (section.id !== "files" ||
+        hasDaemon ||
+        accessState !== "unavailable" ||
+        fileOpenerCount > 0),
   );
 }
 

@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
+import { IxAuthGate } from "@/components/ix/IxAuthGate";
 import { TooltipProvider } from "@bb/shared-ui/tooltip";
 import { useUpdateGeneralSettings } from "@/hooks/mutations/settings-mutations";
 import { useSystemConfig } from "@/hooks/queries/system-queries";
@@ -28,6 +29,10 @@ function rememberOnboardingSeen(): void {
 }
 
 export function OnboardingGate({ children }: { children: ReactNode }) {
+  return <IxAuthGate><OnboardingGateInner>{children}</OnboardingGateInner></IxAuthGate>;
+}
+
+function OnboardingGateInner({ children }: { children: ReactNode }) {
   const configQuery = useSystemConfig();
   const updateSettings = useUpdateGeneralSettings();
   const [firstRunClosed, setFirstRunClosed] = useState(false);
