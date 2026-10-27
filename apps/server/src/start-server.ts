@@ -1,4 +1,6 @@
 import { createDesktopAppUpdateService } from "./services/system/desktop-app-update.js";
+import { createIxAuthService } from "./ix/auth-service.js";
+import { readIxAuthConfig } from "./ix/config.js";
 import { createDesktopUpdateChannel } from "./services/system/desktop-update-channel.js";
 import { serve } from "@hono/node-server";
 import { existsSync } from "node:fs";
@@ -236,6 +238,16 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     logger,
   });
   await machineAuth.ensureReady();
+  const ixAuth = await createIxAuthService({
+    dataDir: serverConfig.BB_DATA_DIR,
+    db,
+    logger,
+    config: readIxAuthConfig(
+      process.env,
+      appUrl ?? `http://127.0.0.1:${serverConfig.BB_SERVER_PORT}`,
+    ),
+  });
+  await ixAuth.ensureReady();
   const skillTreeRegistry = new SkillTreeRegistry();
   const pluginHostArtifacts = new PluginHostArtifactRegistry();
   const providerNativeRoots = createProviderNativeRootsCache();
@@ -322,6 +334,7 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       hub,
       lifecycleDedupers,
       logger,
+      ixAuth,
       machineAuth,
       pendingInteractions,
       providerRegistry,

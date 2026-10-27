@@ -1,4 +1,5 @@
 import type { CustomProviderModel } from "@bb/config/bb-app-managed-config";
+import type { IxAuthService } from "./ix/auth-service.js";
 import type { DbConnection } from "@bb/db";
 import type { FeatureFlags, ProviderNativeSkillRoots } from "@bb/domain";
 import type { Logger } from "@bb/logger";
@@ -49,6 +50,7 @@ export interface AppDeps {
   lifecycleDedupers: LifecycleDedupers;
   logger: ServerLogger;
   machineAuth: MachineAuthService;
+  ixAuth: IxAuthService;
   pendingInteractions: PendingInteractionLifecycle;
   providerRegistry: ProviderRegistryService;
   pluginHostArtifacts: PluginHostArtifactRegistry;

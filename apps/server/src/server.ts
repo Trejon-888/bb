@@ -1,4 +1,6 @@
 import { createPluginUpdateJobs } from "./services/plugins/plugin-update-jobs.js";
+import { assertIxWebSocketAllowed, ixApiGate, mountIxAuthHandler } from "./ix/middleware.js";
+import { createIxRoutes } from "./ix/routes.js";
 import { registerPluginUpdateJobRoutes } from "./routes/plugin-update-jobs.js";
 import {
   recheckEnvironmentProvisioning,
@@ -900,6 +902,7 @@ export function createApp(
     }
     return next();
   });
+  publicApi.use("*", ixApiGate(deps));
   const pluginCatalogService = createPluginCatalogService({
     db: deps.db,
     appVersion: deps.config.appVersion,
@@ -944,6 +947,8 @@ export function createApp(
   );
   registerSkillsRegistryRoutes(publicApi, deps);
   registerServerMoveRoutes(publicApi, deps, serverMove);
+  mountIxAuthHandler(app, deps);
+  app.route("/api/ix", createIxRoutes(deps));
   app.route("/api/v1", publicApi);
   app.use("/api/v1/*", () => {
     throw new ApiError(404, "not_found", "Not found");
@@ -986,8 +991,9 @@ export function createApp(
 
   app.get(
     "/ws",
-    upgradeWebSocket((context) => {
+    upgradeWebSocket(async (context) => {
       assertBrowserWebSocketAllowed(context);
+      await assertIxWebSocketAllowed(context, deps);
       return {
         onOpen: (_event, socket) => onClientSocketOpen(deps.hub, socket),
         onMessage: (event, socket) =>
@@ -999,8 +1005,9 @@ export function createApp(
 
   app.get(
     "/ws/terminals/:terminalId",
-    upgradeWebSocket((context) => {
+    upgradeWebSocket(async (context) => {
       assertBrowserWebSocketAllowed(context);
+      await assertIxWebSocketAllowed(context, deps);
       const terminalId = context.req.param("terminalId");
       const query = terminalWebSocketQuerySchema.safeParse({
         outputAcks: context.req.query("outputAcks"),

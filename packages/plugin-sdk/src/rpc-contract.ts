@@ -275,9 +275,18 @@ export function defineRpcContract<
  * that with a per-load token only the server knows. Every other caller — the
  * app, the `bb` CLI, agents, and bb itself — is `client`.
  */
+export type ExperimentalPluginRpcCallerUser = {
+  readonly id: string;
+  readonly email: string;
+  readonly name: string;
+  readonly role: "owner" | "admin" | "member" | "viewer";
+};
 export type ExperimentalPluginRpcCaller =
   | { readonly kind: "plugin"; readonly pluginId: string }
-  | { readonly kind: "client" };
+  | {
+      readonly kind: "client";
+      readonly experimental_user?: ExperimentalPluginRpcCallerUser;
+    };
 
 /** Second argument of every rpc handler. */
 export interface ExperimentalPluginRpcHandlerContext {

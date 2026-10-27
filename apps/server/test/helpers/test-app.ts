@@ -1,4 +1,6 @@
 import { installDefaultEnvironmentProviders } from "./environment-provider.js";
+import { createIxAuthService } from "../../src/ix/auth-service.js";
+import { readIxAuthConfig } from "../../src/ix/config.js";
 import { registerTestHarnessWarmup } from "./test-harness-warmup.js";
 import { setPluginEnvironmentProviderBridge } from "../../src/services/plugins/plugin-environment-provider-registry.js";
 import { clearAllThreadProvisionSchedules } from "../../src/services/threads/thread-startup-store.js";
@@ -222,6 +224,13 @@ export async function createTestAppHarness(
     logger,
   });
   await machineAuth.ensureReady();
+  const ixAuth = await createIxAuthService({
+    dataDir,
+    db,
+    logger,
+    config: readIxAuthConfig({}, "http://localhost"),
+  });
+  await ixAuth.ensureReady();
   const testMachineAuth = {
     ...machineAuth,
     async verifyDaemonHostKey(token: string) {
@@ -309,6 +318,7 @@ export async function createTestAppHarness(
       notifyChanged: () => hub.notifySystem(["app-update-changed"]),
     });
   const deps: ServerAppDeps = {
+    ixAuth,
     appUpdate,
     appVersion,
     bbAppManagedConfig,

@@ -1,4 +1,5 @@
 import type { PluginUpdateJobs } from "../services/plugins/plugin-update-jobs.js";
+import { getIxActor, withIxUser } from "../ix/context.js";
 import { timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
@@ -990,7 +991,7 @@ export function registerPluginRoutes(
       method,
       lookup.value,
       input,
-      callerResolution.caller,
+      withIxUser(callerResolution.caller, getIxActor(context)),
     );
     if (!outcome.ok) {
       return context.json(

@@ -158,6 +158,7 @@ const EXPECTED_BACKEND_ROOT_VALUE_EXPORTS = [
 
 const EXPECTED_RPC_ROOT_TYPE_EXPORTS = [
   "ExperimentalPluginRpcCaller",
+  "ExperimentalPluginRpcCallerUser",
   "ExperimentalPluginRpcHandlerContext",
   "ExperimentalPluginRpcHandlersWithContext",
   "ExperimentalRpcKeyedMethod",
