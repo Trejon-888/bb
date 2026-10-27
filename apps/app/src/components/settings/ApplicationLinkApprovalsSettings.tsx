@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@bb/shared-ui/button";
 import { applicationLinkApprovals } from "@/lib/application-url";
 import { appToast } from "@/components/ui/app-toast";
-import { SettingsSection } from "@/components/ui/settings-section";
+import { SettingsWithControl } from "@/components/ui/settings-section";
 
 export function ApplicationLinkApprovalsSettings() {
   const approvals = useQuery(
@@ -26,11 +26,11 @@ export function ApplicationLinkApprovalsSettings() {
     }
   };
   return (
-    <SettingsSection title="Application link approvals">
-      <p className="text-sm text-muted-foreground">
-        Apps you've allowed to open without asking for this BB site on this
-        device. These choices don't sync to other devices or BB sites.
-      </p>
+    <SettingsWithControl
+      label="Application link approvals"
+      description="Apps you've allowed to open without asking for this BB site on this device. These choices don't sync to other devices or BB sites."
+      controlPlacement="below"
+    >
       {approvals.isPending ? (
         <p className="text-sm">Loading approvals…</p>
       ) : approvals.isError ? (
@@ -69,6 +69,6 @@ export function ApplicationLinkApprovalsSettings() {
           </Button>
         </div>
       )}
-    </SettingsSection>
+    </SettingsWithControl>
   );
 }
