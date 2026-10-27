@@ -1138,7 +1138,7 @@ const EXPERIMENT_DEFINITIONS: Record<
   applicationLinks: {
     label: "Application links",
     description:
-      "Open links from chat in other apps on this device. BB asks before opening, unless you choose Always allow.",
+      "Open links from chat in other apps on this device. BB asks before opening, unless you choose Always allow. Manage approvals in General → Links.",
   },
   changelogPreview: {
     label: "Changelog preview",

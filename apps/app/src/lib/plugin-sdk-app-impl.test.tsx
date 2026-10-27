@@ -320,9 +320,7 @@ describe("application approval management", () => {
             null,
           ),
         );
-      await screen.findByText(
-        "No saved approvals. BB asks before opening an app.",
-      );
+      await screen.findByText(/^No saved approvals\./u);
       expect(store.list()).toEqual([]);
     },
   );

@@ -28,47 +28,65 @@ export function ApplicationLinkApprovalsSettings() {
   return (
     <SettingsWithControl
       label="Application link approvals"
-      description="App links you've allowed to open without asking on this device. These choices apply only to this BB site and don't sync to other devices or app profiles."
+      description="App links you've chosen to always allow on this device. Choose Ask again to restore confirmation."
       controlPlacement="below"
     >
-      {approvals.isPending ? (
-        <p className="text-sm">Loading approvals…</p>
-      ) : approvals.isError ? (
-        <p className="text-sm">{approvals.error.message}</p>
-      ) : approvals.data.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No saved approvals. BB asks before opening an app.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {approvals.data.map((scheme) => (
-            <div
-              key={scheme}
-              className="flex items-center justify-between gap-3"
-            >
-              <span className="text-sm">{scheme}:</span>
+      <div className="space-y-3">
+        {approvals.isPending ? (
+          <p className="text-sm">Loading approvals…</p>
+        ) : approvals.isError ? (
+          <p className="text-sm">{approvals.error.message}</p>
+        ) : approvals.data.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No saved approvals. Choose Always allow when opening an app link to
+            add it here.
+          </p>
+        ) : (
+          <>
+            <div className="divide-y divide-border">
+              {approvals.data.map((scheme) => (
+                <div
+                  key={scheme}
+                  className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-sm">{scheme}:</p>
+                    <p className="mt-0.5 text-xs text-subtle-foreground">
+                      Opens without asking
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    aria-label={`Ask again for ${scheme} links`}
+                    onClick={() => {
+                      void revoke(scheme);
+                    }}
+                  >
+                    Ask again
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end border-t border-border pt-3">
               <Button
                 variant="outline"
                 size="sm"
-                aria-label={`Ask again for ${scheme} links`}
                 onClick={() => {
-                  void revoke(scheme);
+                  void revoke(null);
                 }}
               >
-                Ask again
+                Reset all approvals
               </Button>
             </div>
-          ))}
-          <Button
-            variant="outline"
-            onClick={() => {
-              void revoke(null);
-            }}
-          >
-            Reset all approvals
-          </Button>
-        </div>
-      )}
+          </>
+        )}
+        <p className="text-xs leading-snug text-subtle-foreground">
+          Only for this BB site. Approvals aren't shared with other browsers,
+          apps, or devices.
+        </p>
+      </div>
     </SettingsWithControl>
   );
 }
