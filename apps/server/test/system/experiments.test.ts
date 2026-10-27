@@ -38,6 +38,7 @@ describe("experiments settings", () => {
       expect(response.status).toBe(200);
       const body = systemConfigResponseSchema.parse(await readJson(response));
       expect(body.experiments).toEqual({
+        agentCpuPriority: false,
         changelogPreview: false,
         compactExpiredCache: false,
         serverMove: false,
@@ -69,6 +70,7 @@ describe("experiments settings", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          agentCpuPriority: true,
           changelogPreview: true,
           compactExpiredCache: true,
           serverMove: true,
@@ -80,6 +82,7 @@ describe("experiments settings", () => {
       });
       expect(put.status).toBe(200);
       expect(experimentsSchema.parse(await readJson(put))).toEqual({
+        agentCpuPriority: true,
         changelogPreview: true,
         compactExpiredCache: true,
         serverMove: true,
@@ -89,6 +92,7 @@ describe("experiments settings", () => {
         unreadDividerAtAnswer: true,
       });
       expect(getExperiments(harness.db)).toEqual({
+        agentCpuPriority: true,
         changelogPreview: true,
         compactExpiredCache: true,
         serverMove: true,
@@ -102,6 +106,7 @@ describe("experiments settings", () => {
       expect(
         systemConfigResponseSchema.parse(await readJson(config)).experiments,
       ).toEqual({
+        agentCpuPriority: true,
         changelogPreview: true,
         compactExpiredCache: true,
         serverMove: true,
@@ -119,6 +124,7 @@ describe("experiments settings", () => {
       const put = await putExperiments(harness, { changelogPreview: true });
       expect(put.status).toBe(200);
       expect(experimentsSchema.parse(await readJson(put))).toEqual({
+        agentCpuPriority: false,
         changelogPreview: true,
         compactExpiredCache: false,
         serverMove: true,

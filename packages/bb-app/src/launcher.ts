@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-import { hostToolchain, spawnHostProcess as spawn } from "@bb/process-utils";
+import {
+  hostToolchain,
+  readAgentCpuPriority,
+  spawnHostProcess as spawn,
+} from "@bb/process-utils";
 import { nodeNetworkArgs } from "@bb/config/node-network";
 import type { ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -432,6 +436,7 @@ export interface ManagedFullStackProcesses {
 }
 
 interface SpawnNamedManagedProcessArgs {
+  appScheduling: boolean;
   ipc?: boolean;
   logDir: string;
   args: string[];
@@ -2849,6 +2854,7 @@ Exits with code 3 without starting when the server on this data directory moved 
 
   log(" ", dim(`logs: ${runtime.context.logDir}/`));
   const childProcess = spawnLoggedProcess({
+    appScheduling: readAgentCpuPriority(runtime.context.dataDir),
     command: process.execPath,
     args: [...nodeNetworkArgs(runtime.serverEnv), runtime.context.serverEntry],
     logDir: runtime.context.logDir,
@@ -2921,6 +2927,7 @@ async function runHostDaemonOnly(args: RunHostDaemonOnlyArgs): Promise<void> {
 
   const startDaemon = (): ChildManagedProcessRun =>
     spawnNamedManagedProcess({
+      appScheduling: readAgentCpuPriority(args.context.dataDir),
       args: [...nodeNetworkArgs(daemonEnv), args.context.daemonEntry],
       command: process.execPath,
       env: daemonEnv,
@@ -3145,6 +3152,7 @@ export async function startFullStackServerProcess(
 
   const launchId = randomUUID();
   const serverRun = spawnNamedManagedProcess({
+    appScheduling: readAgentCpuPriority(args.context.dataDir),
     args: [...nodeNetworkArgs(args.env), args.context.serverEntry],
     command: process.execPath,
     env: { ...args.env, BB_SERVER_LAUNCH_ID: launchId },
@@ -3181,6 +3189,7 @@ async function startDaemonProcess(
   args: StartDaemonProcessArgs,
 ): Promise<ManagedProcessRun> {
   const daemonRun = spawnNamedManagedProcess({
+    appScheduling: readAgentCpuPriority(args.context.dataDir),
     args: [...nodeNetworkArgs(args.env), args.context.daemonEntry],
     command: process.execPath,
     env: args.env,

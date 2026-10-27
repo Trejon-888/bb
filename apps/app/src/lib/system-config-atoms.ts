@@ -30,6 +30,7 @@ const unavailableSystemConfig: SystemConfigResponse = {
   keybindingOverrides: [],
   performanceDiagnosticsAvailable: false,
   experiments: {
+    agentCpuPriority: false,
     changelogPreview: false,
     compactExpiredCache: false,
     serverMove: false,

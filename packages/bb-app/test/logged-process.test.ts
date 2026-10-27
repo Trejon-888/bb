@@ -49,6 +49,7 @@ describe("spawnLoggedProcess", () => {
     async (logName) => {
       const logDir = join(scratchDir(), "logs");
       const child = spawnLoggedProcess({
+        appScheduling: false,
         command: process.execPath,
         args: [
           "-e",
@@ -77,6 +78,7 @@ describe("spawnLoggedProcess", () => {
 
   it("keeps the spawned pid and IPC channel when the child runs under a scheduling wrapper", async () => {
     const child = spawnLoggedProcess({
+      appScheduling: true,
       command: process.execPath,
       args: [
         "-e",
@@ -101,10 +103,34 @@ describe("spawnLoggedProcess", () => {
     expect(messages).toEqual([{ pid: child.pid }, { echo: "ping" }]);
   });
 
+  it.runIf(process.platform === "darwin")(
+    "wraps the resolved command in app scheduling only when requested",
+    async () => {
+      const launches = await Promise.all(
+        [true, false].map(async (appScheduling) => {
+          const child = spawnLoggedProcess({
+            appScheduling,
+            command: process.execPath,
+            args: ["-e", ""],
+            env: process.env,
+            logDir: scratchDir(),
+            logName: "server",
+          });
+          expect(await waitForExit(child)).toBe(0);
+          return { file: child.spawnfile, args: child.spawnargs };
+        }),
+      );
+      expect(launches[0]?.file).toBe("/usr/sbin/taskpolicy");
+      expect(launches[0]?.args.slice(1, 3)).toEqual(["-a", process.execPath]);
+      expect(launches[1]?.file).toBe(process.execPath);
+    },
+  );
+
   it("preserves output across child restarts, including early failures", async () => {
     const logDir = scratchDir();
     for (const message of ["first startup", "second startup"]) {
       const child = spawnLoggedProcess({
+        appScheduling: false,
         command: process.execPath,
         args: [
           "-e",
@@ -130,6 +156,7 @@ describe("spawnLoggedProcess", () => {
     truncateSync(logPath, 10 * 1024 * 1024 + 1);
 
     const child = spawnLoggedProcess({
+      appScheduling: false,
       command: process.execPath,
       args: ["-e", `console.error("fresh startup"); process.exit(1);`],
       env: process.env,
@@ -151,6 +178,7 @@ describe("spawnLoggedProcess", () => {
     writeFileSync(blockedPath, "occupied");
     expect(() =>
       spawnLoggedProcess({
+        appScheduling: false,
         command: process.execPath,
         args: ["-e", "process.exit(0)"],
         env: process.env,
@@ -163,6 +191,7 @@ describe("spawnLoggedProcess", () => {
   it("reports executable spawn failures", async () => {
     const logDir = scratchDir();
     const child = spawnLoggedProcess({
+      appScheduling: false,
       command: join(logDir, "missing-executable"),
       args: [],
       env: process.env,

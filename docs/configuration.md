@@ -852,11 +852,20 @@ bb stores only the experiments you set; the others follow the shipped default.
 The `earlyAdopter` general setting (the Become an early adopter banner on
 Settings → Experiments, `bb settings general earlyAdopter on`) switches the
 shipped default to the early adopter default: experiments marked Early adopter
-(currently `timelinePush`, `compactExpiredCache`, and `sidebarMultiSelect`) turn on, and the rest stay
+(currently `agentCpuPriority`, `timelinePush`, `compactExpiredCache`, and `sidebarMultiSelect`) turn on, and the rest stay
 off. An experiment you set yourself keeps your value either way.
 `/system/config` and `sdk.system.config()` return the resolved values in
 `experiments`.
 
+- `agentCpuPriority` (on for early adopters) keeps bb responsive when agents
+  saturate the CPU. The host daemon starts provider processes and environment
+  setup and teardown scripts at nice 10 (below-normal on Windows), inherited by
+  the builds and tests they run; terminals keep normal priority. On macOS the
+  launcher also starts the server and daemon with application scheduling
+  (`taskpolicy -a`). The daemon half applies to processes started after a
+  toggle, and already-lowered processes stay lowered; the macOS half takes
+  effect after restarting bb. See
+  [slow database operations](debugging-and-qa.md#slow-database-operations).
 - `changelogPreview` shows the latest release notes as a dismissible card on
   Settings → Updates.
 - `compactExpiredCache` (on for early adopters) reports `compactionOfferAt` on a thread's context

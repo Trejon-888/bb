@@ -358,6 +358,7 @@ export class ServerConnection {
       this.options.onIdleProviderSessionTimeout?.(
         session.idleProviderSessionTimeoutMinutes,
       );
+      this.options.onAgentCpuPriority?.(session.agentCpuPriority);
       return session;
     } catch (error) {
       if (
@@ -659,6 +660,7 @@ export class ServerConnection {
       this.options.onIdleProviderSessionTimeout?.(
         message.data.idleProviderSessionTimeoutMinutes,
       );
+      this.options.onAgentCpuPriority?.(message.data.agentCpuPriority);
       return;
     }
 

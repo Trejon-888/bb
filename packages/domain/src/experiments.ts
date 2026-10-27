@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const experimentKeys = [
+  "agentCpuPriority",
   "changelogPreview",
   "compactExpiredCache",
   "serverMove",
@@ -22,6 +23,7 @@ export const experimentUpdatesSchema = z.partialRecord(
 export type ExperimentUpdates = z.infer<typeof experimentUpdatesSchema>;
 
 export const defaultExperiments: Experiments = {
+  agentCpuPriority: false,
   changelogPreview: false,
   compactExpiredCache: false,
   serverMove: false,
@@ -32,6 +34,7 @@ export const defaultExperiments: Experiments = {
 };
 
 export const earlyAdopterExperiments: Experiments = {
+  agentCpuPriority: true,
   changelogPreview: false,
   compactExpiredCache: true,
   serverMove: false,
