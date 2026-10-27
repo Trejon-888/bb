@@ -8,6 +8,7 @@ export const experimentKeys = [
   "sidebarMultiSelect",
   "timelinePush",
   "unreadDividerAtAnswer",
+  "websocketCompression",
 ] as const;
 export const experimentKeySchema = z.enum(experimentKeys);
 export type ExperimentKey = z.infer<typeof experimentKeySchema>;
@@ -29,6 +30,7 @@ export const defaultExperiments: Experiments = {
   sidebarMultiSelect: false,
   timelinePush: false,
   unreadDividerAtAnswer: false,
+  websocketCompression: false,
 };
 
 export const earlyAdopterExperiments: Experiments = {
@@ -39,4 +41,5 @@ export const earlyAdopterExperiments: Experiments = {
   sidebarMultiSelect: true,
   timelinePush: true,
   unreadDividerAtAnswer: false,
+  websocketCompression: true,
 };
