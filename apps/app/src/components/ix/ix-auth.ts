@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { fetchWithAppSurface } from "@/lib/app-surface";
 
 export type IxRole = "owner" | "admin" | "member" | "viewer";
@@ -115,40 +115,83 @@ export async function ixRequest<T>(
   return parsed as T;
 }
 
-export const IX_ME_QUERY_KEY = ["ix", "me"] as const;
-export const IX_STATUS_QUERY_KEY = ["ix", "status"] as const;
-
-export function useIxStatus() {
-  return useQuery({
-    queryKey: IX_STATUS_QUERY_KEY,
-    queryFn: ({ signal }) => ixRequest<IxStatus>("/status", { signal }),
-    staleTime: 60_000,
-    retry: false,
-  });
+export interface IxSessionState {
+  status: IxStatus | null;
+  statusFailed: boolean;
+  me: IxMe | null;
+  mePending: boolean;
+  version: number;
 }
-
-export function useIxMe(enabled: boolean) {
-  return useQuery({
-    queryKey: IX_ME_QUERY_KEY,
-    queryFn: async ({ signal }) => {
-      try {
-        return await ixRequest<IxMe>("/me", { signal });
-      } catch (error) {
-        if (error instanceof IxHttpError && error.status === 401) return null;
-        throw error;
-      }
-    },
-    enabled,
-    staleTime: 30_000,
-    retry: false,
-  });
+const MODE_HINT_KEY = "ix.auth.mode";
+let state: IxSessionState = { status: null, statusFailed: false, me: null, mePending: false, version: 0 };
+const listeners = new Set<() => void>();
+function publish(next: Partial<IxSessionState>): void {
+  state = { ...state, ...next, version: state.version + 1 };
+  for (const listener of listeners) listener();
 }
-
-export function useIxRefresh() {
-  const client = useQueryClient();
-  return () => client.invalidateQueries({ queryKey: ["ix"] });
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
-
+export function readIxSession(): IxSessionState {
+  return state;
+}
+export function useIxSession(): IxSessionState {
+  return useSyncExternalStore(subscribe, readIxSession, readIxSession);
+}
+export function rememberedTeamMode(): boolean {
+  try {
+    return window.localStorage.getItem(MODE_HINT_KEY) === "team";
+  } catch {
+    return false;
+  }
+}
+function rememberMode(mode: "off" | "team"): void {
+  try {
+    window.localStorage.setItem(MODE_HINT_KEY, mode);
+  } catch {
+    return;
+  }
+}
+export async function loadIxStatus(): Promise<void> {
+  try {
+    const status = await ixRequest<IxStatus>("/status");
+    rememberMode(status.mode);
+    publish({ status, statusFailed: false });
+  } catch {
+    publish({ status: null, statusFailed: true });
+  }
+}
+export async function loadIxMe(): Promise<void> {
+  publish({ mePending: true });
+  try {
+    const me = await ixRequest<IxMe>("/me");
+    publish({ me, mePending: false });
+  } catch (error) {
+    publish({ me: null, mePending: false, statusFailed: !(error instanceof IxHttpError && error.status === 401) });
+  }
+}
+export async function refreshIxSession(): Promise<void> {
+  await loadIxStatus();
+  if (state.status?.mode === "team") await loadIxMe();
+}
+let started = false;
+export function useIxSessionBoot(): IxSessionState {
+  const session = useIxSession();
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (started) return;
+    started = true;
+    void refreshIxSession().then(() => setTick((value) => value + 1));
+  }, []);
+  return session;
+}
+export function resetIxSessionForTests(): void {
+  started = false;
+  state = { status: null, statusFailed: false, me: null, mePending: false, version: 0 };
+}
 const INVITE_PARAM = "ix-invite";
 const SSO_PARAM = "ix-sso";
 

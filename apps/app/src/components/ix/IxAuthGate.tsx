@@ -8,13 +8,14 @@ import {
   ixRequest,
   readInviteTokenFromUrl,
   readSsoTokenFromUrl,
+  refreshIxSession,
+  rememberedTeamMode,
   setCurrentIxRole,
-  useIxMe,
-  useIxRefresh,
-  useIxStatus,
+  useIxSessionBoot,
   type IxBrand,
   type IxStatus,
 } from "./ix-auth";
+import { setBrandProductName } from "@/lib/ix/brand";
 
 type Screen = "sign-in" | "bootstrap" | "invite";
 
@@ -130,26 +131,24 @@ function AuthForm({ status, screen, inviteToken, notice, onDone, onSwitch }: { s
 }
 
 export function IxAuthGate({ children }: { children: ReactNode }) {
-  const statusQuery = useIxStatus();
-  const status = statusQuery.data;
+  const session = useIxSessionBoot();
+  const status = session.status ?? undefined;
   const teamMode = status?.mode === "team";
-  const meQuery = useIxMe(teamMode);
-  const refresh = useIxRefresh();
   const [inviteToken] = useState(readInviteTokenFromUrl);
   const [ssoToken, setSsoToken] = useState(readSsoTokenFromUrl);
   const [ssoError, setSsoError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen | null>(null);
-
-  const actor = meQuery.data?.actor ?? null;
+  const [holdForTeam] = useState(rememberedTeamMode);
+  const actor = session.me?.actor ?? null;
   useEffect(() => {
     setCurrentIxRole(actor !== null && actor.kind === "user" ? actor.role : null);
   }, [actor]);
-
-  const appTitle = status?.brand.appTitle;
+  const brand = status?.brand;
   useEffect(() => {
-    if (appTitle !== undefined && typeof document !== "undefined") document.title = appTitle;
-  }, [appTitle]);
-
+    if (brand === undefined) return;
+    setBrandProductName(brand.appTitle ?? brand.name ?? null);
+    if (brand.appTitle !== undefined && typeof document !== "undefined") document.title = brand.appTitle;
+  }, [brand]);
   useEffect(() => {
     if (status === undefined || ssoToken === null) return;
     if (!teamMode) {
@@ -166,17 +165,16 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
         clearSsoTokenFromUrl();
         if (cancelled) return;
         setSsoToken(null);
-        void refresh();
+        void refreshIxSession();
       });
     return () => {
       cancelled = true;
     };
-  }, [status, teamMode, ssoToken, refresh]);
-
-  if (statusQuery.isError || (status !== undefined && !teamMode)) return children;
-  if (status === undefined || ssoToken !== null || (teamMode && meQuery.isPending)) return null;
+  }, [status, teamMode, ssoToken]);
+  if (session.statusFailed || (status !== undefined && !teamMode)) return children;
+  if (status === undefined) return holdForTeam ? null : children;
+  if (ssoToken !== null || session.mePending) return null;
   if (actor !== null) return children;
-
   const resolved: Screen = screen ?? (inviteToken !== null ? "invite" : status.bootstrapped ? "sign-in" : "bootstrap");
   return (
     <AuthForm
@@ -185,7 +183,7 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
       inviteToken={inviteToken}
       notice={ssoError}
       onDone={() => {
-        void refresh();
+        void refreshIxSession();
       }}
       onSwitch={setScreen}
     />
