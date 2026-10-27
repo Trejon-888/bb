@@ -18,10 +18,21 @@ export interface IxMe {
   mode: "off" | "team";
   orgName: string | null;
 }
+export interface IxBrand {
+  name?: string;
+  logoUrl?: string;
+  accent?: string;
+  appTitle?: string;
+  loginTitle?: string;
+  loginSubtitle?: string;
+  supportUrl?: string;
+  faviconUrl?: string;
+}
 export interface IxStatus {
   mode: "off" | "team";
   bootstrapped: boolean;
   orgName: string | null;
+  brand: IxBrand;
 }
 export interface IxMember {
   id: string;
@@ -138,15 +149,39 @@ export function useIxRefresh() {
   return () => client.invalidateQueries({ queryKey: ["ix"] });
 }
 
-export function readInviteTokenFromUrl(): string | null {
+const INVITE_PARAM = "ix-invite";
+const SSO_PARAM = "ix-sso";
+
+function readUrlParam(name: string): string | null {
   if (typeof window === "undefined") return null;
-  const token = new URLSearchParams(window.location.search).get("ix-invite");
-  return token && token.length > 0 ? token : null;
+  const value = new URLSearchParams(window.location.search).get(name);
+  return value && value.length > 0 ? value : null;
+}
+
+function clearUrlParam(name: string): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has(name)) return;
+  url.searchParams.delete(name);
+  window.history.replaceState(null, "", url.toString());
+}
+
+export function readInviteTokenFromUrl(): string | null {
+  return readUrlParam(INVITE_PARAM);
 }
 
 export function clearInviteTokenFromUrl(): void {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  url.searchParams.delete("ix-invite");
-  window.history.replaceState(null, "", url.toString());
+  clearUrlParam(INVITE_PARAM);
+}
+
+export function readSsoTokenFromUrl(): string | null {
+  return readUrlParam(SSO_PARAM);
+}
+
+export function clearSsoTokenFromUrl(): void {
+  clearUrlParam(SSO_PARAM);
+}
+
+export function acceptSsoToken(token: string): Promise<{ ok: boolean; userId: string; role: IxRole }> {
+  return ixRequest("/sso/accept", { method: "POST", body: { token } });
 }

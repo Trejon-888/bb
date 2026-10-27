@@ -16,9 +16,13 @@ Roles: `owner` > `admin` > `member` > `viewer`. Viewers can read everything but 
 
 Routes (all new, mounted at `/api/ix` and `/api/auth`):
 
-- `GET /api/ix/status` (public) · `POST /api/ix/bootstrap` · `POST /api/ix/sign-in` · `POST /api/ix/invitations/accept`
-- `GET /api/ix/me` · `POST /api/ix/sign-out` · `GET /api/ix/members` · `POST /api/ix/members/invite` · `POST /api/ix/members/:id/role` · `DELETE /api/ix/members/:id` · `GET /api/ix/invitations` · `DELETE /api/ix/invitations/:id`
-- `/api/auth/*` is better-auth's own handler (email + password, organization plugin). Tables are `ix_user`, `ix_session`, `ix_account`, `ix_verification`, `ix_organization`, `ix_member`, `ix_invitation`, created by better-auth's migrator at boot, outside Drizzle's journal.
+- `GET /api/ix/status` (public; includes `brand`) · `GET /api/ix/brand` (public) · `POST /api/ix/bootstrap` · `POST /api/ix/sign-in` · `POST /api/ix/invitations/accept` · `POST /api/ix/sso/accept`
+- `GET /api/ix/me` · `POST /api/ix/sign-out` · `PUT /api/ix/brand` (admin+) · `PUT /api/ix/sso/secret` (owner) · `GET /api/ix/members` · `POST /api/ix/members/invite` · `POST /api/ix/members/:id/role` · `DELETE /api/ix/members/:id` · `GET /api/ix/invitations` · `DELETE /api/ix/invitations/:id`
+- `/api/auth/*` is better-auth's own handler (email + password, organization plugin). Tables are `ix_user`, `ix_session`, `ix_account`, `ix_verification`, `ix_organization`, `ix_member`, `ix_invitation`, created by better-auth's migrator at boot, outside Drizzle's journal. `ix_kv` (`key`, `value`, `updated_at`) is created next to them with `CREATE TABLE IF NOT EXISTS` and holds the brand record (`brand`), the SSO secret (`sso.secret`) and consumed SSO nonces (`sso.nonce.<nonce>` → expiry ms).
+
+Brand: `PUT /api/ix/brand` replaces the record with `{ name?, logoUrl?, accent?, appTitle?, loginTitle?, loginSubtitle?, supportUrl?, faviconUrl? }` (all optional strings; URLs must be http(s); `accent` is a hex or functional CSS color; unknown fields are refused). Admins, owners and the loopback owner may write it; anyone may read it. The login screen uses `loginTitle`, `loginSubtitle`, `logoUrl`, `accent` and `supportUrl`; `IxAuthGate` sets `document.title` from `appTitle` when present. ix-superadmin resolves its org-tree brand (field-level inheritance) and pushes the resolved record here; the fork stores no inheritance of its own.
+
+SSO: `PUT /api/ix/sso/secret { secret }` (owner or loopback owner, min 32 characters) stores the per-workspace HMAC secret that ix-superadmin's `workspace.setSso` shares. `POST /api/ix/sso/accept { token }` takes `base64url(payloadJson) + "." + base64url(hmacSha256(secret, payloadB64))` with payload `{ sub: email, name, role: owner|admin|member|viewer, workspaceId, exp: epoch seconds, nonce }`. It refuses with `401 ix_sso_<reason>` for `no_secret`, `malformed`, `bad_signature`, `expired` and `replayed` (nonces are remembered in memory and in `ix_kv` until they expire). On success it upserts the user by email (a random password if new; existing users keep their name), upserts the membership with the token's role but never lowers an existing member's role, creates a better-auth session directly and returns the session cookie plus `{ ok, userId, role }`. An `owner` token on a server with no organization yet creates the organization (`BB_IX_AUTH_ORG_NAME`); lesser roles get `409`. The app accepts `?ix-sso=<token>` on load, posts it, strips the parameter and refreshes. Every acceptance, refusal, secret rotation and brand write is a `logger.info` line prefixed `ix-sso:` / `ix-brand:`.
 
 Plugins: in team mode the RPC caller a plugin receives is `{ kind: "client", experimental_user: { id, email, name, role } }`. ix-superadmin reads that to act as the signed-in member.
 
@@ -40,7 +44,7 @@ Deployment: team mode is meant for a server behind your own reverse proxy with `
 | `apps/app/src/components/onboarding/OnboardingGate.tsx` | export wraps `IxAuthGate` around the original body | sign-in screen |
 | `apps/app/src/components/settings/settings-nav.tsx` | `settingsSectionAllowed(section.id) &&` + import | role-gated settings |
 
-Everything else lives in `apps/server/src/ix/*`, `apps/app/src/components/ix/*`, `docs/ix/*`, `scripts/ix/*`.
+Everything else lives in `apps/server/src/ix/*` (`auth-service`, `middleware`, `routes`, `context`, `config`, `kv`, `brand`, `sso`, `test-harness` and the `*.test.ts` files), `apps/app/src/components/ix/*`, `docs/ix/*`, `scripts/ix/*`.
 
 ## Syncing with upstream
 

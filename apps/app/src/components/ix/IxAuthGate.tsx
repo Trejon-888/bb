@@ -2,25 +2,41 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@bb/shared-ui/button";
 import { Input } from "@bb/shared-ui/input";
 import {
+  acceptSsoToken,
   clearInviteTokenFromUrl,
+  clearSsoTokenFromUrl,
   ixRequest,
   readInviteTokenFromUrl,
+  readSsoTokenFromUrl,
   setCurrentIxRole,
   useIxMe,
   useIxRefresh,
   useIxStatus,
+  type IxBrand,
   type IxStatus,
 } from "./ix-auth";
 
 type Screen = "sign-in" | "bootstrap" | "invite";
 
-function Shell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+function Shell({ brand, title, subtitle, children }: { brand: IxBrand; title: string; subtitle: string; children: ReactNode }) {
+  const accentStyle = brand.accent === undefined ? undefined : { backgroundColor: brand.accent };
   return (
     <div className="flex h-dvh w-full items-center justify-center bg-background p-6 text-foreground">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h1 className="text-lg font-semibold">{title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-        <div className="mt-5">{children}</div>
+      <div className="w-full max-w-sm overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        {accentStyle !== undefined && <div className="h-1 w-full" style={accentStyle} />}
+        <div className="p-6">
+          {brand.logoUrl !== undefined && (
+            <img src={brand.logoUrl} alt={brand.name ?? ""} className="mb-4 h-8 w-auto max-w-[160px] object-contain" />
+          )}
+          <h1 className="text-lg font-semibold">{title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+          <div className="mt-5">{children}</div>
+          {brand.supportUrl !== undefined && (
+            <a href={brand.supportUrl} target="_blank" rel="noreferrer" className="mt-5 block text-xs text-muted-foreground underline">
+              Need help?
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -35,13 +51,14 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function AuthForm({ status, screen, inviteToken, onDone, onSwitch }: { status: IxStatus; screen: Screen; inviteToken: string | null; onDone: () => void; onSwitch: (next: Screen) => void }) {
+function AuthForm({ status, screen, inviteToken, notice, onDone, onSwitch }: { status: IxStatus; screen: Screen; inviteToken: string | null; notice: string | null; onDone: () => void; onSwitch: (next: Screen) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [orgName, setOrgName] = useState(status.orgName ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(notice);
   const [busy, setBusy] = useState(false);
+  const brand = status.brand;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -64,18 +81,21 @@ function AuthForm({ status, screen, inviteToken, onDone, onSwitch }: { status: I
     }
   };
 
-  const title = screen === "bootstrap" ? "Create the owner account" : screen === "invite" ? "Accept your invitation" : "Sign in";
-  const subtitle =
+  const action = screen === "bootstrap" ? "Create the owner account" : screen === "invite" ? "Accept your invitation" : "Sign in";
+  const title = screen === "sign-in" ? (brand.loginTitle ?? action) : action;
+  const defaultSubtitle =
     screen === "bootstrap"
       ? "This server has no owner yet. The first account becomes the owner."
       : screen === "invite"
         ? "Choose a name and a password to join this workspace."
         : status.orgName
-          ? `Sign in to ${status.orgName}`
+          ? `Sign in to ${brand.name ?? status.orgName}`
           : "Sign in to this server";
+  const subtitle = screen === "sign-in" ? (brand.loginSubtitle ?? defaultSubtitle) : defaultSubtitle;
+  const buttonStyle = brand.accent === undefined ? undefined : { backgroundColor: brand.accent, borderColor: brand.accent };
 
   return (
-    <Shell title={title} subtitle={subtitle}>
+    <Shell brand={brand} title={title} subtitle={subtitle}>
       <form onSubmit={submit}>
         {screen !== "invite" && (
           <Field label="Email">
@@ -96,8 +116,8 @@ function AuthForm({ status, screen, inviteToken, onDone, onSwitch }: { status: I
           </Field>
         )}
         {error !== null && <p className="mb-3 text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={busy}>
-          {busy ? "Working…" : title}
+        <Button type="submit" className="w-full" disabled={busy} style={buttonStyle}>
+          {busy ? "Working…" : action}
         </Button>
       </form>
       {screen === "invite" && (
@@ -116,6 +136,8 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
   const meQuery = useIxMe(teamMode);
   const refresh = useIxRefresh();
   const [inviteToken] = useState(readInviteTokenFromUrl);
+  const [ssoToken, setSsoToken] = useState(readSsoTokenFromUrl);
+  const [ssoError, setSsoError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen | null>(null);
 
   const actor = meQuery.data?.actor ?? null;
@@ -123,8 +145,36 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
     setCurrentIxRole(actor !== null && actor.kind === "user" ? actor.role : null);
   }, [actor]);
 
+  const appTitle = status?.brand.appTitle;
+  useEffect(() => {
+    if (appTitle !== undefined && typeof document !== "undefined") document.title = appTitle;
+  }, [appTitle]);
+
+  useEffect(() => {
+    if (status === undefined || ssoToken === null) return;
+    if (!teamMode) {
+      clearSsoTokenFromUrl();
+      setSsoToken(null);
+      return;
+    }
+    let cancelled = false;
+    void acceptSsoToken(ssoToken)
+      .catch((caught: unknown) => {
+        if (!cancelled) setSsoError(caught instanceof Error ? caught.message : "Single sign-on failed");
+      })
+      .finally(() => {
+        clearSsoTokenFromUrl();
+        if (cancelled) return;
+        setSsoToken(null);
+        void refresh();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [status, teamMode, ssoToken, refresh]);
+
   if (statusQuery.isError || (status !== undefined && !teamMode)) return children;
-  if (status === undefined || (teamMode && meQuery.isPending)) return null;
+  if (status === undefined || ssoToken !== null || (teamMode && meQuery.isPending)) return null;
   if (actor !== null) return children;
 
   const resolved: Screen = screen ?? (inviteToken !== null ? "invite" : status.bootstrapped ? "sign-in" : "bootstrap");
@@ -133,6 +183,7 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
       status={status}
       screen={resolved}
       inviteToken={inviteToken}
+      notice={ssoError}
       onDone={() => {
         void refresh();
       }}

@@ -2,9 +2,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { ApiError } from "../errors.js";
 import type { IxAuthService } from "./auth-service.js";
+import { ixBrandSchema } from "./brand.js";
 import { IX_ROLES, roleAtLeast, type IxRole } from "./config.js";
 import { getIxActor, type IxActor } from "./context.js";
 import { ixApiGate, type IxGateDeps } from "./middleware.js";
+import { IX_SSO_SECRET_MIN_LENGTH, IxSsoError } from "./sso.js";
 
 const bootstrapSchema = z.object({
   email: z.string().email(),
@@ -16,6 +18,12 @@ const signInSchema = z.object({ email: z.string().email(), password: z.string().
 const inviteSchema = z.object({ email: z.string().email(), role: z.enum(IX_ROLES).default("member") });
 const acceptSchema = z.object({ token: z.string().min(1), name: z.string().min(1).max(80), password: z.string().min(8) });
 const roleSchema = z.object({ role: z.enum(IX_ROLES) });
+const ssoSecretSchema = z.object({ secret: z.string().min(IX_SSO_SECRET_MIN_LENGTH).max(512) });
+const ssoAcceptSchema = z.object({ token: z.string().min(1).max(8192) });
+
+function actorLabel(actor: IxActor | undefined): string {
+  return actor?.kind === "user" ? actor.user.email : "loopback-owner";
+}
 
 async function parseBody<T>(context: { req: { json(): Promise<unknown> } }, schema: z.ZodType<T>): Promise<T> {
   const raw = await context.req.json().catch(() => null);
@@ -44,6 +52,22 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Ho
   const app = new Hono();
 
   app.get("/status", async (context) => context.json(await ixAuth.status()));
+
+  app.get("/brand", (context) => context.json(ixAuth.brand()));
+
+  app.post("/sso/accept", async (context) => {
+    if (ixAuth.mode === "off") throw new ApiError(409, "ix_auth_off", "BB_IX_AUTH is off");
+    const input = await parseBody(context, ssoAcceptSchema);
+    let result: Awaited<ReturnType<IxAuthService["acceptSso"]>>;
+    try {
+      result = await ixAuth.acceptSso(input.token);
+    } catch (error) {
+      if (error instanceof IxSsoError) throw new ApiError(401, `ix_sso_${error.reason}`, error.message);
+      throw new ApiError(409, "ix_sso", error instanceof Error ? error.message : "SSO failed");
+    }
+    applyCookies(context, result.headers);
+    return context.json({ ok: true, userId: result.userId, role: result.role });
+  });
 
   app.post("/bootstrap", async (context) => {
     if (ixAuth.mode === "off") throw new ApiError(409, "ix_auth_off", "BB_IX_AUTH is off");
@@ -96,6 +120,22 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Ho
   authed.post("/sign-out", async (context) => {
     const headers = await ixAuth.signOut(context.req.raw.headers);
     applyCookies(context, headers);
+    return context.json({ ok: true });
+  });
+
+  authed.put("/brand", async (context) => {
+    const actor = getIxActor(context);
+    requireRole(actor, "admin");
+    const input = await parseBody(context, ixBrandSchema);
+    return context.json({ ok: true, brand: ixAuth.setBrand(input, actorLabel(actor)) });
+  });
+
+  authed.put("/sso/secret", async (context) => {
+    if (ixAuth.mode === "off") throw new ApiError(409, "ix_auth_off", "BB_IX_AUTH is off");
+    const actor = getIxActor(context);
+    requireRole(actor, "owner");
+    const input = await parseBody(context, ssoSecretSchema);
+    ixAuth.setSsoSecret(input.secret, actorLabel(actor));
     return context.json({ ok: true });
   });
 

@@ -1,16 +1,28 @@
+import { randomBytes } from "node:crypto";
 import { betterAuth } from "better-auth";
+import { makeSignature } from "better-auth/crypto";
 import { getMigrations } from "better-auth/db/migration";
 import { organization } from "better-auth/plugins/organization";
 import type { DbConnection } from "@bb/db";
 import { readOrCreateSecretFile } from "@bb/secret-storage";
 import type { ServerLogger } from "../types.js";
+import { readIxBrand, writeIxBrand, type IxBrand } from "./brand.js";
 import {
   parseIxRole,
+  roleAtLeast,
   type IxAuthConfig,
   type IxAuthMode,
   type IxRole,
 } from "./config.js";
 import type { IxActor } from "./context.js";
+import { createIxKv, type IxKv } from "./kv.js";
+import {
+  createIxSsoReplayGuard,
+  IX_SSO_SECRET_KEY,
+  IX_SSO_SECRET_MIN_LENGTH,
+  IxSsoError,
+  verifyIxSsoToken,
+} from "./sso.js";
 
 const AUTH_SECRET_FILE_NAME = "ix-auth-secret";
 const MODEL_NAMES = {
@@ -44,10 +56,15 @@ export interface IxInvitation {
 export interface IxAuthService {
   readonly mode: IxAuthMode;
   readonly config: IxAuthConfig;
+  readonly kv: IxKv;
   ensureReady(): Promise<void>;
   handler(request: Request): Promise<Response>;
   resolveActor(headers: Headers): Promise<IxActor | null>;
-  status(): Promise<{ mode: IxAuthMode; bootstrapped: boolean; orgName: string | null }>;
+  status(): Promise<{ mode: IxAuthMode; bootstrapped: boolean; orgName: string | null; brand: IxBrand }>;
+  brand(): IxBrand;
+  setBrand(brand: IxBrand, by: string): IxBrand;
+  setSsoSecret(secret: string, by: string): void;
+  acceptSso(token: string): Promise<{ userId: string; role: IxRole; headers: Headers }>;
   bootstrap(input: {
     email: string;
     password: string;
@@ -88,7 +105,18 @@ interface AuthLike {
     internalAdapter: {
       createSession(userId: string, dontRememberMe?: boolean, override?: Record<string, unknown>): Promise<{ token: string; expiresAt: Date }>;
     };
+    secret: string;
+    authCookies: {
+      sessionToken: {
+        name: string;
+        attributes: { maxAge?: number; path?: string; httpOnly?: boolean; secure?: boolean; sameSite?: string; domain?: string };
+      };
+    };
   }>;
+}
+
+function orgSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace";
 }
 
 type ApiCall = <T>(name: string, args: Record<string, unknown>) => Promise<T>;
@@ -115,6 +143,8 @@ export async function createIxAuthService(args: {
   config: IxAuthConfig;
 }): Promise<IxAuthService> {
   const { config, logger } = args;
+  const kv = createIxKv(args.db);
+  const replayGuard = createIxSsoReplayGuard(kv);
   const secret = await readOrCreateSecretFile({
     bytes: 32,
     dataDir: args.dataDir,
@@ -188,6 +218,7 @@ export async function createIxAuthService(args: {
       ready = (async () => {
         const { runMigrations } = await getMigrations(auth.options);
         await runMigrations();
+        kv.ensureReady();
         if (config.bootstrap !== null && (await primaryOrg()) === null) {
           const result = await bootstrap({ ...config.bootstrap, orgName: config.orgName });
           logger.info(
@@ -212,7 +243,7 @@ export async function createIxAuthService(args: {
       headers: new Headers({ cookie: cookie.split(";")[0] ?? "" }),
       body: {
         name: input.orgName ?? config.orgName,
-        slug: (input.orgName ?? config.orgName).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace",
+        slug: orgSlug(input.orgName ?? config.orgName),
         userId: signUp.user.id,
       },
     });
@@ -342,6 +373,83 @@ export async function createIxAuthService(args: {
     await db.delete({ model: "session", where: [{ field: "userId", value: member.userId }] });
   }
 
+  function setBrand(brand: IxBrand, by: string): IxBrand {
+    const written = writeIxBrand(kv, brand);
+    logger.info(`ix-brand: updated by ${by}: ${Object.keys(written).join(",") || "(cleared)"}`);
+    return written;
+  }
+
+  function setSsoSecret(value: string, by: string): void {
+    if (value.length < IX_SSO_SECRET_MIN_LENGTH) throw new Error(`ix-sso: secret must be at least ${IX_SSO_SECRET_MIN_LENGTH} characters`);
+    kv.set(IX_SSO_SECRET_KEY, value);
+    logger.info(`ix-sso: secret rotated by ${by}`);
+  }
+
+  async function sessionHeadersFor(userId: string): Promise<Headers> {
+    const ctx = await auth.$context;
+    const session = await ctx.internalAdapter.createSession(userId);
+    const value = encodeURIComponent(`${session.token}.${await makeSignature(session.token, ctx.secret)}`);
+    const { name, attributes } = ctx.authCookies.sessionToken;
+    const parts = [
+      `${name}=${value}`,
+      `Max-Age=${attributes.maxAge ?? config.sessionDays * 24 * 60 * 60}`,
+      `Path=${attributes.path ?? "/"}`,
+    ];
+    if (attributes.domain !== undefined) parts.push(`Domain=${attributes.domain}`);
+    if (attributes.httpOnly !== false) parts.push("HttpOnly");
+    if (attributes.secure === true) parts.push("Secure");
+    if (attributes.sameSite !== undefined) {
+      parts.push(`SameSite=${attributes.sameSite.charAt(0).toUpperCase()}${attributes.sameSite.slice(1)}`);
+    }
+    const headers = new Headers();
+    headers.append("set-cookie", parts.join("; "));
+    return headers;
+  }
+
+  async function acceptSso(token: string): Promise<{ userId: string; role: IxRole; headers: Headers }> {
+    const payload = verifyIxSsoToken(token, kv.get(IX_SSO_SECRET_KEY));
+    if (!replayGuard.consume(payload.nonce, payload.exp)) {
+      logger.info(`ix-sso: replayed nonce for ${payload.sub} (workspace ${payload.workspaceId})`);
+      throw new IxSsoError("replayed");
+    }
+    const db = await adapter();
+    const email = payload.sub.toLowerCase();
+    let user = await db.findOne<UserRow>({ model: "user", where: [{ field: "email", value: email }] });
+    if (user === null) {
+      const signUp = await api<{ user: UserRow }>("signUpEmail", {
+        body: { email, password: randomBytes(24).toString("base64url"), name: payload.name },
+      });
+      user = signUp.user;
+      logger.info(`ix-sso: created user ${email} from workspace ${payload.workspaceId}`);
+    }
+    let org = await primaryOrg();
+    if (org === null) {
+      if (payload.role !== "owner") throw new Error("ix-sso: this server has no owner yet; the first SSO user must be an owner");
+      org = await db.create<OrgRow>({
+        model: "organization",
+        data: { name: config.orgName, slug: orgSlug(config.orgName), createdAt: new Date() },
+      });
+      logger.info(`ix-sso: created organization ${org.id} for ${email}`);
+    }
+    const member = await memberOf(user.id);
+    let role = payload.role;
+    if (member === null) {
+      await db.create({ model: "member", data: { organizationId: org.id, userId: user.id, role, createdAt: new Date() } });
+      logger.info(`ix-sso: added ${email} as ${role}`);
+    } else {
+      const existing = parseIxRole(member.role) ?? "viewer";
+      if (roleAtLeast(existing, role)) {
+        role = existing;
+      } else {
+        await db.update({ model: "member", where: [{ field: "id", value: member.id }], update: { role } });
+        logger.info(`ix-sso: raised ${email} from ${existing} to ${role}`);
+      }
+    }
+    const headers = await sessionHeadersFor(user.id);
+    logger.info(`ix-sso: signed in ${email} as ${role} (workspace ${payload.workspaceId}, nonce ${payload.nonce})`);
+    return { userId: user.id, role, headers };
+  }
+
   async function signOut(headers: Headers): Promise<Headers> {
     const response = await auth.handler(
       new Request(`${config.baseUrl}/api/auth/sign-out`, {
@@ -356,13 +464,18 @@ export async function createIxAuthService(args: {
   return {
     mode: config.mode,
     config,
+    kv,
     ensureReady,
     handler: (request) => auth.handler(request),
     resolveActor,
     status: async () => {
       const org = await primaryOrg();
-      return { mode: config.mode, bootstrapped: org !== null, orgName: org?.name ?? null };
+      return { mode: config.mode, bootstrapped: org !== null, orgName: org?.name ?? null, brand: readIxBrand(kv) };
     },
+    brand: () => readIxBrand(kv),
+    setBrand,
+    setSsoSecret,
+    acceptSso,
     bootstrap,
     listMembers,
     invite,
