@@ -1,0 +1,45 @@
+name: Compare Windows package-build test startup
+on:
+  push:
+    branches: [bb/benchmark-ci-launcher-startup]
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: blacksmith-4vcpu-windows-2025
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        order: [baseline-first, candidate-first]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.x
+          package-manager-cache: false
+      - run: npm install --global pnpm@9.15.0 --ignore-scripts
+      - uses: ./.github/actions/windows-dependency-cache
+        continue-on-error: true
+      - name: Install dependencies
+        shell: bash
+        run: bash .github/actions/setup-workspace/install-dependencies.sh --ignore-scripts --filter '!@bb/mobile'
+      - name: Warm the full shard and prerequisites
+        shell: bash
+        env:
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/launcher-startup-results"
+          pnpm exec turbo run test --filter=@bb/templates --filter=bb-app --filter=@bb/demo-server --filter=@bb/desktop --filter=@bb/plugin-build --continue --concurrency=2 --output-logs=full > "$RUNNER_TEMP/launcher-startup-results/warmup.log" 2>&1
+      - name: Compare the full shard
+        env:
+          BENCHMARK_ORDER: ${{ matrix.order }}
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+        run: node .github/scripts/benchmark-ci-launcher-startup.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: launcher-startup-${{ matrix.order }}
+          path: ${{ runner.temp }}/launcher-startup-results/
