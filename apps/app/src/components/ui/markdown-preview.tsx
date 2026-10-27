@@ -920,6 +920,7 @@ function MarkdownCode({
   if (localFileHref !== null) {
     return (
       <MarkdownAnchor
+        data-clipboard-inline-code=""
         href={localFileHref}
         linkRouting={linkRouting}
         rewriteLocalhostLinks={rewriteLocalhostLinks}
