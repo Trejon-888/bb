@@ -78,7 +78,6 @@ export const APP_COMMAND_IDS = [
   "panel.toggle",
   "panel.fullScreen.toggle",
   "file.quickOpen",
-  "diff.toggle",
   "terminal.open",
   "composer.focus",
   "modelPicker.toggle",

@@ -289,8 +289,11 @@ and testable outside the plugin runtime.
 ## Tab API migration
 
 Use `app.slots.experimental_tab` for tabs on thread and plugin navigation pages.
-Declare `context: { kind: "thread" }` for `{ threadId }`, or
+Declare `context: { kind: "thread" }` for `{ threadId, environment }`, or
 `context: { kind: "nav-panel", panelId: "board" }` for `{ subPath }`.
+`environment` is `{ id }` taken straight from the thread, null only when the
+thread has no environment; read anything else about it (status, path) yourself
+and show the tab's own loading, failure and Retry.
 Choose `availability: "fixed"` for one non-closable destination or `"action"`
 for a launcher opening closable instances with persisted JSON `params`.
 Only actions accept `run`, default `params`, and per-open `params`/`title`.

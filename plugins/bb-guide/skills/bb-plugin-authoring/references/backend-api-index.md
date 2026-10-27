@@ -32,6 +32,7 @@ Read the installed declarations for exact current signatures.
 - `ExperimentalOpenTabOptions`
 - `ExperimentalTabTargetReference`
 - `ExperimentalThreadActionTabProps`
+- `ExperimentalThreadTabProps`
 - `ExperimentalThreadTabActionContext`
 - `ExperimentalPanelController`
 - `ExperimentalDesktopBrowserAcquireInput`

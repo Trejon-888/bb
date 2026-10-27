@@ -190,6 +190,9 @@ export const useBbNavigate = runtimeFunction("useBbNavigate");
 export const experimental_useCanOpenFileExternally = runtimeFunction(
   "experimental_useCanOpenFileExternally",
 );
+export const experimental_useTabVisible = runtimeFunction(
+  "experimental_useTabVisible",
+);
 export const experimental_useAppPanel = runtimeFunction(
   "experimental_useAppPanel",
 );

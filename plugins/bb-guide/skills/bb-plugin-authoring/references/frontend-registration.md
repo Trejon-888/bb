@@ -193,8 +193,8 @@ function Automations({ threadId }: ExperimentalThreadInfoProps) {
 ```
 
 Components receive `{ threadId, projectId, environment }` and mount once per
-visible thread; `environment` is `{ id }`, or null when the thread has no
-environment, its host is not active, or it is not a usable checkout. Return
+visible thread; `environment` is `{ id }` taken from the thread, null only when
+the thread has no environment; read its state yourself. Return
 null to show nothing. A row renders `experimental_DetailRow`.
 Entries sort by `group`, then `order` within it (unset last), then registration
 order, bb's first on a tie, as thread actions do. Join one of bb's groups from

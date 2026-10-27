@@ -111,14 +111,25 @@ export interface PluginNavPanelProps {
  * This slot is rendered only for an existing thread. Use
  * `experimental_newThreadPanelAction` for the root New thread screen.
  */
-export interface ExperimentalThreadActionTabProps {
-  threadId: string;
+export interface ExperimentalThreadActionTabProps extends ExperimentalThreadTabProps {
   /**
    * The JSON `params` the tab was opened with (round-tripped through
    * persistence, so the tab restores across reloads); null when it was
    * opened without params.
    */
   params: JsonValue | null;
+}
+
+/** Props every thread tab receives, fixed or action. */
+export interface ExperimentalThreadTabProps {
+  threadId: string;
+  /**
+   * The thread's environment, taken from the thread so it is present on the
+   * first render; null only when the thread has no environment. The tab reads
+   * whatever it needs about the environment itself and handles loading and
+   * failure there.
+   */
+  environment: ExperimentalThreadEnvironment | null;
 }
 
 /** Props passed to a panel tab opened by `experimental_newThreadPanelAction`. */
@@ -1026,7 +1037,7 @@ type ExperimentalTabLifecycle<Props, Context> =
 type ExperimentalTabContextProps<C extends ExperimentalTabContext> = C extends {
   kind: "thread";
 }
-  ? { threadId: string }
+  ? ExperimentalThreadTabProps
   : PluginNavPanelProps;
 
 type ExperimentalTabInput<
@@ -1066,18 +1077,18 @@ export type ExperimentalTabRegistration = ExperimentalTabCommon &
   (
     | ({
         context: { kind: "thread" };
-        useVisible?(props: { threadId: string }): boolean;
+        useVisible?(props: ExperimentalThreadTabProps): boolean;
       } & (
         | (ExperimentalTabLifecycle<
-            { threadId: string },
-            { threadId: string }
+            ExperimentalThreadTabProps,
+            ExperimentalThreadTabProps
           > & {
             availability: "action";
             experimental_target?: never;
           })
         | (ExperimentalTabLifecycle<
-            { threadId: string },
-            { threadId: string }
+            ExperimentalThreadTabProps,
+            ExperimentalThreadTabProps
           > & {
             availability: "fixed";
             experimental_target?: ExperimentalFixedTabTargetContract<JsonValue>;
@@ -1753,8 +1764,8 @@ export interface ExperimentalThreadInfoProps {
   threadId: string;
   projectId: string;
   /**
-   * The thread's environment, or null when the thread has no environment,
-   * its host is not active, or the environment is not a usable checkout.
+   * The thread's environment, taken from the thread; null only when the
+   * thread has no environment. Read its state (host, checkout, git) yourself.
    */
   environment: ExperimentalThreadEnvironment | null;
 }
@@ -4945,7 +4956,15 @@ export interface ExperimentalRpcQueryState<T> {
 export interface ExperimentalRpcKeyedQueryState<
   T,
   Selection = Record<string, T>,
-> extends ExperimentalRpcQueryState<Selection> {}
+> extends ExperimentalRpcQueryState<Selection> {
+  /**
+   * Read these keys again and keep every other loaded row, for retrying one
+   * failed row without refreshing the rest. Keys must be among this query's
+   * keys; others are ignored. Resolves once the read settles; failures update
+   * `error` and retain data.
+   */
+  refetchKeys(keys: readonly string[]): Promise<void>;
+}
 
 export interface ExperimentalRpcQueryOptions<
   Contract extends PluginRpcContract,
@@ -5123,6 +5142,15 @@ export interface PluginSdkApp {
   experimental_useCanOpenFileExternally(
     target: ExperimentalLiveFileTarget,
   ): boolean;
+  /**
+   * Whether the panel tab this component renders in is showing: it is the
+   * selected tab of its pane and the side panel is open. False while the panel
+   * is closed or suppressed, while another tab is selected, and outside a
+   * panel tab. bb keeps a closed panel's tab mounted, so pause reads that only
+   * feed what the tab draws while this is false. Works in fixed and action
+   * tabs. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_useTabVisible(): boolean;
   /**
    * The side panel of the surface the calling component renders in: the
    * thread view, the plugin page, or the New thread screen.

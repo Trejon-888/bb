@@ -113,10 +113,11 @@ import {
 import { SidebarNavigationIcon } from "@/components/sidebar/SidebarNavigationModel";
 import {
   InfoList,
-  InfoListRow,
   InfoSection,
 } from "@/components/secondary-panel/info/info-list";
+import { InfoListRow } from "@bb/shared-ui/info-list-row";
 import { DetailRow } from "@/components/ui/detail-card";
+import { useTabVisible } from "@/components/secondary-panel/tab-visibility";
 
 function PluginInfoListRow({
   onSelect,
@@ -145,6 +146,7 @@ export const pluginSdkAppImplementation = {
   experimental_useQuestionFormHost: useQuestionFormHost,
   useBbNavigate,
   experimental_useCanOpenFileExternally: usePluginCanOpenFileExternally,
+  experimental_useTabVisible: useTabVisible,
   experimental_useAppPanel,
   experimental_useFixedTabTarget,
   useComposer,

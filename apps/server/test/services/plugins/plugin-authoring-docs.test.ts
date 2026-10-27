@@ -363,7 +363,7 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   settingsSection: [],
   experimental_appOverlay: [],
   navPanel: ["subPath"],
-  experimental_tab: ["threadId", "subPath", "params"],
+  experimental_tab: ["threadId", "environment", "subPath", "params"],
   experimental_newThreadPanelAction: ["projectId", "params"],
   pendingInteraction: ["interaction", "submit", "cancel"],
   sidebarFooterAction: [],

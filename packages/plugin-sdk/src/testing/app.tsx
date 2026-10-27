@@ -370,6 +370,7 @@ interface SlotEnv {
   providers: PluginProvidersState;
   codeTheme: PluginCodeThemeState;
   canOpenFileExternally: (target: ExperimentalLiveFileTarget) => boolean;
+  tabVisible: boolean;
   branchesState: BranchesState;
   checkoutState: CheckoutState;
 }
@@ -1766,6 +1767,9 @@ const testPluginSdkApp = {
       "experimental_useCanOpenFileExternally",
     ).canOpenFileExternally(target);
   },
+  experimental_useTabVisible(): boolean {
+    return useSlotEnv("experimental_useTabVisible").tabVisible;
+  },
   experimental_copyToClipboard(
     content: ExperimentalClipboardContent,
   ): Promise<boolean> {
@@ -2330,6 +2334,11 @@ export interface RenderSlotOptions<
    * false for every target.
    */
   canOpenFileExternally?: (target: ExperimentalLiveFileTarget) => boolean;
+  /**
+   * Answer for `experimental_useTabVisible()`. Omitted → true, as for a tab
+   * that is selected in an open panel.
+   */
+  tabVisible?: boolean;
   /** Host acceptance for `useBbNavigate().experimental_openTerminal`. */
   openTerminal?: (
     options: Parameters<BbNavigate["experimental_openTerminal"]>[0],
@@ -3235,6 +3244,7 @@ export function renderSlot<
     providers,
     codeTheme,
     canOpenFileExternally: options.canOpenFileExternally ?? (() => false),
+    tabVisible: options.tabVisible ?? true,
     branchesState: {
       branches: options.branchesState?.branches ?? [],
       remoteBranches: options.branchesState?.remoteBranches ?? [],
