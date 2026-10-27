@@ -38,53 +38,86 @@ export function installFakeFlowLayout({
 }: FakeFlowLayoutOptions) {
   let viewportHeight = initialViewportHeight;
   let scrollTop = 0;
-  const boxes = new Map<Element, Box>();
   const resolveScrollElement = (): HTMLElement | null =>
     typeof scrollElementOption === "function"
       ? scrollElementOption()
       : scrollElementOption;
 
-  const layout = () => {
-    boxes.clear();
-    const place = (element: Element, top: number): number => {
-      const attribute = element.getAttribute(HEIGHT_ATTRIBUTE);
-      const own =
-        attribute !== null ? Number(attribute) : (heightOf?.(element) ?? null);
-      const style = element instanceof HTMLElement ? element.style : null;
-      const shift = element instanceof HTMLElement ? translateY(element) : 0;
-      let height: number;
-      if (own !== null) {
-        height = own;
-        let childTop = top + shift;
-        for (const child of element.children) {
-          childTop += place(child, childTop);
-        }
-      } else if (style !== null && style.height !== "") {
-        height = pixels(style.height);
-      } else {
-        const gap = style === null ? 0 : pixels(style.gap);
-        let childTop = top + shift;
-        let used = 0;
-        let index = 0;
-        for (const child of element.children) {
-          const childHeight = place(child, childTop);
-          childTop += childHeight + gap;
-          used += childHeight + (index > 0 ? gap : 0);
-          index += 1;
-        }
-        height = used;
-      }
-      boxes.set(element, { top: top + shift, height });
-      return height;
-    };
-    const scrollElement = resolveScrollElement();
-    if (scrollElement === null) return 0;
-    let top = 0;
-    for (const child of scrollElement.children) top += place(child, top);
-    return top;
+  const ownHeight = (element: Element): number | null => {
+    const attribute = element.getAttribute(HEIGHT_ATTRIBUTE);
+    return attribute !== null
+      ? Number(attribute)
+      : (heightOf?.(element) ?? null);
   };
 
-  const contentHeight = () => Math.max(viewportHeight, layout());
+  const measureHeight = (
+    element: Element,
+    snapshot?: Map<Element, number>,
+  ): number => {
+    let height = ownHeight(element);
+    const style = element instanceof HTMLElement ? element.style : null;
+    if (height === null && style !== null && style.height !== "") {
+      height = pixels(style.height);
+    } else if (height === null || snapshot !== undefined) {
+      const gap = height === null && style !== null ? pixels(style.gap) : 0;
+      let used = 0;
+      let first = true;
+      for (
+        let child = element.firstElementChild;
+        child !== null;
+        child = child.nextElementSibling
+      ) {
+        used += measureHeight(child, snapshot) + (first ? 0 : gap);
+        first = false;
+      }
+      height ??= used;
+    }
+    snapshot?.set(element, height);
+    return height;
+  };
+
+  const measureBox = (element: Element): Box | null => {
+    const scrollElement = resolveScrollElement();
+    if (scrollElement === null || element === scrollElement) return null;
+    let top = 0;
+    let current = element;
+    while (current !== scrollElement) {
+      const parent = current.parentElement;
+      if (parent === null) return null;
+      if (current instanceof HTMLElement) top += translateY(current);
+      let gap = 0;
+      if (
+        parent !== scrollElement &&
+        ownHeight(parent) === null &&
+        parent instanceof HTMLElement
+      ) {
+        if (parent.style.height !== "") return null;
+        gap = pixels(parent.style.gap);
+      }
+      for (
+        let sibling = parent.firstElementChild;
+        sibling !== null && sibling !== current;
+        sibling = sibling.nextElementSibling
+      ) {
+        top += measureHeight(sibling) + gap;
+      }
+      current = parent;
+    }
+    return { top, height: measureHeight(element) };
+  };
+
+  const contentHeight = () => {
+    let height = 0;
+    const scrollElement = resolveScrollElement();
+    for (
+      let child = scrollElement?.firstElementChild ?? null;
+      child !== null;
+      child = child.nextElementSibling
+    ) {
+      height += measureHeight(child);
+    }
+    return Math.max(viewportHeight, height);
+  };
   const maxScrollTop = () => Math.max(0, contentHeight() - viewportHeight);
 
   const isScrollElement = (element: Element) =>
@@ -139,9 +172,8 @@ export function installFakeFlowLayout({
       if (isScrollElement(this)) {
         return new DOMRect(0, 0, 400, viewportHeight);
       }
-      layout();
-      const box = boxes.get(this);
-      if (box === undefined) return new DOMRect(0, 0, 0, 0);
+      const box = measureBox(this);
+      if (box === null) return new DOMRect(0, 0, 0, 0);
       return new DOMRect(0, box.top - scrollTop, 400, box.height);
     });
 
@@ -195,11 +227,19 @@ export function installFakeFlowLayout({
       return element.getBoundingClientRect().top;
     },
     flushResizeObservers() {
-      layout();
+      const heights = new Map<Element, number>();
+      const scrollElement = resolveScrollElement();
+      for (
+        let child = scrollElement?.firstElementChild ?? null;
+        child !== null;
+        child = child.nextElementSibling
+      ) {
+        measureHeight(child, heights);
+      }
       for (const observer of [...observers]) {
         const entries: ResizeObserverEntry[] = [];
         for (const target of observer.targets) {
-          const height = boxes.get(target)?.height ?? 0;
+          const height = heights.get(target) ?? 0;
           if (observer.sizes.get(target) === height) continue;
           observer.sizes.set(target, height);
           entries.push({
