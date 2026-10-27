@@ -1138,7 +1138,7 @@ const EXPERIMENT_DEFINITIONS: Record<
   applicationLinks: {
     label: "Application links",
     description:
-      "Open links such as linear:// and reflect:// in apps on this device. BB asks first unless you choose Always allow. Desktop and mobile users need an updated BB app.",
+      "Open links from chat in other apps on this device. BB asks before opening, unless you choose Always allow.",
   },
   changelogPreview: {
     label: "Changelog preview",

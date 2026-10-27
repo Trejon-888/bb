@@ -28,7 +28,7 @@ export function ApplicationLinkApprovalsSettings() {
   return (
     <SettingsWithControl
       label="Application link approvals"
-      description="Apps you've allowed to open without asking for this BB site on this device. These choices don't sync to other devices or BB sites."
+      description="App links you've allowed to open without asking on this device. These choices apply only to this BB site and don't sync to other devices or app profiles."
       controlPlacement="below"
     >
       {approvals.isPending ? (
