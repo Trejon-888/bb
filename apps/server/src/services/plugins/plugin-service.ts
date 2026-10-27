@@ -472,7 +472,15 @@ const SCHEDULE_SWEEP_BATCH_SIZE = 100;
 
 class PluginRpcBoundaryError extends Error {
   constructor(readonly rpcError: PluginRpcError) {
-    super(rpcError.message);
+    const paths = rpcError.issues
+      ?.slice(0, 3)
+      .map((issue) => JSON.stringify(issue.path ?? []))
+      .join("; ");
+    const summary =
+      paths && paths.length > 300 ? `${paths.slice(0, 299)}…` : paths;
+    super(
+      summary ? `${rpcError.message} (paths: ${summary})` : rpcError.message,
+    );
     this.name = "PluginRpcBoundaryError";
   }
 }
