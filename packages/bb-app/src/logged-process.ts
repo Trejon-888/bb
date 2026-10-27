@@ -1,4 +1,5 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { hostToolchain, spawnHostProcess as spawn } from "@bb/process-utils";
+import type { ChildProcess } from "node:child_process";
 import {
   accessSync,
   closeSync,
@@ -36,13 +37,19 @@ function isExecutable(path: string): boolean {
   }
 }
 
-function resolveLoggedProcessLaunch(launch: ProcessLaunch): ProcessLaunch {
+function resolveLoggedProcessLaunch(
+  args: SpawnLoggedProcessArgs,
+): ProcessLaunch {
+  const launch = hostToolchain.command(args.command, args.args, {
+    cwd: process.cwd(),
+    env: args.env,
+  });
   if (
     process.platform !== "darwin" ||
     !isExecutable(MACOS_TASKPOLICY_PATH) ||
     !isExecutable(launch.command)
   ) {
-    return launch;
+    return { command: launch.command, args: launch.args };
   }
   return {
     command: MACOS_TASKPOLICY_PATH,
