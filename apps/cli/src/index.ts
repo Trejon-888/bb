@@ -9,7 +9,7 @@ import {
 } from "./command-groups.js";
 import { resolveBbCliVersion } from "./version.js";
 import type { CliRuntimeContext } from "./context-env.js";
-import { productCliName } from "@bb/config/product-name";
+import { productCliName } from "./product-cli-name.js";
 
 if (process.env.FORCE_COLOR !== undefined) {
   delete process.env.NO_COLOR;

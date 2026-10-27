@@ -64,6 +64,7 @@ export interface IxAuthService {
   brand(): IxBrand;
   setBrand(brand: IxBrand, by: string): IxBrand;
   setSsoSecret(secret: string, by: string): void;
+  clearSsoSecret(by: string): void;
   acceptSso(token: string): Promise<{ userId: string; role: IxRole; headers: Headers }>;
   bootstrap(input: {
     email: string;
@@ -385,6 +386,11 @@ export async function createIxAuthService(args: {
     logger.info(`ix-sso: secret rotated by ${by}`);
   }
 
+  function clearSsoSecret(by: string): void {
+    kv.delete(IX_SSO_SECRET_KEY);
+    logger.info(`ix-sso: secret cleared by ${by}`);
+  }
+
   async function sessionHeadersFor(userId: string): Promise<Headers> {
     const ctx = await auth.$context;
     const session = await ctx.internalAdapter.createSession(userId);
@@ -475,6 +481,7 @@ export async function createIxAuthService(args: {
     brand: () => readIxBrand(kv),
     setBrand,
     setSsoSecret,
+    clearSsoSecret,
     acceptSso,
     bootstrap,
     listMembers,

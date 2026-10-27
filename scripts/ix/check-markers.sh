@@ -35,6 +35,9 @@ check packages/bb-app/scripts/build.mjs '["ix-app", "ix-app.js"]'
 check packages/bb-app/src/launcher.ts 'applyIxEnvAliases(process.env);'
 check packages/bb-app/src/launcher.ts 'productCliProgramName("-app")'
 check apps/cli/src/index.ts '.name(productCliName())'
+check apps/cli/src/command-groups.ts 'registerIxCommands'
+check apps/cli/src/commands/ix.ts '"/api/ix/sso/secret", { secret: null }'
+check docs/ix/FORK.md '## bb ix CLI'
 check apps/cli/src/commands/guide.ts '`${productCliName()} ${names.join("")}`'
 check apps/app/src/components/layout/AppLayout.tsx 'const productName = useProductName();'
 check apps/app/src/components/layout/AppLayout.tsx 'location.pathname === "/" ? productName'
@@ -47,4 +50,5 @@ check apps/app/src/components/settings/UpdatesSettingsSection.tsx 'aria-label={p
 for f in packages/config/src/product-name.ts packages/bb-app/src/ix-env-aliases.ts packages/bb-app/src/bin/ix.ts packages/bb-app/src/bin/ix-app.ts apps/app/src/lib/ix/brand.ts; do
   if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi
 done
+if [ -f apps/cli/src/product-cli-name.ts ]; then echo "ok       apps/cli/src/product-cli-name.ts"; else echo "MISSING  apps/cli/src/product-cli-name.ts"; fail=1; fi
 exit $fail

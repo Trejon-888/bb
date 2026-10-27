@@ -4,6 +4,10 @@ This fork (`Trejon-888/bb`, branch `ix`) adds a feature-flagged multi-user layer
 
 ## Behavior
 
+## bb ix CLI
+
+The fork adds `bb ix status`, `brand get`, `brand set <json|@file|->`, `sso-secret set [-]`, `sso-secret clear`, `members`, `invite <email> --role <owner|admin|member|viewer>`, and `me`. Requests use `BB_SERVER_URL` and `BB_SERVER_HEADERS`; `--json` prints the server's raw JSON response. Non-2xx responses exit with the server error code and message. The SSO secret is read from stdin only, never from an argument. `brand set` accepts inline JSON, a file prefixed with `@`, or stdin with `-`. Invitation output includes the `acceptUrl` to share. Clearing SSO sends `{ "secret": null }` and removes the stored secret.
+
 | Setting | Values | Meaning |
 |---|---|---|
 | `BB_IX_AUTH` | `off` (default) / `team` | `off` keeps upstream behavior exactly. `team` requires a signed-in member for `/api/v1/*` and `/ws`. |

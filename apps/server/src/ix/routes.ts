@@ -18,7 +18,7 @@ const signInSchema = z.object({ email: z.string().email(), password: z.string().
 const inviteSchema = z.object({ email: z.string().email(), role: z.enum(IX_ROLES).default("member") });
 const acceptSchema = z.object({ token: z.string().min(1), name: z.string().min(1).max(80), password: z.string().min(8) });
 const roleSchema = z.object({ role: z.enum(IX_ROLES) });
-const ssoSecretSchema = z.object({ secret: z.string().min(IX_SSO_SECRET_MIN_LENGTH).max(512) });
+const ssoSecretSchema = z.object({ secret: z.string().min(IX_SSO_SECRET_MIN_LENGTH).max(512).nullable() });
 const ssoAcceptSchema = z.object({ token: z.string().min(1).max(8192) });
 
 function actorLabel(actor: IxActor | undefined): string {
@@ -135,8 +135,9 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Ho
     const actor = getIxActor(context);
     requireRole(actor, "owner");
     const input = await parseBody(context, ssoSecretSchema);
-    ixAuth.setSsoSecret(input.secret, actorLabel(actor));
-    return context.json({ ok: true });
+    if (input.secret === null) ixAuth.clearSsoSecret(actorLabel(actor));
+    else ixAuth.setSsoSecret(input.secret, actorLabel(actor));
+    return context.json({ ok: true, secret: input.secret !== null });
   });
 
   authed.get("/members", async (context) => {

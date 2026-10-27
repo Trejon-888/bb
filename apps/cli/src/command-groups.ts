@@ -130,6 +130,11 @@ export const CORE_COMMAND_GROUPS: readonly CommandGroup[] = [
     () => import("./commands/voice.js"),
     (m) => (program, deps) => m.registerVoiceCommands(program, deps.getUrl),
   ),
+  group(
+    "ix",
+    () => import("./commands/ix.js"),
+    (m) => (program, deps) => m.registerIxCommands(program, deps.getUrl),
+  ),
 ];
 
 export function selectCommandGroups(

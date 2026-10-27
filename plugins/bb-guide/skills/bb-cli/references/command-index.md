@@ -333,3 +333,17 @@ This index lists every command path that the core CLI registers, including alias
 - `bb browser watch`
 - `bb browser import-sources`
 - `bb browser import-cookies`
+
+## ix
+
+- `bb ix`
+- `bb ix status`
+- `bb ix brand`
+- `bb ix brand get`
+- `bb ix brand set`
+- `bb ix sso-secret`
+- `bb ix sso-secret set`
+- `bb ix sso-secret clear`
+- `bb ix members`
+- `bb ix invite`
+- `bb ix me`

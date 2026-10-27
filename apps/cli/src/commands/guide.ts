@@ -3,7 +3,7 @@ import { createGuideArea } from "@bb/sdk/node";
 import { action, CliUsageError } from "../action.js";
 import { CORE_COMMAND_GROUPS } from "../command-groups.js";
 import { outputJson } from "./helpers.js";
-import { productCliName } from "@bb/config/product-name";
+import { productCliName } from "../product-cli-name.js";
 
 interface GuideCommandOptions {
   json?: boolean;

@@ -1,0 +1,319 @@
+import { readFile } from "node:fs/promises";
+import { Command } from "commander";
+import { createHttpTransport } from "@bb/sdk";
+import { z } from "zod";
+import { action } from "../action.js";
+import { cliFetch } from "../client.js";
+import { CliUsageError } from "../cli-usage-error.js";
+import { columnWidths, printBorderlessTable } from "../table.js";
+import { outputJson, type JsonOutputOptions } from "./helpers.js";
+
+export const IX_ROLES = ["owner", "admin", "member", "viewer"] as const;
+type IxRole = (typeof IX_ROLES)[number];
+
+const brandSchema = z.record(z.string(), z.string());
+const statusSchema = z
+  .object({
+    mode: z.string(),
+    bootstrapped: z.boolean(),
+    orgName: z.string().nullable(),
+    brand: brandSchema,
+  })
+  .loose();
+const memberSchema = z
+  .object({
+    id: z.string(),
+    email: z.string(),
+    name: z.string(),
+    role: z.enum(IX_ROLES),
+    createdAt: z.string(),
+  })
+  .loose();
+const membersSchema = z.object({ members: z.array(memberSchema) }).loose();
+const inviteSchema = z
+  .object({
+    invitation: z.object({ id: z.string(), email: z.string(), role: z.enum(IX_ROLES) }).loose(),
+    acceptUrl: z.string(),
+  })
+  .loose();
+const actorSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("user"),
+      user: z.object({ id: z.string(), email: z.string(), name: z.string() }).loose(),
+      role: z.enum(IX_ROLES),
+    })
+    .loose(),
+  z.object({ kind: z.literal("loopback-owner") }).loose(),
+  z.object({ kind: z.literal("off") }).loose(),
+]);
+const meSchema = z.object({ actor: actorSchema, mode: z.string(), orgName: z.string().nullable() }).loose();
+const okSchema = z.object({ ok: z.literal(true) }).loose();
+
+type IxBrand = z.infer<typeof brandSchema>;
+type IxMember = z.infer<typeof memberSchema>;
+
+type IxMethod = "GET" | "PUT" | "POST";
+
+export interface IxRequest {
+  (method: IxMethod, path: string, body?: unknown): Promise<unknown>;
+}
+
+export function createIxRequest(baseUrl: string): IxRequest {
+  const transport = createHttpTransport({ baseUrl, fetch: cliFetch, runtime: "node" });
+  const rawHeaders = process.env.BB_SERVER_HEADERS;
+  let serverHeaders: Record<string, string> = {};
+  if (rawHeaders !== undefined) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawHeaders);
+    } catch {
+      throw new CliUsageError({ code: "invalid_value", hint: null, message: "BB_SERVER_HEADERS must be a JSON object of string values." });
+    }
+    const headers = z.record(z.string(), z.string()).safeParse(parsed);
+    if (!headers.success) {
+      throw new CliUsageError({ code: "invalid_value", hint: null, message: "BB_SERVER_HEADERS must be a JSON object of string values." });
+    }
+    serverHeaders = headers.data;
+  }
+  return (method, path, body) => {
+    const init: RequestInit =
+      body === undefined
+        ? { method, headers: serverHeaders }
+        : {
+            method,
+            headers: { ...serverHeaders, "content-type": "application/json" },
+            body: JSON.stringify(body),
+          };
+    return transport.readJson(cliFetch(`${baseUrl}${path}`, init));
+  };
+}
+
+function parseResponse<T>(schema: z.ZodType<T>, raw: unknown, what: string): T {
+  const parsed = schema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+  throw new Error(`Unexpected ${what} response from the server: ${parsed.error.issues.map((issue) => issue.message).join("; ")}`);
+}
+
+async function readStdin(stdin: NodeJS.ReadableStream & { isTTY?: boolean } = process.stdin): Promise<string> {
+  if (stdin.isTTY) {
+    throw new CliUsageError({
+      code: "invalid_value",
+      hint: "Pipe the value in, for example: printf '%s' \"$SECRET\" | bb ix sso-secret set -",
+      message: "stdin is a terminal; this command reads its input from a pipe.",
+    });
+  }
+  const chunks: Buffer[] = [];
+  for await (const chunk of stdin) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+async function resolveBrandInput(source: string): Promise<IxBrand> {
+  const text =
+    source === "-"
+      ? await readStdin()
+      : source.startsWith("@")
+        ? await readFile(source.slice(1), "utf8").catch((error: unknown) => {
+            throw new CliUsageError({
+              code: "invalid_value",
+              hint: null,
+              message: `Could not read brand file '${source.slice(1)}': ${error instanceof Error ? error.message : String(error)}`,
+            });
+          })
+        : source;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new CliUsageError({
+      code: "invalid_value",
+      hint: 'Pass a JSON object such as \'{"name":"Acme","accent":"#1ae5be"}\', @path/to/brand.json, or - for stdin.',
+      message: `Brand input is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
+  const brand = brandSchema.safeParse(parsed);
+  if (!brand.success || Array.isArray(parsed)) {
+    throw new CliUsageError({
+      code: "invalid_value",
+      hint: "Every brand field is a string: name, logoUrl, accent, appTitle, loginTitle, loginSubtitle, supportUrl, faviconUrl.",
+      message: "Brand input must be a JSON object of string fields.",
+    });
+  }
+  return brand.data;
+}
+
+function parseRole(value: string): IxRole {
+  const role = z.enum(IX_ROLES).safeParse(value);
+  if (role.success) return role.data;
+  throw new CliUsageError({
+    code: "invalid_value",
+    hint: null,
+    message: `Invalid role '${value}'. Expected one of: ${IX_ROLES.join(", ")}.`,
+  });
+}
+
+function printBrand(brand: IxBrand): void {
+  const entries = Object.entries(brand);
+  if (entries.length === 0) {
+    console.log("(no brand set)");
+    return;
+  }
+  const width = Math.max(...entries.map(([key]) => key.length));
+  for (const [key, value] of entries) {
+    console.log(`${key.padEnd(width)}  ${value}`);
+  }
+}
+
+function printMembers(members: IxMember[]): void {
+  if (members.length === 0) {
+    console.log("No members.");
+    return;
+  }
+  const rows = members.map((member) => [member.id, member.email, member.name, member.role, member.createdAt]);
+  printBorderlessTable(
+    { head: ["ID", "EMAIL", "NAME", "ROLE", "JOINED"], colWidths: columnWidths(rows, [2, 5, 4, 4, 6]) },
+    rows,
+  );
+}
+
+export function registerIxCommands(program: Command, getUrl: () => string): void {
+  const request = (): IxRequest => createIxRequest(getUrl());
+
+  const ix = program
+    .command("ix")
+    .description("Manage this server's IX team layer: brand, single sign-on secret, members and invitations");
+
+  ix.command("status")
+    .description("Show the IX auth mode, whether an owner exists, the organization name and the brand")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("GET", "/api/ix/status");
+        if (outputJson(opts, raw)) return;
+        const status = parseResponse(statusSchema, raw, "status");
+        console.log(`Mode: ${status.mode}`);
+        console.log(`Bootstrapped: ${status.bootstrapped ? "yes" : "no"}`);
+        console.log(`Organization: ${status.orgName ?? "(none)"}`);
+        console.log("Brand:");
+        printBrand(status.brand);
+      }),
+    );
+
+  const brand = ix.command("brand").description("Read or replace the brand record the app renders");
+
+  brand
+    .command("get")
+    .description("Print the brand record")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("GET", "/api/ix/brand");
+        if (outputJson(opts, raw)) return;
+        printBrand(parseResponse(brandSchema, raw, "brand"));
+      }),
+    );
+
+  brand
+    .command("set <json>")
+    .description("Replace the brand record from inline JSON, @file, or - for stdin (admin or loopback owner)")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (source: string, opts: JsonOutputOptions) => {
+        const input = await resolveBrandInput(source);
+        const raw = await request()("PUT", "/api/ix/brand", input);
+        if (outputJson(opts, raw)) return;
+        const result = parseResponse(z.object({ brand: brandSchema }).loose(), raw, "brand");
+        const keys = Object.keys(result.brand);
+        console.log(keys.length === 0 ? "Brand cleared." : `Brand updated: ${keys.join(", ")}`);
+      }),
+    );
+
+  const ssoSecret = ix
+    .command("sso-secret")
+    .description("Manage the HMAC secret that signs single sign-on tokens for this server");
+
+  ssoSecret
+    .command("set [stdin]")
+    .description("Set the SSO secret, read from stdin (pass - or nothing; the secret is never taken from an argument)")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (stdinMarker: string | undefined, opts: JsonOutputOptions) => {
+        if (stdinMarker !== undefined && stdinMarker !== "-") {
+          throw new CliUsageError({
+            code: "invalid_value",
+            hint: "printf '%s' \"$SECRET\" | bb ix sso-secret set -",
+            message: "The secret is read from stdin only; do not pass it as an argument.",
+          });
+        }
+        const secret = (await readStdin()).replace(/\r?\n+$/u, "");
+        if (secret.length === 0) {
+          throw new CliUsageError({ code: "invalid_value", hint: null, message: "stdin is empty; pipe the secret in." });
+        }
+        const raw = await request()("PUT", "/api/ix/sso/secret", { secret });
+        if (outputJson(opts, raw)) return;
+        parseResponse(okSchema, raw, "sso-secret");
+        console.log("SSO secret set.");
+      }),
+    );
+
+  ssoSecret
+    .command("clear")
+    .description("Remove the SSO secret; single sign-on tokens are refused until a new one is set")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("PUT", "/api/ix/sso/secret", { secret: null });
+        if (outputJson(opts, raw)) return;
+        parseResponse(okSchema, raw, "sso-secret");
+        console.log("SSO secret cleared.");
+      }),
+    );
+
+  ix.command("members")
+    .description("List the organization's members and roles")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("GET", "/api/ix/members");
+        if (outputJson(opts, raw)) return;
+        printMembers(parseResponse(membersSchema, raw, "members").members);
+      }),
+    );
+
+  ix.command("invite <email>")
+    .description("Invite a member by email and print the accept URL to share")
+    .option("--role <role>", `Role to grant (${IX_ROLES.join(", ")})`, "member")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (email: string, opts: JsonOutputOptions & { role: string }) => {
+        const role = parseRole(opts.role);
+        const raw = await request()("POST", "/api/ix/members/invite", { email, role });
+        if (outputJson(opts, raw)) return;
+        const result = parseResponse(inviteSchema, raw, "invite");
+        console.log(`Invited ${result.invitation.email} as ${result.invitation.role} (invitation ${result.invitation.id})`);
+        console.log(`Accept URL: ${result.acceptUrl}`);
+      }),
+    );
+
+  ix.command("me")
+    .description("Show who this CLI acts as on the server")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("GET", "/api/ix/me");
+        if (outputJson(opts, raw)) return;
+        const me = parseResponse(meSchema, raw, "me");
+        console.log(`Mode: ${me.mode}`);
+        console.log(`Organization: ${me.orgName ?? "(none)"}`);
+        if (me.actor.kind === "user") {
+          console.log(`Actor: ${me.actor.user.email} (${me.actor.user.name}) role ${me.actor.role}`);
+        } else if (me.actor.kind === "loopback-owner") {
+          console.log("Actor: loopback owner (no Origin header on a loopback request)");
+        } else {
+          console.log("Actor: none (BB_IX_AUTH is off)");
+        }
+      }),
+    );
+}

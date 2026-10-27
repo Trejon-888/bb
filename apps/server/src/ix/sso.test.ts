@@ -91,6 +91,29 @@ describe("ix sso accept", () => {
     expect(adminSet.status).toBe(403);
   });
 
+  it("clears the secret with { secret: null } from the owner or loopback; SSO then refuses with no_secret", async () => {
+    const { ixAuth, app, ownerCookie } = await setup();
+    expect((await accept(app, signIxSsoToken(payload(), SECRET))).status).toBe(200);
+
+    const cleared = await app.request("/api/ix/sso/secret", { ...jsonInit({ secret: null }, { cookie: ownerCookie }), method: "PUT" });
+    expect(cleared.status).toBe(200);
+    expect(await json(cleared)).toEqual({ ok: true, secret: false });
+    const refused = await accept(app, signIxSsoToken(payload(), SECRET));
+    expect(refused.status).toBe(401);
+    expect(await json(refused)).toMatchObject({ code: "ix_sso_no_secret" });
+
+    const loopback = makeIxApp(ixAuth, "127.0.0.1");
+    const reset = await loopback.request("/api/ix/sso/secret", { ...jsonInit({ secret: SECRET }), method: "PUT" });
+    expect(await json(reset)).toEqual({ ok: true, secret: true });
+    expect((await accept(app, signIxSsoToken(payload(), SECRET))).status).toBe(200);
+    const loopbackClear = await loopback.request("/api/ix/sso/secret", { ...jsonInit({ secret: null }), method: "PUT" });
+    expect(loopbackClear.status).toBe(200);
+    expect((await accept(app, signIxSsoToken(payload(), SECRET))).status).toBe(401);
+
+    const missing = await app.request("/api/ix/sso/secret", { ...jsonInit({}, { cookie: ownerCookie }), method: "PUT" });
+    expect(missing.status).toBe(400);
+  });
+
   it("creates the user and membership, returns a working session cookie", async () => {
     const { app } = await setup();
     const response = await accept(app, signIxSsoToken(payload({ sub: "Hop@Example.test", role: "member" }), SECRET));
