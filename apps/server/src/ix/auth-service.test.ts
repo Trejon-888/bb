@@ -48,6 +48,7 @@ function makeApp(ixAuth: IxAuthService, remoteAddress = "203.0.113.9"): Hono {
   publicApi.get("/system/config", (context) => context.json({ ok: true }));
   publicApi.post("/projects", (context) => context.json({ created: true }));
   publicApi.post("/threads/t1/read", (context) => context.json({ read: true }));
+  publicApi.post("/plugins/p1/rpc/m", (context) => context.json({ rpc: true }));
   app.route("/api/v1", publicApi);
   return app;
 }
@@ -184,6 +185,8 @@ describe("ix auth: team mode", () => {
     expect(write.status).toBe(403);
     const markRead = await app.request("/api/v1/threads/t1/read", { method: "POST", headers: { cookie: viewerCookie, origin: BASE } });
     expect(markRead.status).toBe(200);
+    const rpc = await app.request("/api/v1/plugins/p1/rpc/m", { method: "POST", headers: { cookie: viewerCookie, origin: BASE } });
+    expect(rpc.status).toBe(200);
     const members = await app.request("/api/ix/members", { headers: { cookie: viewerCookie } });
     expect(members.status).toBe(200);
     const viewerInvite = await app.request("/api/ix/members/invite", {

@@ -6,7 +6,12 @@ import { roleAtLeast } from "./config.js";
 import { setIxActor, type IxActor } from "./context.js";
 
 const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
-const VIEWER_WRITE_ALLOWLIST = [/^\/threads\/[^/]+\/read$/, /^\/threads\/[^/]+\/unread$/, /^\/system\/ui-preferences/];
+const VIEWER_WRITE_ALLOWLIST = [
+  /^\/threads\/[^/]+\/read$/,
+  /^\/threads\/[^/]+\/unread$/,
+  /^\/system\/ui-preferences/,
+  /^\/plugins\/[^/]+\/rpc\//,
+];
 
 export interface IxGateDeps {
   ixAuth: IxAuthService;

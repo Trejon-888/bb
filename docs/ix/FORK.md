@@ -12,7 +12,7 @@ This fork (`Trejon-888/bb`, branch `ix`) adds a feature-flagged multi-user layer
 | `BB_IX_AUTH_ORG_NAME` | default `Workspace` | Organization name used by bootstrap. |
 | `BB_IX_AUTH_SESSION_DAYS` | default `30` | Session lifetime. |
 
-Roles: `owner` > `admin` > `member` > `viewer`. Viewers can read everything but every non-GET `/api/v1` request is refused except marking threads read. Admins manage members and invitations; only owners grant owner. The last owner cannot be demoted or removed.
+Roles: `owner` > `admin` > `member` > `viewer`. Viewers can read everything but every non-GET `/api/v1` request is refused except marking threads read, UI preferences, and plugin RPC calls (plugins see the caller's role and gate their own writes). Admins manage members and invitations; only owners grant owner. The last owner cannot be demoted or removed.
 
 Routes (all new, mounted at `/api/ix` and `/api/auth`):
 
