@@ -152,7 +152,13 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Ho
     if (input.role === "owner" && actor?.kind === "user" && actor.role !== "owner") {
       throw new ApiError(403, "ix_forbidden", "Only an owner can invite another owner");
     }
-    const inviterUserId = actor?.kind === "user" ? actor.user.id : "loopback-owner";
+    const inviterUserId =
+      actor?.kind === "user"
+        ? actor.user.id
+        : (await ixAuth.listMembers()).find((member) => member.role === "owner")?.userId;
+    if (inviterUserId === undefined) {
+      throw new ApiError(409, "ix_no_owner", "Bootstrap an owner before inviting members");
+    }
     let invitation: Awaited<ReturnType<IxAuthService["invite"]>>;
     try {
       invitation = await ixAuth.invite({ ...input, inviterUserId });

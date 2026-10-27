@@ -223,6 +223,15 @@ describe("ix auth: team mode", () => {
     expect(gone.status).toBe(401);
   });
 
+  it("lets the loopback owner invite, recording the server owner as inviter", async () => {
+    const ixAuth = await makeService({ ...env, BB_IX_AUTH_BOOTSTRAP_EMAIL: "own@example.test", BB_IX_AUTH_BOOTSTRAP_PASSWORD: "password-1" });
+    const app = makeApp(ixAuth, "127.0.0.1");
+    const invite = await app.request("/api/ix/members/invite", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "cli@example.test", role: "member" }) });
+    expect(invite.status).toBe(200);
+    const owner = (await ixAuth.listMembers()).find((member) => member.role === "owner");
+    expect(((await json(invite)).invitation as { inviterId: string }).inviterId).toBe(owner?.userId);
+  });
+
   it("treats loopback requests without an Origin as the owner, and denies them when configured", async () => {
     const owner = await makeService(env);
     const loopbackApp = makeApp(owner, "127.0.0.1");
