@@ -53,11 +53,14 @@ function intersect(target: Element, isIntersecting: boolean) {
 }
 
 const thread = toPluginSidebarThread(makeThreadListEntry({ id: "thr_row" }));
-const seen: { id: string; isLive: boolean }[] = [];
+const otherThread = toPluginSidebarThread(
+  makeThreadListEntry({ id: "thr_other" }),
+);
+const seen: { id: string; threadId: string; isLive: boolean }[] = [];
 
 function item(label: string) {
   return function Item({ thread, isLive }: ExperimentalThreadRowMetadataProps) {
-    seen.push({ id: label, isLive });
+    seen.push({ id: label, threadId: thread.id, isLive });
     return (
       <span data-testid={label} data-live={isLive ? "" : undefined}>
         {thread.id}
@@ -77,6 +80,25 @@ function renderRow() {
     </div>,
   );
   return { ...view, row: screen.getByTestId("row") };
+}
+
+function renderTwoRows() {
+  render(
+    <>
+      <div data-testid="row">
+        <ThreadRowMetadata thread={thread} />
+      </div>
+      <div data-testid="other">
+        <ThreadRowMetadata thread={otherThread} />
+      </div>
+    </>,
+  );
+  return {
+    row: screen.getByTestId("row"),
+    other: screen.getByTestId("other"),
+    badge: (row: HTMLElement) =>
+      row.querySelector<HTMLElement>("[data-testid=badge]"),
+  };
 }
 
 beforeEach(() => {
@@ -103,7 +125,7 @@ describe("thread row metadata", () => {
     act(() => vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS));
   }
 
-  it("mounts items once their row is live after a scroll pause, and keeps items that show something", () => {
+  it("mounts items at once for a row that appears while the list is still, and turns them off while the page is hidden", () => {
     setPluginSlotRegistrations(
       "demo",
       makePluginRegistrationSet({
@@ -114,9 +136,6 @@ describe("thread row metadata", () => {
     expect(screen.queryByTestId("badge")).toBeNull();
 
     intersect(row, true);
-    act(() => vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS - 1));
-    expect(screen.queryByTestId("badge")).toBeNull();
-    act(() => vi.advanceTimersByTime(1));
     expect(screen.getByTestId("badge").dataset.live).toBe("");
 
     act(() => {
@@ -136,11 +155,35 @@ describe("thread row metadata", () => {
       vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS);
     });
     expect(screen.getByTestId("badge").dataset.live).toBe("");
+  });
 
-    intersect(row, false);
-    expect(screen.getByTestId("badge").dataset.live).toBe("");
+  it("while rows keep entering and leaving, changes rows' live state only at the next pause", () => {
+    setPluginSlotRegistrations(
+      "demo",
+      makePluginRegistrationSet({
+        threadRowMetadata: [{ id: "badge", component: item("badge") }],
+      }),
+    );
+    const { row, other, badge } = renderTwoRows();
+    intersect(row, true);
+    expect(badge(row)?.dataset.live).toBe("");
+
+    act(() => vi.advanceTimersByTime(50));
+    intersect(other, true);
+    expect(badge(other)).toBeNull();
+    act(() => vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS - 1));
+    expect(badge(other)).toBeNull();
+    act(() => vi.advanceTimersByTime(1));
+    expect(badge(other)?.dataset.live).toBe("");
+
     act(() => vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS));
-    expect(screen.getByTestId("badge").dataset.live).toBeUndefined();
+    intersect(row, false);
+    expect(badge(row)?.dataset.live).toBeUndefined();
+    act(() => vi.advanceTimersByTime(50));
+    intersect(other, false);
+    expect(badge(other)?.dataset.live).toBe("");
+    act(() => vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS));
+    expect(badge(other)?.dataset.live).toBeUndefined();
   });
 
   it("draws an item that showed something in the row's first frame when the row mounts again", () => {
@@ -209,12 +252,16 @@ describe("thread row metadata", () => {
         threadRowMetadata: [{ id: "badge", component: item("badge") }],
       }),
     );
-    const { row } = renderRow();
+    const { row, other } = renderTwoRows();
     intersect(row, true);
+    act(() => vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS / 4));
+    intersect(other, true);
     act(() => vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS / 2));
-    intersect(row, false);
+    intersect(other, false);
     act(() => vi.advanceTimersByTime(THREAD_ROW_SETTLE_MS * 5));
-    expect(seen).toEqual([]);
+    expect(seen.filter((entry) => entry.threadId === otherThread.id)).toEqual(
+      [],
+    );
   });
 
   it("orders items, renders nothing without contributions, and drops only a crashing item", () => {

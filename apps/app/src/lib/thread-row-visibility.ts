@@ -16,6 +16,7 @@ interface RowState {
 const rows = new Map<Element, RowState>();
 let observer: IntersectionObserver | null = null;
 let settleTimer: ReturnType<typeof setTimeout> | undefined;
+let lastChangeAt = Number.NEGATIVE_INFINITY;
 
 function pageHidden(): boolean {
   return document.visibilityState === "hidden";
@@ -63,7 +64,13 @@ function onIntersections(entries: readonly IntersectionObserverEntry[]) {
     state.onScreen = entry.isIntersecting;
     changed = true;
   }
-  if (changed) scheduleSettle();
+  if (!changed) return;
+  const now = performance.now();
+  const still =
+    settleTimer === undefined && now - lastChangeAt >= THREAD_ROW_SETTLE_MS;
+  lastChangeAt = now;
+  if (still) settle();
+  else scheduleSettle();
 }
 
 function observeRow(element: Element, listener: () => void): () => void {
@@ -90,6 +97,7 @@ function observeRow(element: Element, listener: () => void): () => void {
     document.removeEventListener("visibilitychange", onVisibilityChange);
     clearTimeout(settleTimer);
     settleTimer = undefined;
+    lastChangeAt = Number.NEGATIVE_INFINITY;
   };
 }
 

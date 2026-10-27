@@ -2708,12 +2708,15 @@ mounted does not unload and reload it (each costs a whole-document restyle).
 The container shows while any item draws something (a MutationObserver keeps a
 `data-has-items` attribute current). One
 viewport IntersectionObserver
-watches each row (the items container's parent element), and `isLive` changes
-only at a scroll pause: 200 ms after the last row entered or left the screen,
-every on-screen row turns live and every off-screen row stops, in one batch, so
+watches each row (the items container's parent element). When rows enter or
+leave the screen after 200 ms with no such change (page load, a revealed list,
+the first step of a scroll), every on-screen row turns live and every
+off-screen row stops at once. Otherwise `isLive` changes at the next pause:
+200 ms after the last row entered or left the screen, in one batch, so
 continuous scrolling re-renders no items. Hiding the page clears it at once.
 Items gate network reads on `isLive`, so a scroll pause costs one keyed request
-and rows scrolled past read nothing. The GitHub PR Status badge reads with
+and rows scrolled past read nothing; the first step of a scroll costs one
+more for the rows it brings on screen. The GitHub PR Status badge reads with
 `input: { maxAgeMs }`, so saved rows answer at once and refresh in the
 background.
 
@@ -2746,8 +2749,9 @@ Docs: `frontend-registration.md`, `frontend-pull-requests.md`.
 3. **Visibility contract.** `isLive` is advisory: the host does not block a
    read from an item that is not live, and a row that leaves the screen stays
    live until the next scroll pause. Decide whether the SDK should enforce it.
-4. **Settle delay.** Uncached rows wait 200 ms after scrolling stops. Confirm
-   the delay with users on slow and fast scrollers.
+4. **Settle delay.** Uncached rows wait 200 ms after scrolling stops; rows
+   that appear in a still list go live at once. Confirm the delay with users
+   on slow and fast scrollers.
 
 ## `app.slots.experimental_threadAction` / `PluginThreadActionRegistration.experimental_bulkItem` / `experimental_useThreadActions` / `experimental_useThreadActionRegistrations` / `experimental_ThreadActionsMenu` / `experimental_ThreadActionsContextMenu` (with `experimental_bulkThreads`) / `experimental_THREAD_ACTION_GROUPS` (`@get-bb/plugin-sdk/app`)
 

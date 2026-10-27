@@ -37,8 +37,8 @@ function Row({ thread }: { thread: PluginSidebarThread }) {
 
 Items mount once the row is live, and with the row from then on once they have
 drawn something, so cached badges draw at once. They read only once the row is
-on screen at a scroll pause, so every row on screen shares one
-batched request and rows scrolled past read nothing. The badge asks for saved
+live: on screen in a still list, or at the pause after scrolling, so every row
+on screen shares one batched request and rows scrolled past read nothing. The badge asks for saved
 rows of any age (`maxAgeMs`), so it never waits on GitHub; saved rows refresh
 in the background. Clicks on an item reach your row's own handlers; forward
 them to your row link if the row is not itself the link.

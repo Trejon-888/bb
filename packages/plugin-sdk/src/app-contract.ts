@@ -1770,9 +1770,11 @@ export interface ExperimentalThreadRowMetadataProps {
   /** The row's thread, the same value the list renders. */
   thread: PluginSidebarThread;
   /**
-   * True while the row is on screen and the page is visible. It changes only
-   * at a scroll pause (about 200 ms after scrolling stops), for every row at
-   * once, and turns off immediately when the page hides. Gate network reads,
+   * True while the row is on screen and the page is visible. A row that comes
+   * on screen while the list is still turns live at once; while rows keep
+   * entering and leaving it changes only at the next pause (about 200 ms after
+   * scrolling stops), for every row at once. It turns off immediately when
+   * the page hides. Gate network reads,
    * watches and polling on it (for example `enabled: isLive` on
    * `experimental_useRpcKeyedQuery`) and render cached data either way, so
    * scrolling past rows reads nothing and rows on screen read together.
