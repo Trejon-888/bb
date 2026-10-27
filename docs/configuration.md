@@ -1363,7 +1363,7 @@ become clickable while enabled. Bare custom-scheme text is not auto-linked.
 The shared web UI asks before opening an app on the viewing device; choose
 Always allow to remember that URL scheme. All clients save approvals in
 localStorage for this BB site on this device. They do not sync between devices,
-browsers, app profiles, or server addresses. Settings → General → Application
+browsers, app profiles, or server addresses. Settings → General → Links → Application
 link approvals lists saved schemes; Ask again revokes one, Reset all revokes all.
 The Plugin SDK can list and revoke through the same implementation; it cannot
 grant approval. There is no server-side or local-desktop-profile approval store.

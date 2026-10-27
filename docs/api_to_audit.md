@@ -19,7 +19,7 @@ a "Docs:" line has no owning doc, so it keeps the essential contract itself.
 `experimental_getApplicationLinkApprovals()` lists approved URL schemes on the
 viewing client. `experimental_revokeApplicationLinkApproval(scheme)` removes one;
 `null` resets all. Both return the remaining scheme list. They use the same
-`applicationLinkApprovals` implementation as core Settings → General →
+`applicationLinkApprovals` implementation as core Settings → General → Links →
 Application link approvals. All clients use web localStorage scoped to the
 current origin and device profile. Neither API can grant approvals. The shared
 web UI owns consent; native clients validate and launch the approved URL.
