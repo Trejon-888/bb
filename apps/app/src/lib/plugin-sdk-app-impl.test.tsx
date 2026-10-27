@@ -290,10 +290,10 @@ describe("application approval management", () => {
           <ApplicationLinkApprovalsSettings />
         </QueryClientProvider>,
       );
-      await screen.findByRole("button", { name: "Ask again for linear links" });
+      await screen.findByRole("button", { name: "Remove linear approval" });
       if (surface === "settings") {
         fireEvent.click(
-          screen.getByRole("button", { name: "Ask again for linear links" }),
+          screen.getByRole("button", { name: "Remove linear approval" }),
         );
       } else {
         await act(() =>
@@ -304,7 +304,7 @@ describe("application approval management", () => {
       }
       await waitFor(() =>
         expect(
-          screen.queryByRole("button", { name: "Ask again for linear links" }),
+          screen.queryByRole("button", { name: "Remove linear approval" }),
         ).toBeNull(),
       );
       expect(
@@ -312,7 +312,7 @@ describe("application approval management", () => {
       ).toEqual(["reflect"]);
       if (surface === "settings")
         fireEvent.click(
-          screen.getByRole("button", { name: "Reset all approvals" }),
+          screen.getByRole("button", { name: "Remove reflect approval" }),
         );
       else
         await act(() =>
@@ -320,7 +320,7 @@ describe("application approval management", () => {
             null,
           ),
         );
-      await screen.findByText(/^No saved approvals\./u);
+      await screen.findByText(/^No apps are always allowed\./u);
       expect(store.list()).toEqual([]);
     },
   );

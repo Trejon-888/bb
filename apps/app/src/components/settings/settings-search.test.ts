@@ -70,7 +70,7 @@ describe("searchSettings", () => {
       "AI services",
       "Appearance",
       "Archived threads",
-      "General › Application link approvals",
+      "General › App links",
     ]);
   });
 
@@ -127,8 +127,8 @@ describe("searchSettings", () => {
   it("lists a plugin's page before the settings inside it", () => {
     expect(searchTitles("linear")).toEqual([
       "Plugin settings › Linear",
-      "General › Application link approvals",
-      "Experiments › Application links",
+      "General › App links",
+      "Experiments › App links",
       "Linear › API key",
       "Linear › Default team",
     ]);

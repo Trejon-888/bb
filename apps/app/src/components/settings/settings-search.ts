@@ -63,14 +63,14 @@ export const SETTINGS_SEARCH_INDEX: Record<
         keywords: ["onboarding", "getting started", "welcome"],
       },
       {
-        title: "Application link approvals",
+        title: "App links",
         keywords: [
           "always allow",
           "native apps",
           "linear",
           "reflect",
-          "ask again",
-          "reset approvals",
+          "application links",
+          "approvals",
           "permissions",
         ],
       },
@@ -250,8 +250,14 @@ export const SETTINGS_SEARCH_INDEX: Record<
     settings: [
       { title: "Early adopter", keywords: ["beta", "opt in", "preview"] },
       {
-        title: "Application links",
-        keywords: ["deep links", "linear", "reflect", "things", "URL schemes"],
+        title: "App links",
+        keywords: [
+          "application links",
+          "deep links",
+          "linear",
+          "slack",
+          "URL schemes",
+        ],
       },
       { title: "Changelog preview", keywords: ["release notes", "updates"] },
       {

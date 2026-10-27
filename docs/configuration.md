@@ -857,10 +857,10 @@ off. An experiment you set yourself keeps your value either way.
 `/system/config` and `sdk.system.config()` return the resolved values in
 `experiments`.
 
-- `applicationLinks` (on for early adopters) enables explicit app links such as `linear://` and
-  `reflect://` in chat and the plugin `navigate.openUrl` path. Each launch asks
-  for confirmation on the viewing device.
-  See [application link approval](#application-link-approval).
+- `applicationLinks` (on for early adopters) enables explicit app links such as
+  `linear://` and `slack://` in rendered Markdown and the plugin
+  `navigate.openUrl` path. The viewing device asks before opening unless the
+  scheme was saved with Always allow. See [App links](#app-links).
 - `changelogPreview` shows the latest release notes as a dismissible card on
   Settings → Updates.
 - `compactExpiredCache` (on for early adopters) reports `compactionOfferAt` on a thread's context
@@ -1351,9 +1351,9 @@ settings CLI/SDK endpoint. Builds with tolerant readers ignore the field and
 may drop it on save; older strict readers can reject the whole file, so keep a
 backup before rolling back to a build predating the tolerant-reader fix #5286.
 
-## Application link approval
+## App links
 
-Enable Application links in Settings → Experiments or run
+Enable App links in Settings → Experiments or run
 `bb settings experiment applicationLinks true`. The experiment is a server
 setting shared by its clients. Disable it with
 `bb settings experiment applicationLinks false`.
@@ -1363,8 +1363,8 @@ become clickable while enabled. Bare custom-scheme text is not auto-linked.
 The shared web UI asks before opening an app on the viewing device; choose
 Always allow to remember that URL scheme. All clients save approvals in
 localStorage for this BB site on this device. They do not sync between devices,
-browsers, app profiles, or server addresses. Settings → General → Links → Application
-link approvals lists saved schemes; Ask again revokes one, Reset all revokes all.
+browsers, app profiles, or server addresses. Settings → General → Links → App links lists
+saved schemes; the trash button next to a scheme revokes it.
 The Plugin SDK can list and revoke through the same implementation; it cannot
 grant approval. There is no server-side or local-desktop-profile approval store.
 
