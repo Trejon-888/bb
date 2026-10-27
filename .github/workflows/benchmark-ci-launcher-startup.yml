@@ -25,14 +25,15 @@ jobs:
         shell: bash
         run: bash .github/actions/setup-workspace/install-dependencies.sh --ignore-scripts --filter '!@bb/mobile'
       - name: Warm the full shard and prerequisites
-        shell: bash
+        shell: cmd
         env:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
         run: |
-          mkdir -p "$RUNNER_TEMP/launcher-startup-results"
-          pnpm exec turbo run test --filter=@bb/templates --filter=bb-app --filter=@bb/demo-server --filter=@bb/desktop --filter=@bb/plugin-build --continue --concurrency=2 --output-logs=full > "$RUNNER_TEMP/launcher-startup-results/warmup.log" 2>&1
+          if not exist "%RUNNER_TEMP%\launcher-startup-results" mkdir "%RUNNER_TEMP%\launcher-startup-results"
+          pnpm exec turbo run test --filter=@bb/templates --filter=bb-app --filter=@bb/demo-server --filter=@bb/desktop --filter=@bb/plugin-build --continue --concurrency=2 --output-logs=full > "%RUNNER_TEMP%\launcher-startup-results\warmup.log" 2>&1
       - name: Compare the full shard
+        shell: cmd
         env:
           BENCHMARK_ORDER: ${{ matrix.order }}
           TEMP: ${{ runner.temp }}
