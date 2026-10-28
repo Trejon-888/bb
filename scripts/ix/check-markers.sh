@@ -14,7 +14,7 @@ check() {
 check apps/server/src/types.ts 'ixAuth: IxAuthService;'
 check apps/server/src/start-server.ts 'createIxAuthService('
 check apps/server/src/start-server.ts '      ixAuth,'
-check apps/server/src/server.ts 'publicApi.use("*", ixApiGate(deps));'
+check apps/server/src/server.ts 'publicApi.use("*", ixApiGate({ ...deps, pluginToken: (id) => pluginService.httpToken(id) }));'
 check apps/server/src/server.ts 'mountIxAuthHandler(app, deps);'
 check apps/server/src/server.ts 'app.route("/api/ix", createIxRoutes(deps));'
 check apps/server/src/server.ts 'await assertIxWebSocketAllowed(context, deps);'
@@ -23,6 +23,9 @@ check apps/server/test/helpers/test-app.ts 'createIxAuthService('
 check packages/plugin-sdk/src/rpc-contract.ts 'experimental_user?: ExperimentalPluginRpcCallerUser'
 check packages/plugin-sdk/src/__tests__/public-types.test.ts '"ExperimentalPluginRpcCallerUser"'
 check apps/app/src/components/onboarding/OnboardingGate.tsx '<IxAuthGate>'
+check apps/app/src/components/layout/AppLayout.tsx 'const ixShell = useIxShell();'
+check apps/app/src/components/layout/AppLayout.tsx '<SimpleSidebar />'
+check apps/app/src/components/layout/AppLayout.tsx '{ixOrganizationView ? <IxOrganizationView /> : children}'
 check apps/app/src/components/settings/settings-nav.tsx 'settingsSectionAllowed(section.id)'
 for f in apps/server/src/ix/auth-service.ts apps/server/src/ix/middleware.ts apps/server/src/ix/routes.ts apps/server/src/ix/context.ts apps/server/src/ix/config.ts apps/server/src/ix/kv.ts apps/server/src/ix/brand.ts apps/server/src/ix/sso.ts apps/server/src/ix/test-harness.ts apps/server/src/ix/brand.test.ts apps/server/src/ix/sso.test.ts apps/server/src/ix/brand-assets.ts apps/server/src/ix/brand-assets.test.ts apps/server/src/ix/social.test.ts apps/app/src/components/ix/IxAuthGate.tsx apps/app/src/components/ix/ix-auth.ts apps/app/src/components/ix/BrandLogo.tsx; do
   if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi

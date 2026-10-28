@@ -35,6 +35,7 @@ export const ixBrandSchema = z
     supportUrl: httpUrl.optional(),
     faviconUrl: assetUrl.optional(),
     iconUrl: assetUrl.optional(),
+    shell: z.enum(["full", "simple"]).optional(),
   })
   .strict();
 

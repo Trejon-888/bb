@@ -108,6 +108,9 @@ import { dispatchBrowserViewBoundsSync } from "@/lib/browser-view-bounds-sync";
 import { useFaviconBadge } from "@/lib/favicon-color-preference";
 import { shouldShowFaviconAttentionDot } from "./faviconAttentionDot";
 import { AppLayoutSidebar } from "./AppLayoutSidebar";
+import { IxOrganizationView } from "@/components/ix/IxOrganizationView";
+import { SimpleSidebar } from "@/components/ix/SimpleSidebar";
+import { IX_ORGANIZATION_PATH, useIxShell } from "@/components/ix/ix-auth";
 import { resolveRouteSidebar } from "./routeSidebar";
 import { NAV_RAIL_COLLAPSED_SIDEBAR_WIDTH } from "@/components/sidebar/navRailWidth";
 import { useSidebarNavigationPlacement } from "@/components/sidebar/sidebarNavigationProvider";
@@ -559,6 +562,8 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   const archivedSectionId = isArchivedView
     ? new URLSearchParams(location.search).get("sectionId")
     : null;
+  const ixShell = useIxShell();
+  const ixOrganizationView = ixShell === "simple" && location.pathname === IX_ORGANIZATION_PATH;
   const sidebarNavigationQuery = useSidebarNavigation();
   const projects = useMemo(
     () => sidebarNavigationQuery.data?.projects.map(stripProjectThreads),
@@ -821,14 +826,18 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                   <BackToAppCommandHandler routePath={backToAppRoutePath} />
                 ) : null}
                 <HistoryCommandHandlers />
-                <AppLayoutSidebar
-                  routeSidebar={routeSidebar}
-                  isSettingsActive={isGlobalSettingsView}
-                  onResizeMouseDown={handleResizeMouseDown}
-                  isResizing={isSidebarResizing}
-                  settingsRoutePath={settingsRoutePath}
-                  backToAppRoutePath={backToAppRoutePath}
-                />
+                {ixShell === "simple" ? (
+                  <SimpleSidebar />
+                ) : (
+                  <AppLayoutSidebar
+                    routeSidebar={routeSidebar}
+                    isSettingsActive={isGlobalSettingsView}
+                    onResizeMouseDown={handleResizeMouseDown}
+                    isResizing={isSidebarResizing}
+                    settingsRoutePath={settingsRoutePath}
+                    backToAppRoutePath={backToAppRoutePath}
+                  />
+                )}
                 <SidebarInset>
                   <div
                     ref={setContentShell}
@@ -836,7 +845,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                     data-app-content-shell=""
                     className="relative flex h-full min-h-0 min-w-0 w-full flex-col pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[var(--bb-safe-area-bottom,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)]"
                   >
-                    {showHeader ? (
+                    {showHeader && !ixOrganizationView ? (
                       <AppHeader
                         resourceSection={
                           resourceWorkspaceHeaderMeta
@@ -854,7 +863,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                       />
                     ) : null}
                     <main className="flex min-h-0 flex-1 flex-col p-4 md:p-5">
-                      {children}
+                      {ixOrganizationView ? <IxOrganizationView /> : children}
                     </main>
                   </div>
                 </SidebarInset>

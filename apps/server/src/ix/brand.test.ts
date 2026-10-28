@@ -79,4 +79,13 @@ describe("ix brand", () => {
     ixAuth.kv.set("brand", JSON.stringify({ name: "ok", logoUrl: "not a url" }));
     expect(ixAuth.brand()).toEqual({});
   });
+
+  it("carries the shell layout choice and rejects unknown layouts", async () => {
+    const ixAuth = await harness.makeService(ownerEnv);
+    const app = makeIxApp(ixAuth);
+    const ownerCookie = await harness.signInCookie(app, "owner@example.test", "password-1");
+    expect((await app.request("/api/ix/brand", put({ name: "ECM", shell: "simple" }, ownerCookie))).status).toBe(200);
+    expect((await json(await app.request("/api/ix/status"))).brand).toEqual({ name: "ECM", shell: "simple" });
+    expect((await app.request("/api/ix/brand", put({ shell: "compact" }, ownerCookie))).status).toBe(400);
+  });
 });

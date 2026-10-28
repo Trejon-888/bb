@@ -28,6 +28,7 @@ export interface IxBrand {
   supportUrl?: string;
   faviconUrl?: string;
   iconUrl?: string;
+  shell?: "full" | "simple";
 }
 export type IxSocialProvider = "google" | "microsoft" | "github";
 export interface IxStatus {
@@ -271,3 +272,27 @@ export async function signOutIx(): Promise<void> {
   publish({ me: null, notMember: null });
   await refreshIxSession();
 }
+
+export function useIxShell(): "full" | "simple" {
+  return useIxSession().status?.brand.shell === "simple" ? "simple" : "full";
+}
+export function listIxMembers(): Promise<{ members: IxMember[] }> {
+  return ixRequest<{ members: IxMember[] }>("/members");
+}
+export function listIxInvitations(): Promise<{ invitations: IxInvitation[] }> {
+  return ixRequest<{ invitations: IxInvitation[] }>("/invitations");
+}
+export function inviteIxMember(input: { email: string; role: IxRole }): Promise<{ invitation: IxInvitation; acceptUrl: string }> {
+  return ixRequest<{ invitation: IxInvitation; acceptUrl: string }>("/members/invite", { method: "POST", body: input });
+}
+export function setIxMemberRole(memberId: string, role: IxRole): Promise<{ ok: boolean }> {
+  return ixRequest<{ ok: boolean }>(`/members/${encodeURIComponent(memberId)}/role`, { method: "POST", body: { role } });
+}
+export function removeIxMember(memberId: string): Promise<{ ok: boolean }> {
+  return ixRequest<{ ok: boolean }>(`/members/${encodeURIComponent(memberId)}`, { method: "DELETE" });
+}
+export function cancelIxInvitation(id: string): Promise<{ ok: boolean }> {
+  return ixRequest<{ ok: boolean }>(`/invitations/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+export const IX_ROLE_LABEL: Record<IxRole, string> = { owner: "Owner", admin: "Admin", member: "Staff access", viewer: "View only" };
+export const IX_ORGANIZATION_PATH = "/ix/organization";
