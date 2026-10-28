@@ -152,7 +152,7 @@ async function resolveBrandInput(source: string): Promise<IxBrand> {
   if (!brand.success || Array.isArray(parsed)) {
     throw new CliUsageError({
       code: "invalid_value",
-      hint: "Every brand field is a string: name, logoUrl, accent, appTitle, loginTitle, loginSubtitle, supportUrl, faviconUrl, iconUrl, shell (full | simple: the simple company layout).",
+      hint: "Every brand field is a string: name, logoUrl, accent, appTitle, loginTitle, loginSubtitle, supportUrl, faviconUrl, iconUrl, shell (full | simple: the simple company layout), composer (open | locked: hide model and permission controls from staff in the simple shell).",
       message: "Brand input must be a JSON object of string fields.",
     });
   }
@@ -398,6 +398,38 @@ export function registerIxCommands(program: Command, getUrl: () => string): void
         if (target === undefined) throw new Error(`No project ${project}`);
         await request()("PUT", `/api/ix/access/members/${encodeURIComponent(member.memberId)}/projects/${encodeURIComponent(target.id)}`, { level: level === "none" ? null : level });
         console.log(`${member.email} → ${target.name}: ${level}`);
+      }),
+    );
+
+  const deskSchema = z.object({ policy: z.object({ theme: z.boolean(), layout: z.boolean() }), personal: z.object({ theme: z.boolean(), layout: z.number() }).nullable() });
+  const desk = ix.command("desk").description("Personal desks: each person's own theme and layout on top of the workspace defaults");
+  desk.command("show", { isDefault: true })
+    .description("Show whether people may set their own theme and layout")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("GET", "/api/ix/desk");
+        if (outputJson(opts, raw)) return;
+        const view = parseResponse(deskSchema, raw, "desk");
+        console.log(`Personal themes: ${view.policy.theme ? "allowed" : "locked"}`);
+        console.log(`Personal layouts: ${view.policy.layout ? "allowed" : "locked"}`);
+      }),
+    );
+  desk.command("policy")
+    .description("Allow or lock personal themes and layouts (locked = everyone uses the workspace default)")
+    .option("--theme <state>", "allowed or locked")
+    .option("--layout <state>", "allowed or locked")
+    .action(
+      action(async (opts: { theme?: string; layout?: string }) => {
+        const current = parseResponse(deskSchema, await request()("GET", "/api/ix/desk"), "desk").policy;
+        const flag = (value: string | undefined, fallback: boolean) => {
+          if (value === undefined) return fallback;
+          if (value !== "allowed" && value !== "locked") throw new Error("use allowed or locked");
+          return value === "allowed";
+        };
+        const policy = { theme: flag(opts.theme, current.theme), layout: flag(opts.layout, current.layout) };
+        await request()("PUT", "/api/ix/desk/policy", policy);
+        console.log(`Personal themes: ${policy.theme ? "allowed" : "locked"}; personal layouts: ${policy.layout ? "allowed" : "locked"}`);
       }),
     );
 

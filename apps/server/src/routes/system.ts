@@ -1,5 +1,6 @@
 import { createMobileAppReleaseService } from "../services/install/mobile-app-releases.js";
 import { ixScopedThreadIds } from "../ix/access.js";
+import { ixDeskAppearance, setIxDeskAppearance } from "../ix/desk.js";
 import {
   setMachineEnvironmentVariable,
   deleteMachineEnvironmentVariable,
@@ -221,8 +222,8 @@ export function registerSystemRoutes(
       performanceDiagnosticsAvailable:
         deps.config.performanceDiagnosticsAvailable,
       appearance: await resolveSelectedTheme(
-        getStoredThemeId(deps.db),
-        getStoredFaviconColor(deps.db),
+        ixDeskAppearance(deps.ixAuth.desk)?.themeId ?? getStoredThemeId(deps.db),
+        ixDeskAppearance(deps.ixAuth.desk)?.faviconColor ?? getStoredFaviconColor(deps.db),
       ),
       customThemes: listCustomThemeNames(themeRoot),
       pluginThemes: pluginService.listThemes(),
@@ -385,7 +386,7 @@ export function registerSystemRoutes(
   put(routes.appearance, async (context, payload) => {
     const { themeId, faviconColor } = payload;
     await requireKnownTheme(themeId);
-    setStoredAppearance(deps.db, { themeId, faviconColor });
+    if (!setIxDeskAppearance(deps.ixAuth.desk, { themeId, faviconColor })) setStoredAppearance(deps.db, { themeId, faviconColor });
     deps.hub.notifySystem(["config-changed"]);
     return context.json(await resolveSelectedTheme(themeId, faviconColor));
   });
@@ -404,8 +405,8 @@ export function registerSystemRoutes(
       custom: listCustomThemeNames(themeRoot),
       plugins: pluginService.listThemes(),
       active: await resolveSelectedTheme(
-        getStoredThemeId(deps.db),
-        getStoredFaviconColor(deps.db),
+        ixDeskAppearance(deps.ixAuth.desk)?.themeId ?? getStoredThemeId(deps.db),
+        ixDeskAppearance(deps.ixAuth.desk)?.faviconColor ?? getStoredFaviconColor(deps.db),
       ),
     }),
   );

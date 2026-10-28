@@ -17,6 +17,7 @@ import {
   writeUiPreference,
 } from "../services/system/ui-preferences.js";
 import type { AppDeps } from "../types.js";
+import { overlayIxDeskPreferences, resetIxDeskPreference, writeIxDeskPreference } from "../ix/desk.js";
 
 function requireUiPreferenceKey(key: string): UiPreferenceKey {
   if (isUiPreferenceKey(key)) return key;
@@ -36,7 +37,7 @@ export function registerUiPreferenceRoutes(app: Hono, deps: AppDeps): void {
   const routes = publicApiRoutes.system;
 
   get(routes.uiPreferences, (context) =>
-    context.json({ preferences: readUiPreferences(deps) }),
+    context.json({ preferences: overlayIxDeskPreferences(deps.ixAuth.desk, readUiPreferences(deps)) }),
   );
 
   put(routes.updateUiPreference, (context, payload) => {
@@ -49,11 +50,8 @@ export function registerUiPreferenceRoutes(app: Hono, deps: AppDeps): void {
         `Invalid value for UI preference '${key}': ${parsed.message}`,
       );
     }
-    const result = writeUiPreference(deps, {
-      expectedRevision: payload.expectedRevision,
-      key,
-      value: parsed.value,
-    });
+    const args = { expectedRevision: payload.expectedRevision, key, value: parsed.value };
+    const result = writeIxDeskPreference(deps.ixAuth.desk, args) ?? writeUiPreference(deps, args);
     if (result.outcome === "conflict") {
       throw new ApiError(
         409,
@@ -67,6 +65,7 @@ export function registerUiPreferenceRoutes(app: Hono, deps: AppDeps): void {
 
   del(routes.resetUiPreference, (context) => {
     const key = requireUiPreferenceKey(context.req.param("key"));
-    return context.json({ key, ...resetUiPreference(deps, key) });
+    const personal = resetIxDeskPreference(deps.ixAuth.desk, key, () => readUiPreferences(deps)[key]);
+    return context.json({ key, ...(personal ?? resetUiPreference(deps, key)) });
   });
 }

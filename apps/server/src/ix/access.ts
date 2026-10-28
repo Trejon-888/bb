@@ -100,6 +100,7 @@ export interface IxAccessScope {
 }
 interface IxRequestAccess {
   userId: string | null;
+  admin: boolean;
   store: IxAccessStore;
   scope: IxAccessScope | null;
   done: boolean;
@@ -120,7 +121,7 @@ export function restrictedScopeFor(actor: IxActor | undefined, store: IxAccessSt
 }
 
 export async function runWithIxRequestAccess<T>(actor: IxActor | undefined, store: IxAccessStore, scope: IxAccessScope | null, fn: () => Promise<T>): Promise<T> {
-  const access: IxRequestAccess = { userId: actor?.kind === "user" ? actor.user.id : null, store, scope, done: false };
+  const access: IxRequestAccess = { userId: actor?.kind === "user" ? actor.user.id : null, admin: actor?.kind !== "user" || roleAtLeast(actor.role, "admin"), store, scope, done: false };
   try {
     return await requestStorage.run(access, fn);
   } finally {
@@ -245,4 +246,9 @@ export function ixSocketAccessFilter(db: DbConnection, store: IxAccessStore, act
 
 export function ixTerminalSocketAllowed(store: IxAccessStore, actor: IxActor | undefined): boolean {
   return actor === undefined || actor.kind !== "user" || roleAtLeast(actor.role, "admin") || store.mode() !== "restricted";
+}
+
+export function currentIxUser(): { userId: string; admin: boolean } | null {
+  const access = currentRequestAccess();
+  return access === null || access.userId === null ? null : { userId: access.userId, admin: access.admin };
 }

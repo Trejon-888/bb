@@ -29,6 +29,7 @@ export interface IxBrand {
   faviconUrl?: string;
   iconUrl?: string;
   shell?: "full" | "simple";
+  composer?: "open" | "locked";
 }
 export type IxSocialProvider = "google" | "microsoft" | "github";
 export interface IxStatus {
@@ -315,5 +316,17 @@ export function setIxProjectAccess(memberId: string, projectId: string, level: I
 export function useIxStaffShell(): boolean {
   const session = useIxSession();
   const actor = session.me?.actor;
-  return session.status?.brand.shell === "simple" && actor?.kind === "user" && !roleAtLeast(actor.role, "admin");
+  return session.status?.brand.shell === "simple" && session.status.brand.composer === "locked" && actor?.kind === "user" && !roleAtLeast(actor.role, "admin");
+}
+
+export interface IxDeskPolicy { theme: boolean; layout: boolean }
+export interface IxDeskView { policy: IxDeskPolicy; personal: { theme: boolean; layout: number } | null }
+export function getIxDesk(): Promise<IxDeskView> {
+  return ixRequest<IxDeskView>("/desk");
+}
+export function setIxDeskPolicy(policy: IxDeskPolicy): Promise<{ ok: boolean }> {
+  return ixRequest<{ ok: boolean }>("/desk/policy", { method: "PUT", body: policy });
+}
+export function resetIxDesk(): Promise<{ ok: boolean }> {
+  return ixRequest<{ ok: boolean }>("/desk", { method: "DELETE" });
 }

@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/ui/sidebar.js";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
-import { getRootComposeRoutePath, getThreadRoutePath } from "@/lib/route-paths";
+import { getRootComposeRoutePath, getSettingsRoutePath, getThreadRoutePath } from "@/lib/route-paths";
 import { useRootComposeProjectId, useSetRootComposeProjectId } from "@/lib/root-compose-selection";
-import { IX_ORGANIZATION_PATH, IX_ROLE_LABEL, listIxMembers, roleAtLeast, signOutIx, useIxSession, type IxMember, type IxRole } from "./ix-auth";
+import { IX_ORGANIZATION_PATH, IX_ROLE_LABEL, listIxMembers, resetIxDesk, roleAtLeast, signOutIx, useIxSession, type IxMember, type IxRole } from "./ix-auth";
 
 type ThreadLike = { id: string; projectId: string; title?: string | null; titleFallback?: string | null; parentThreadId?: string | null; archivedAt?: number | null; updatedAt?: number | null };
 type ProjectLike = { id: string; name: string; threads?: ThreadLike[] };
@@ -131,6 +131,12 @@ export function SimpleSidebar() {
             <span className="text-xs text-muted-foreground">{role ? IX_ROLE_LABEL[role] : "Owner"}</span>
             {actor?.kind === "user" ? <button type="button" onClick={() => { void signOutIx().then(() => window.location.assign("/")); }} className="text-xs text-muted-foreground underline-offset-2 hover:underline">Sign out</button> : null}
           </div>
+          {actor?.kind === "user" ? (
+            <div className="mt-1 flex items-center justify-between">
+              <button type="button" onClick={() => navigate(getSettingsRoutePath("appearance"))} className="text-xs text-muted-foreground underline-offset-2 hover:underline">My theme</button>
+              <button type="button" onClick={() => { if (window.confirm("Reset your theme and layout to the company default?")) void resetIxDesk().then(() => window.location.reload()); }} className="text-xs text-muted-foreground underline-offset-2 hover:underline">Reset my desk</button>
+            </div>
+          ) : null}
         </div>
       </div>
     </Sidebar>

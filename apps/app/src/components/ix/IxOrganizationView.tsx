@@ -8,6 +8,9 @@ import {
   IxHttpError,
   cancelIxInvitation,
   getIxAccess,
+  getIxDesk,
+  setIxDeskPolicy,
+  type IxDeskPolicy,
   setIxAccessMode,
   setIxProjectAccess,
   type IxAccessOverview,
@@ -46,13 +49,14 @@ export function IxOrganizationView() {
   const [access, setAccess] = useState<IxAccessOverview | null>(null);
   const [openAccess, setOpenAccess] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, IxProjectAccessLevel | "none">>({});
+  const [desk, setDesk] = useState<IxDeskPolicy | null>(null);
 
   const reload = useCallback(async () => {
     try {
       const [m, i] = await Promise.all([listIxMembers(), isAdmin ? listIxInvitations() : Promise.resolve({ invitations: [] })]);
       setMembers(m.members);
       setInvitations(i.invitations.filter((x) => x.status === "pending"));
-      if (isAdmin) setAccess(await getIxAccess());
+      if (isAdmin) { setAccess(await getIxAccess()); setDesk((await getIxDesk()).policy); }
     } catch (e) {
       setError(errorText(e));
     }
@@ -132,6 +136,19 @@ export function IxOrganizationView() {
             <p className="mt-0.5 text-xs text-muted-foreground">{access.mode === "restricted" ? "On: staff see only the projects you grant them, and only their own chats. Owners and admins see everything." : "Off: everyone can see every project and chat."}</p>
           </div>
           <Button type="button" variant={access.mode === "restricted" ? "outline" : "default"} disabled={busy} onClick={() => void run(() => setIxAccessMode(access.mode === "restricted" ? "open" : "restricted"), access.mode === "restricted" ? "Project access is off." : "Project access is on.")}>{access.mode === "restricted" ? "Turn off" : "Turn on"}</Button>
+        </div>
+      ) : null}
+
+      {isAdmin && desk ? (
+        <div className="mt-4 rounded-xl border border-border bg-card p-4">
+          <h2 className="text-sm font-semibold">Personal desks</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Everyone starts from the company look. When allowed, each person can make their own theme and layout without changing anyone else's.</p>
+          {([["theme", "Personal themes"], ["layout", "Personal layouts and pages"]] as const).map(([area, label]) => (
+            <div key={area} className="mt-3 flex items-center gap-3">
+              <span className="min-w-0 flex-1 text-sm">{label}: {desk[area] ? "allowed" : "locked to the company default"}</span>
+              <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => setIxDeskPolicy({ ...desk, [area]: !desk[area] }), `${label} ${desk[area] ? "locked" : "allowed"}.`)}>{desk[area] ? "Lock" : "Allow"}</Button>
+            </div>
+          ))}
         </div>
       ) : null}
 

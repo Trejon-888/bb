@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { listPublicProjects, type DbConnection } from "@bb/db";
 import { ixAccessModeSchema, ixProjectAccessLevelSchema } from "./access.js";
+import { ixDeskPolicySchema } from "./desk.js";
 import { z } from "zod";
 import { ApiError } from "../errors.js";
 import type { IxAuthService } from "./auth-service.js";
@@ -311,6 +312,26 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService; db?: 
     }
     const projects = ixAuth.access.setGrant(member.userId, projectId, input.level);
     return context.json({ ok: true, memberId: member.id, projects });
+  });
+
+  authed.get("/desk", async (context) => {
+    const actor = getIxActor(context);
+    const policy = ixAuth.desk.policy();
+    return context.json({ policy, personal: actor?.kind === "user" ? ixAuth.desk.personalized(actor.user.id) : null });
+  });
+
+  authed.put("/desk/policy", async (context) => {
+    requireRole(getIxActor(context), "admin");
+    const input = await parseBody(context, ixDeskPolicySchema);
+    ixAuth.desk.setPolicy(input);
+    return context.json({ ok: true, policy: input });
+  });
+
+  authed.delete("/desk", async (context) => {
+    const actor = getIxActor(context);
+    if (actor?.kind !== "user") throw new ApiError(409, "ix_desk_personal", "Only signed-in people have a personal desk");
+    ixAuth.desk.clear(actor.user.id);
+    return context.json({ ok: true });
   });
 
   authed.delete("/members/:id", async (context) => {

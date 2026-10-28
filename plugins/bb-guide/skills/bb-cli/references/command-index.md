@@ -352,5 +352,8 @@ This index lists every command path that the core CLI registers, including alias
 - `bb ix access show`
 - `bb ix access mode`
 - `bb ix access grant`
+- `bb ix desk`
+- `bb ix desk show`
+- `bb ix desk policy`
 - `bb ix invite`
 - `bb ix me`

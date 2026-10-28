@@ -52,7 +52,7 @@ Deployment: team mode is meant for a server behind your own reverse proxy with `
 
 ## Simple company shell
 
-A workspace whose brand record has `shell: "simple"` (`bb ix brand set '{"shell":"simple"}'`, or pushed by ix-superadmin from an org brand) renders a calm company layout instead of the full bb chrome: brand, chat-title search, New chat, Projects, Team, Organization (admins: members, roles, invitations at `/ix/organization`), Chats, and the signed-in person. Threads, the composer and realtime updates are the same bb views; only the sidebar and the organization page differ. `shell: "full"` or no value keeps the full app.
+A workspace whose brand record has `shell: "simple"` (`bb ix brand set '{"shell":"simple"}'`, or pushed by ix-superadmin from an org brand) renders a calm company layout instead of the full bb chrome: brand, chat-title search, New chat, Projects, Team, Organization (admins: members, roles, invitations at `/ix/organization`), Chats, and the signed-in person. Threads, the composer and realtime updates are the same bb views; only the sidebar and the organization page differ. `shell: "full"` or no value keeps the full app. `composer: "locked"` additionally hides the model and permission controls from members and viewers in the simple shell (default `open`).
 
 ## Project access
 
@@ -78,6 +78,8 @@ A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own toke
 | `apps/server/src/ws/hub.ts` | `setSocketAccessFilter` and per-socket checks in subscribe, fan-out, thread-list, broadcasts and timeline signals | project access: realtime |
 | `packages/db/src/data/threads.ts` | `threadIds` filter on `countThreads` | restricted counts in SQL |
 | `apps/server/src/routes/system.ts` | attention dot over `ixScopedThreadIds(undefined)` | project access: attention |
+| `apps/server/src/routes/system.ts` | appearance read/write through `ixDeskAppearance` / `setIxDeskAppearance` | personal desk: theme |
+| `apps/server/src/routes/ui-preferences.ts` | get/put/delete through `overlayIxDeskPreferences` / `writeIxDeskPreference` / `resetIxDeskPreference` | personal desk: layout |
 | `apps/server/src/routes/plugins.ts` (mention search) | project/thread check, no plugin mentions for restricted members (plugins search as owner) | project access: mentions |
 | `apps/app/src/components/promptbox/ExecutionControls.tsx`, `components/pickers/PermissionModePicker.tsx` | hidden for staff (`useIxStaffShell()`) in the simple shell | simple shell |
 | `apps/server/src/routes/plugins.ts` | `withIxUser(callerResolution.caller, getIxActor(context))` + import | identity to plugins |
@@ -109,3 +111,7 @@ Expect conflicts in `server.ts` and `start-server.ts` (hot upstream files). Each
 - Email delivery for invitations.
 - The desktop app's own window still talks to a local server as loopback owner.
 - Agent tool and CLI contexts do not carry the user (the daemon originates those); thread ownership is tracked by ix-superadmin's thread bindings.
+
+## Personal desks
+
+Each signed-in person has their own desk on the shared server: a personal theme and personal UI preferences (sidebar, visible plugin pages, panel order and every other `UI_PREFERENCE_KEYS` entry) stored in `ix_desk_pref`, layered over the workspace defaults. Requests without a signed-in person (CLI, loopback, snapshots) read and write the workspace defaults. Admins lock either area with `bb ix desk policy --theme locked|allowed --layout locked|allowed` or the Organization page; while locked, staff get `403 ix_desk_locked`, admins write the workspace default, and nobody's personal rows are applied. `DELETE /api/ix/desk` ("Reset my desk") drops a person's rows.
