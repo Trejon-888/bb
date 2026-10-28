@@ -35,6 +35,7 @@ import {
   useIxSession,
 } from "../ix-auth";
 import {
+  NEXUS_DEFAULT_INTEGRATIONS,
   nexusChatIndicator,
   nexusChatTitle,
   nexusChats,
@@ -413,7 +414,7 @@ export function NexusSidebar({
                 active={activeNav === item.id}
                 onNavigate={onNavigate}
               />
-              {activeNav === "integrations" && item.id === "integrations" ? (
+              {activeNav === "integrations" && item.id === "integrations" && targets.integrations.to === NEXUS_DEFAULT_INTEGRATIONS.to ? (
                 <SubRows
                   pages={PLUGIN_PAGES}
                   activeId={activePage}
