@@ -902,7 +902,7 @@ export function createApp(
     }
     return next();
   });
-  publicApi.use("*", ixApiGate(deps));
+  publicApi.use("*", ixApiGate({ ...deps, pluginToken: (id) => pluginService.httpToken(id) }));
   const pluginCatalogService = createPluginCatalogService({
     db: deps.db,
     appVersion: deps.config.appVersion,

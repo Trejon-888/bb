@@ -12,6 +12,7 @@ export type IxActor =
       role: IxRole;
     }
   | { kind: "loopback-owner" }
+  | { kind: "plugin-token"; pluginId: string }
   | { kind: "off" };
 
 declare module "hono" {

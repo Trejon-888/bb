@@ -31,7 +31,7 @@ async function makeService(env: NodeJS.ProcessEnv): Promise<IxAuthService> {
   return service;
 }
 
-function makeApp(ixAuth: IxAuthService, remoteAddress = "203.0.113.9"): Hono {
+function makeApp(ixAuth: IxAuthService, remoteAddress = "203.0.113.9", pluginToken?: (id: string) => Promise<string | undefined>): Hono {
   const app = new Hono();
   app.use("*", async (context, next) => {
     context.set(TRUSTED_REMOTE_ADDRESS_CONTEXT_KEY, remoteAddress);
@@ -44,7 +44,8 @@ function makeApp(ixAuth: IxAuthService, remoteAddress = "203.0.113.9"): Hono {
   app.on(["GET", "POST"], "/api/auth/*", (context) => ixAuth.handler(context.req.raw));
   app.route("/api/ix", createIxRoutes({ ixAuth }));
   const publicApi = new Hono();
-  publicApi.use("*", ixApiGate({ ixAuth }));
+  publicApi.use("*", ixApiGate({ ixAuth, pluginToken }));
+  publicApi.post("/plugins/p1/http/agent/bb", (context) => context.json({ agent: true }));
   publicApi.get("/system/config", (context) => context.json({ ok: true }));
   publicApi.post("/projects", (context) => context.json({ created: true }));
   publicApi.post("/threads/t1/read", (context) => context.json({ read: true }));
@@ -254,5 +255,17 @@ describe("ix auth: team mode", () => {
     const out = await app.request("/api/ix/sign-out", { method: "POST", headers: { cookie } });
     expect(out.status).toBe(200);
     expect((await app.request("/api/ix/me", { headers: { cookie } })).status).toBe(401);
+  });
+
+  it("lets a plugin's own HTTP route through with that plugin's token in the header, and nothing else", async () => {
+    const ixAuth = await makeService(env);
+    const app = makeApp(ixAuth, "203.0.113.9", async (id) => (id === "p1" ? "tok-p1-secret" : undefined));
+    const call = (path: string, headers: Record<string, string>) => app.request(path, { method: "POST", headers: { "cf-connecting-ip": "203.0.113.7", ...headers } });
+    expect((await call("/api/v1/plugins/p1/http/agent/bb", { "x-bb-plugin-token": "tok-p1-secret" })).status).toBe(200);
+    expect((await call("/api/v1/plugins/p1/http/agent/bb", { "x-bb-plugin-token": "wrong" })).status).toBe(401);
+    expect((await call("/api/v1/plugins/p1/http/agent/bb", {})).status).toBe(401);
+    expect((await call("/api/v1/plugins/p1/http/agent/bb?token=tok-p1-secret", {})).status, "query token does not pass the gate").toBe(401);
+    expect((await call("/api/v1/plugins/p2/http/agent/bb", { "x-bb-plugin-token": "tok-p1-secret" })).status, "another plugin's token").toBe(401);
+    expect((await call("/api/v1/projects", { "x-bb-plugin-token": "tok-p1-secret" })).status, "not a plugin HTTP path").toBe(401);
   });
 });

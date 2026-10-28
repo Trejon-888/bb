@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { Context, Hono, MiddlewareHandler } from "hono";
 import { ApiError } from "../errors.js";
 import { getTrustedRemoteAddress } from "../request-context.js";
@@ -17,6 +18,29 @@ export const IX_NOT_MEMBER_MESSAGE = "This account has no access to this workspa
 
 export interface IxGateDeps {
   ixAuth: IxAuthService;
+  /** The plugin's HTTP token (`bb plugin token <id>`), for remote calls to its token-auth routes. */
+  pluginToken?: (pluginId: string) => Promise<string | undefined>;
+}
+
+const PLUGIN_HTTP_PATH = /^\/api\/v1\/plugins\/([^/]+)\/http(?:\/|$)/u;
+
+/**
+ * A request to a plugin's own HTTP routes that presents that plugin's token in the
+ * `x-bb-plugin-token` header is the plugin route's business, not a user session's: an ix
+ * control plane reaches a member server this way through its tunnel. The route's own
+ * auth check still runs after the gate. The query-string form is not accepted here.
+ */
+async function pluginTokenActor(context: Context, deps: IxGateDeps): Promise<IxActor | null> {
+  if (deps.pluginToken === undefined) return null;
+  const match = PLUGIN_HTTP_PATH.exec(context.req.path);
+  const presented = context.req.header("x-bb-plugin-token");
+  if (match === null || presented === undefined || presented === "") return null;
+  const pluginId = match[1] ?? "";
+  const expected = await deps.pluginToken(pluginId);
+  if (expected === undefined) return null;
+  const a = Buffer.from(presented, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  return a.length === b.length && timingSafeEqual(a, b) ? { kind: "plugin-token", pluginId } : null;
 }
 
 const PROXY_HEADERS = [
@@ -68,6 +92,11 @@ export async function resolveIxActor(
 
 export function ixApiGate(deps: IxGateDeps): MiddlewareHandler {
   return async (context, next) => {
+    const tokenActor = await pluginTokenActor(context, deps);
+    if (tokenActor !== null) {
+      setIxActor(context, tokenActor);
+      return next();
+    }
     const actor = await resolveIxActor(context, deps);
     if (actor === null) {
       throw new ApiError(401, "ix_unauthenticated", "Sign in to use this server");
