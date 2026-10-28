@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
-import { IxAuthGate } from "./IxAuthGate";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { IxAuthGate, readableTextOn } from "./IxAuthGate";
 import { resetIxSessionForTests } from "./ix-auth";
 
 const originalLocation = window.location;
@@ -75,4 +75,14 @@ it("shows a no-access screen with sign-out for a signed-in non-member", async ()
   expect(view.queryByText("app")).toBeNull();
   fireEvent.click(view.getByRole("button", { name: "Sign out" }));
   expect(await view.findByRole("button", { name: "Continue with Google" })).toBeTruthy();
+});
+
+describe("readableTextOn", () => {
+  it("picks white on dark accents and near-black on light ones", () => {
+    expect(readableTextOn("#193f32")).toBe("#ffffff");
+    expect(readableTextOn("#1AE5BE")).toBe("#0a0a0a");
+    expect(readableTextOn("#000000")).toBe("#ffffff");
+    expect(readableTextOn("#ffffff")).toBe("#0a0a0a");
+    expect(readableTextOn("not-a-color")).toBe("#ffffff");
+  });
 });

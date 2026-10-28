@@ -22,6 +22,18 @@ import {
 } from "./ix-auth";
 import { applyBrandIcons, setBrandProductName } from "@/lib/ix/brand";
 
+/** White or near-black, whichever reads better on the brand accent (WCAG relative luminance). */
+export function readableTextOn(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (m === null) return "#ffffff";
+  const channel = (i: number) => {
+    const c = parseInt(m[1]!.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const l = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  return (l + 0.05) / 0.05 > 1.05 / (l + 0.05) ? "#0a0a0a" : "#ffffff";
+}
+
 type Screen = "sign-in" | "bootstrap" | "invite";
 
 function Shell({ brand, title, subtitle, children }: { brand: IxBrand; title: string; subtitle: string; children: ReactNode }) {
@@ -157,7 +169,7 @@ function AuthForm({ status, screen, inviteToken, notice, onDone, onSwitch }: { s
           ? `Sign in to ${brand.name ?? status.orgName}`
           : "Sign in to this server";
   const subtitle = screen === "sign-in" ? (brand.loginSubtitle ?? defaultSubtitle) : defaultSubtitle;
-  const buttonStyle = brand.accent === undefined ? undefined : { backgroundColor: brand.accent, borderColor: brand.accent };
+  const buttonStyle = brand.accent === undefined ? undefined : { backgroundColor: brand.accent, borderColor: brand.accent, color: readableTextOn(brand.accent) };
 
   return (
     <Shell brand={brand} title={title} subtitle={subtitle}>
