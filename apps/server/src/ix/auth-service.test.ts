@@ -238,6 +238,10 @@ describe("ix auth: team mode", () => {
     expect((await loopbackApp.request("/api/v1/system/config")).status).toBe(200);
     expect((await json(await loopbackApp.request("/api/ix/me"))).actor).toEqual({ kind: "loopback-owner" });
     expect((await loopbackApp.request("/api/v1/system/config", { headers: { origin: BASE } })).status).toBe(401);
+    for (const header of ["x-forwarded-for", "cf-connecting-ip", "cf-ray", "forwarded", "x-real-ip"]) {
+      expect((await loopbackApp.request("/api/v1/system/config", { headers: { [header]: "203.0.113.7" } })).status, header).toBe(401);
+    }
+    expect((await json(await loopbackApp.request("/api/ix/me", { headers: { "cf-connecting-ip": "203.0.113.7" } }))).code).toBe("ix_unauthenticated");
     const denied = await makeService({ ...env, BB_IX_AUTH_LOOPBACK: "deny" });
     expect((await makeApp(denied, "127.0.0.1").request("/api/v1/system/config")).status).toBe(401);
   });

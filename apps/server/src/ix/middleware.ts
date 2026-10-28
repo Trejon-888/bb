@@ -17,13 +17,33 @@ export interface IxGateDeps {
   ixAuth: IxAuthService;
 }
 
+const PROXY_HEADERS = [
+  "x-forwarded-for",
+  "x-forwarded-host",
+  "x-forwarded-proto",
+  "x-real-ip",
+  "forwarded",
+  "cf-connecting-ip",
+  "cf-ray",
+  "cf-access-jwt-assertion",
+  "true-client-ip",
+];
+
+export function isProxiedRequest(context: Context): boolean {
+  return PROXY_HEADERS.some((name) => {
+    const value = context.req.header(name);
+    return value !== undefined && value !== "";
+  });
+}
+
 function isLoopbackWithoutOrigin(context: Context): boolean {
   const address = getTrustedRemoteAddress(context);
   const origin = context.req.header("origin");
   return (
     address !== undefined &&
     LOOPBACK_ADDRESSES.has(address) &&
-    (origin === undefined || origin === "")
+    (origin === undefined || origin === "") &&
+    !isProxiedRequest(context)
   );
 }
 
