@@ -1,4 +1,8 @@
 import { useState, type ComponentProps, type ReactNode } from "react";
+import {
+  NexusHomeHero,
+  NexusHomeSections,
+} from "@/components/ix/nexus/NexusHome";
 import { Skeleton } from "@bb/shared-ui/skeleton";
 import { COARSE_POINTER_HEADER_ICON_BUTTON_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
 import { cn } from "@bb/shared-ui/lib/utils";
@@ -146,7 +150,9 @@ export function RootComposeSecondaryContent({
             )}
             style={PAGE_SHELL_CONTENT_STYLE}
           >
+            <NexusHomeHero />
             {children}
+            <NexusHomeSections />
             <PluginHomepageSections />
           </div>
         </div>

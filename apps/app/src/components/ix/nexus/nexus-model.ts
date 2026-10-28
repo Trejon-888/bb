@@ -1,0 +1,330 @@
+import { matchPath } from "react-router-dom";
+import {
+  resolveThreadListIndicator,
+  threadListIndicatorStateForThread,
+} from "@bb/client-core";
+import type { ThreadListEntry } from "@bb/domain";
+import type { IxActor } from "../ix-auth";
+
+export const NEXUS_SIDEBAR_WIDTH = "248px";
+export const NEXUS_SPACES_PATH = "/ix/spaces";
+export const NEXUS_DOCS_PATH = "/ix/docs";
+export const NEXUS_SCHEDULED_PATH = "/ix/scheduled";
+
+export type NexusNavId =
+  | "home"
+  | "integrations"
+  | "scheduled"
+  | "skills"
+  | "spaces"
+  | "docs";
+
+export interface NexusNavItem {
+  id: NexusNavId;
+  label: string;
+  icon: string;
+  to: string;
+}
+
+export interface NexusNavTargets {
+  scheduled: string;
+}
+
+export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
+  return [
+    { id: "home", label: "Home", icon: "Home", to: "/" },
+    {
+      id: "integrations",
+      label: "Integrations",
+      icon: "Plug02",
+      to: "/plugins",
+    },
+    {
+      id: "scheduled",
+      label: "Scheduled",
+      icon: "TimeSchedule",
+      to: targets.scheduled,
+    },
+    { id: "skills", label: "Skills", icon: "Zap", to: "/skills" },
+    { id: "spaces", label: "Spaces", icon: "Layers", to: NEXUS_SPACES_PATH },
+    { id: "docs", label: "Docs", icon: "FileText", to: NEXUS_DOCS_PATH },
+  ];
+}
+
+export function resolveNexusNavId(pathname: string): NexusNavId | null {
+  if (pathname === "/") return "home";
+  if (
+    pathname === NEXUS_SPACES_PATH ||
+    matchPath("/projects/:projectId", pathname) !== null
+  )
+    return "spaces";
+  if (pathname === NEXUS_DOCS_PATH) return "docs";
+  if (
+    pathname === NEXUS_SCHEDULED_PATH ||
+    pathname.startsWith("/plugins/automations/")
+  )
+    return "scheduled";
+  if (
+    pathname === "/plugins" ||
+    matchPath("/plugins/:pluginId", pathname) !== null
+  )
+    return "integrations";
+  if (pathname === "/skills" || pathname.startsWith("/skills/"))
+    return "skills";
+  return null;
+}
+
+export function isNexusSettingsPath(pathname: string): boolean {
+  return pathname === "/settings" || pathname.startsWith("/settings/");
+}
+
+export function nexusGreeting(hour: number): string {
+  if (hour < 5) return "Working late";
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+export function nexusFirstName(actor: IxActor | undefined): string | null {
+  if (actor?.kind !== "user") return null;
+  const name = actor.user.name.trim();
+  if (name.length > 0) return name.split(/\s+/)[0] ?? null;
+  const local = actor.user.email.split("@")[0]?.trim() ?? "";
+  return local.length > 0 ? local : null;
+}
+
+export function nexusInitials(label: string): string {
+  const parts = label
+    .trim()
+    .split(/[\s@._-]+/)
+    .filter((part) => part.length > 0);
+  const letters =
+    parts.length > 1
+      ? `${parts[0]![0]}${parts[1]![0]}`
+      : (parts[0]?.slice(0, 2) ?? "?");
+  return letters.toUpperCase();
+}
+
+export type NexusChatIndicator = "working" | "attention" | "unread" | "none";
+
+export function nexusChatIndicator(
+  thread: ThreadListEntry,
+): NexusChatIndicator {
+  const kind = resolveThreadListIndicator(
+    threadListIndicatorStateForThread(thread, false),
+  );
+  switch (kind) {
+    case "unread-error":
+    case "waiting-for-input":
+    case "queued-failed":
+      return "attention";
+    case "working-draft":
+    case "workflow":
+    case "background-agent":
+    case "background-command":
+    case "plan-mode":
+    case "goal":
+    case "runtime":
+      return "working";
+    case "unread-success":
+      return "unread";
+    case "queued-waiting":
+    case "draft":
+    case "none":
+      return "none";
+  }
+}
+
+export function nexusChatTitle(
+  thread: Pick<ThreadListEntry, "title" | "titleFallback">,
+): string {
+  return thread.title?.trim() || thread.titleFallback?.trim() || "New chat";
+}
+
+export function nexusChats(
+  threads: readonly ThreadListEntry[],
+): ThreadListEntry[] {
+  return threads
+    .filter(
+      (thread) =>
+        thread.parentThreadId === null &&
+        thread.archivedAt === null &&
+        thread.deletedAt === null,
+    )
+    .sort((left, right) => {
+      const leftPinned = left.pinnedAt !== null;
+      const rightPinned = right.pinnedAt !== null;
+      if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
+      return right.updatedAt - left.updatedAt;
+    });
+}
+
+export interface NexusPaletteItem {
+  id: string;
+  group: "Go to" | "Chats" | "Actions";
+  label: string;
+  icon: string;
+  keywords?: string;
+  shortcut?: string[];
+  run: () => void;
+}
+
+export function filterNexusPaletteItems(
+  items: readonly NexusPaletteItem[],
+  query: string,
+  recentChatLimit = 6,
+): NexusPaletteItem[] {
+  const needle = query.trim().toLowerCase();
+  if (needle.length === 0) {
+    let chats = 0;
+    return items.filter(
+      (item) => item.group !== "Chats" || chats++ < recentChatLimit,
+    );
+  }
+  const terms = needle.split(/\s+/);
+  return items.filter((item) => {
+    const haystack =
+      `${item.label} ${item.keywords ?? ""} ${item.group}`.toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+
+export interface NexusStarter {
+  label: string;
+  prompt: string;
+}
+
+export const NEXUS_STARTERS: readonly NexusStarter[] = [
+  {
+    label: "Summarize my week",
+    prompt:
+      "Summarize what happened across my chats this week and list anything still open.",
+  },
+  {
+    label: "Draft a client email",
+    prompt: "Draft a short, friendly client email about ",
+  },
+  {
+    label: "Research a company",
+    prompt: "Research this company and give me a one-page brief: ",
+  },
+  {
+    label: "Plan a project",
+    prompt: "Help me plan this project step by step: ",
+  },
+];
+
+export interface NexusSetupStep {
+  id: string;
+  title: string;
+  body: string;
+  cta: string;
+  to: string;
+  adminOnly: boolean;
+}
+
+export function nexusSetupSteps(
+  targets: NexusNavTargets & { organization: string },
+): NexusSetupStep[] {
+  return [
+    {
+      id: "integrations",
+      title: "Connect your tools",
+      body: "Install the integrations your team already uses so Nexus can work across them.",
+      cta: "Open integrations",
+      to: "/plugins",
+      adminOnly: true,
+    },
+    {
+      id: "skills",
+      title: "Teach Nexus how you work",
+      body: "Add skills that describe how your team handles recurring work.",
+      cta: "Open skills",
+      to: "/skills",
+      adminOnly: false,
+    },
+    {
+      id: "scheduled",
+      title: "Put repeat work on a schedule",
+      body: "Anything you ask twice can run on its own and report back.",
+      cta: "Open scheduled",
+      to: targets.scheduled,
+      adminOnly: false,
+    },
+    {
+      id: "team",
+      title: "Invite your team",
+      body: "Add teammates and choose what each of them can see and do.",
+      cta: "Open organization",
+      to: targets.organization,
+      adminOnly: true,
+    },
+  ];
+}
+
+export interface NexusCrumb {
+  label: string;
+  to?: string;
+}
+
+export type NexusPageTitle = {
+  title?: string;
+  breadcrumbs?: readonly NexusCrumb[];
+} | null;
+
+const NAV_LABELS: Record<NexusNavId, string> = {
+  home: "Home",
+  integrations: "Integrations",
+  scheduled: "Scheduled",
+  skills: "Skills",
+  spaces: "Spaces",
+  docs: "Docs",
+};
+
+export function nexusBreadcrumbs(args: {
+  pathname: string;
+  organizationPath: string;
+  pageTitle: NexusPageTitle;
+  threadTitle: string | null;
+}): NexusCrumb[] {
+  const { pathname, organizationPath, pageTitle, threadTitle } = args;
+  if (threadTitle !== null)
+    return [{ label: "Chats", to: "/" }, { label: threadTitle }];
+  if (pathname === organizationPath) return [{ label: "Organization" }];
+  const pageCrumbs: readonly NexusCrumb[] =
+    pageTitle?.breadcrumbs ??
+    (pageTitle?.title ? [{ label: pageTitle.title }] : []);
+  if (isNexusSettingsPath(pathname)) {
+    const leaf = pageCrumbs.at(-1);
+    return leaf && leaf.label !== "Settings"
+      ? [{ label: "Settings", to: "/settings" }, { label: leaf.label }]
+      : [{ label: "Settings" }];
+  }
+  const navId = resolveNexusNavId(pathname);
+  if (navId === null)
+    return pageCrumbs.length > 0
+      ? [...pageCrumbs]
+      : [{ label: NAV_LABELS.home, to: "/" }];
+  const base = NAV_LABELS[navId];
+  const tail = pageCrumbs.filter(
+    (crumb) => crumb.label !== base && crumb.label !== "Plugins",
+  );
+  return tail.length > 0
+    ? [{ label: base }, ...tail.slice(-1)]
+    : [{ label: base }];
+}
+
+export function nexusTimeAgo(timestamp: number, now: number): string {
+  const seconds = Math.max(0, Math.round((now - timestamp) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}

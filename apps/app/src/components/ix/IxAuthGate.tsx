@@ -21,8 +21,8 @@ import {
   type IxStatus,
 } from "./ix-auth";
 import { applyBrandIcons, setBrandProductName } from "@/lib/ix/brand";
+import { NexusSignInLayout } from "./nexus/NexusSignIn";
 
-/** White or near-black, whichever reads better on the brand accent (WCAG relative luminance). */
 export function readableTextOn(hex: string): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (m === null) return "#ffffff";
@@ -37,6 +37,7 @@ export function readableTextOn(hex: string): string {
 type Screen = "sign-in" | "bootstrap" | "invite";
 
 function Shell({ brand, title, subtitle, children }: { brand: IxBrand; title: string; subtitle: string; children: ReactNode }) {
+  if (brand.shell === "nexus") return <NexusSignInLayout brand={brand} title={title} subtitle={subtitle}>{children}</NexusSignInLayout>;
   const accentStyle = brand.accent === undefined ? undefined : { backgroundColor: brand.accent };
   return (
     <div className="flex h-dvh w-full items-center justify-center bg-background p-6 text-foreground">

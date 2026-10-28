@@ -1,0 +1,12 @@
+@import "@fontsource-variable/manrope";
+
+:root[data-ix-shell="nexus"] {
+  --font-sans: "Manrope Variable", Manrope, "Inter Variable", Inter, sans-serif;
+  --nexus-signal: oklch(0.74 0.12 228);
+  --nexus-story: oklch(0.22 0.042 238);
+  --nexus-story-raised: oklch(0.27 0.05 236);
+  --nexus-story-foreground: oklch(0.9 0.02 235);
+  --nexus-story-muted: oklch(0.8 0.025 235);
+  --nexus-online: var(--success);
+  --nexus-tile: white;
+}

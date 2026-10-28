@@ -28,9 +28,10 @@ export interface IxBrand {
   supportUrl?: string;
   faviconUrl?: string;
   iconUrl?: string;
-  shell?: "full" | "simple";
+  shell?: IxShell;
   composer?: "open" | "locked";
 }
+export type IxShell = "full" | "simple" | "nexus";
 export type IxSocialProvider = "google" | "microsoft" | "github";
 export interface IxStatus {
   mode: "off" | "team";
@@ -274,8 +275,11 @@ export async function signOutIx(): Promise<void> {
   await refreshIxSession();
 }
 
-export function useIxShell(): "full" | "simple" {
-  return useIxSession().status?.brand.shell === "simple" ? "simple" : "full";
+export function resolveIxShell(brand: IxBrand | undefined): IxShell {
+  return brand?.shell === "simple" || brand?.shell === "nexus" ? brand.shell : "full";
+}
+export function useIxShell(): IxShell {
+  return resolveIxShell(useIxSession().status?.brand);
 }
 export function listIxMembers(): Promise<{ members: IxMember[] }> {
   return ixRequest<{ members: IxMember[] }>("/members");
@@ -316,7 +320,7 @@ export function setIxProjectAccess(memberId: string, projectId: string, level: I
 export function useIxStaffShell(): boolean {
   const session = useIxSession();
   const actor = session.me?.actor;
-  return session.status?.brand.shell === "simple" && session.status.brand.composer === "locked" && actor?.kind === "user" && !roleAtLeast(actor.role, "admin");
+  return resolveIxShell(session.status?.brand) !== "full" && session.status?.brand.composer === "locked" && actor?.kind === "user" && !roleAtLeast(actor.role, "admin");
 }
 
 export interface IxDeskPolicy { theme: boolean; layout: boolean }

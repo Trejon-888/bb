@@ -111,6 +111,9 @@ import { AppLayoutSidebar } from "./AppLayoutSidebar";
 import { IxOrganizationView } from "@/components/ix/IxOrganizationView";
 import { SimpleSidebar } from "@/components/ix/SimpleSidebar";
 import { IX_ORGANIZATION_PATH, useIxShell } from "@/components/ix/ix-auth";
+import { NexusMain } from "@/components/ix/nexus/NexusMain";
+import { NexusSidebar } from "@/components/ix/nexus/NexusSidebar";
+import { NEXUS_SIDEBAR_WIDTH } from "@/components/ix/nexus/nexus-model";
 import { resolveRouteSidebar } from "./routeSidebar";
 import { NAV_RAIL_COLLAPSED_SIDEBAR_WIDTH } from "@/components/sidebar/navRailWidth";
 import { useSidebarNavigationPlacement } from "@/components/sidebar/sidebarNavigationProvider";
@@ -205,6 +208,7 @@ function SidebarStateBridge({
   const hasRail = useSidebarNavigationPlacement() === "rail";
   const sidebarWidth = useAtomValue(sidebarWidthAtom);
   const sidebarLiveWidth = useAtomValue(sidebarLiveWidthAtom);
+  const nexusShell = useIxShell() === "nexus";
   const handleOpenChange = useCallback<SidebarOpenChangeHandler>(
     (nextOpen) => {
       setOpen(nextOpen);
@@ -218,9 +222,9 @@ function SidebarStateBridge({
   });
   return (
     <SidebarProvider
-      width={`${sidebarLiveWidth ?? sidebarWidth}px`}
+      width={nexusShell ? NEXUS_SIDEBAR_WIDTH : `${sidebarLiveWidth ?? sidebarWidth}px`}
       collapsedRailWidth={
-        hasRail ? NAV_RAIL_COLLAPSED_SIDEBAR_WIDTH : undefined
+        hasRail && !nexusShell ? NAV_RAIL_COLLAPSED_SIDEBAR_WIDTH : undefined
       }
       framed={usesDesktopChrome}
       data-testid="app-layout-root"
@@ -828,6 +832,8 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                 <HistoryCommandHandlers />
                 {ixShell === "simple" ? (
                   <SimpleSidebar />
+                ) : ixShell === "nexus" ? (
+                  <NexusSidebar routeSidebar={routeSidebar} backToAppRoutePath={backToAppRoutePath} />
                 ) : (
                   <AppLayoutSidebar
                     routeSidebar={routeSidebar}
@@ -845,7 +851,9 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                     data-app-content-shell=""
                     className="relative flex h-full min-h-0 min-w-0 w-full flex-col pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[var(--bb-safe-area-bottom,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)]"
                   >
-                    {showHeader && !ixOrganizationView ? (
+                    {ixShell === "nexus" ? (
+                      <NexusMain threadTitle={isThreadView ? threadDisplayTitle : null}>{children}</NexusMain>
+                    ) : showHeader && !ixOrganizationView ? (
                       <AppHeader
                         resourceSection={
                           resourceWorkspaceHeaderMeta
@@ -862,12 +870,14 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                         meta={meta}
                       />
                     ) : null}
-                    <main className="flex min-h-0 flex-1 flex-col p-4 md:p-5">
-                      {ixOrganizationView ? <IxOrganizationView /> : children}
-                    </main>
+                    {ixShell === "nexus" ? null : (
+                      <main className="flex min-h-0 flex-1 flex-col p-4 md:p-5">
+                        {ixOrganizationView ? <IxOrganizationView /> : children}
+                      </main>
+                    )}
                   </div>
                 </SidebarInset>
-                {ixShell === "simple" ? null : (
+                {ixShell !== "full" ? null : (
                   <SidebarTriggerOverlay
                     reserveMacosTrafficLights={reserveMacosTrafficLights}
                     usesDesktopChrome={usesDesktopChrome}

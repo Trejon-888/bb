@@ -152,7 +152,7 @@ async function resolveBrandInput(source: string): Promise<IxBrand> {
   if (!brand.success || Array.isArray(parsed)) {
     throw new CliUsageError({
       code: "invalid_value",
-      hint: "Every brand field is a string: name, logoUrl, accent, appTitle, loginTitle, loginSubtitle, supportUrl, faviconUrl, iconUrl, shell (full | simple: the simple company layout), composer (open | locked: hide model and permission controls from staff in the simple shell).",
+      hint: "Every brand field is a string: name, logoUrl, accent, appTitle, loginTitle, loginSubtitle, supportUrl, faviconUrl, iconUrl, shell (full | simple | nexus: the simple company layout, or the Nexus AI-employee layout), composer (open | locked: hide model and permission controls from staff in the simple and nexus shells).",
       message: "Brand input must be a JSON object of string fields.",
     });
   }

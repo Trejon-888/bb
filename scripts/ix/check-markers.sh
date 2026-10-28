@@ -37,6 +37,13 @@ check apps/app/src/components/pickers/PermissionModePicker.tsx 'ixStaffShell ||'
 check apps/app/src/components/layout/AppLayout.tsx 'const ixShell = useIxShell();'
 check apps/app/src/components/layout/AppLayout.tsx '<SimpleSidebar />'
 check apps/app/src/components/layout/AppLayout.tsx '{ixOrganizationView ? <IxOrganizationView /> : children}'
+check apps/app/src/components/layout/AppLayout.tsx '<NexusSidebar routeSidebar={routeSidebar} backToAppRoutePath={backToAppRoutePath} />'
+check apps/app/src/components/layout/AppLayout.tsx '<NexusMain threadTitle={isThreadView ? threadDisplayTitle : null}>{children}</NexusMain>'
+check apps/app/src/components/layout/AppLayout.tsx 'width={nexusShell ? NEXUS_SIDEBAR_WIDTH'
+check apps/app/src/views/RootComposeSecondaryContent.tsx '<NexusHomeHero />'
+check apps/app/src/views/RootComposeSecondaryContent.tsx '<NexusHomeSections />'
+check apps/app/src/components/ix/IxAuthGate.tsx 'if (brand.shell === "nexus") return <NexusSignInLayout'
+check apps/server/src/ix/brand.ts 'shell: z.enum(["full", "simple", "nexus"]).optional(),'
 check apps/server/src/routes/ui-preferences.ts 'overlayIxDeskPreferences(deps.ixAuth.desk, readUiPreferences(deps))'
 check apps/server/src/routes/ui-preferences.ts 'writeIxDeskPreference(deps.ixAuth.desk, args) ?? writeUiPreference(deps, args)'
 check apps/server/src/routes/ui-preferences.ts 'resetIxDeskPreference(deps.ixAuth.desk, key'
@@ -76,6 +83,9 @@ check apps/app/src/components/settings/UpdatesSettingsSection.tsx '<BrandLogo cl
 check apps/app/src/components/settings/UpdatesSettingsSection.tsx 'import { BrandLogo } from "@/components/ix/BrandLogo";'
 check plugins/bb-guide/skills/bb-cli/references/command-index.md '`bb ix brand asset set`'
 for f in packages/config/src/product-name.ts packages/bb-app/src/ix-env-aliases.ts packages/bb-app/src/bin/ix.ts packages/bb-app/src/bin/ix-app.ts apps/app/src/lib/ix/brand.ts; do
+  if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi
+done
+for f in apps/app/src/components/ix/nexus/nexus-model.ts apps/app/src/components/ix/nexus/nexus-root.ts apps/app/src/components/ix/nexus/nexus.css apps/app/src/components/ix/nexus/NexusMain.tsx apps/app/src/components/ix/nexus/NexusSidebar.tsx apps/app/src/components/ix/nexus/NexusHome.tsx apps/app/src/components/ix/nexus/NexusSignIn.tsx; do
   if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi
 done
 if [ -f apps/cli/src/product-cli-name.ts ]; then echo "ok       apps/cli/src/product-cli-name.ts"; else echo "MISSING  apps/cli/src/product-cli-name.ts"; fail=1; fi

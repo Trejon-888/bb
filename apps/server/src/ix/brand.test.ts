@@ -87,5 +87,7 @@ describe("ix brand", () => {
     expect((await app.request("/api/ix/brand", put({ name: "ECM", shell: "simple" }, ownerCookie))).status).toBe(200);
     expect((await json(await app.request("/api/ix/status"))).brand).toEqual({ name: "ECM", shell: "simple" });
     expect((await app.request("/api/ix/brand", put({ shell: "compact" }, ownerCookie))).status).toBe(400);
+    expect((await app.request("/api/ix/brand", put({ name: "Advisy", appTitle: "Nexus", shell: "nexus" }, ownerCookie))).status).toBe(200);
+    expect((await json(await app.request("/api/ix/status"))).brand).toEqual({ name: "Advisy", appTitle: "Nexus", shell: "nexus" });
   });
 });
