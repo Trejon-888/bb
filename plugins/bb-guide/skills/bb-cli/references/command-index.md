@@ -341,6 +341,9 @@ This index lists every command path that the core CLI registers, including alias
 - `bb ix brand`
 - `bb ix brand get`
 - `bb ix brand set`
+- `bb ix brand asset`
+- `bb ix brand asset set`
+- `bb ix brand asset clear`
 - `bb ix sso-secret`
 - `bb ix sso-secret set`
 - `bb ix sso-secret clear`

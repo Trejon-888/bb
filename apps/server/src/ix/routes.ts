@@ -3,9 +3,17 @@ import { z } from "zod";
 import { ApiError } from "../errors.js";
 import type { IxAuthService } from "./auth-service.js";
 import { ixBrandSchema } from "./brand.js";
+import {
+  IX_BRAND_ASSET_KINDS,
+  IX_BRAND_ASSET_MAX_BODY_BYTES,
+  IxBrandAssetError,
+  ixBrandAssetInputSchema,
+  parseIxBrandAssetKind,
+  type IxBrandAssetKind,
+} from "./brand-assets.js";
 import { IX_ROLES, roleAtLeast, type IxRole } from "./config.js";
 import { getIxActor, type IxActor } from "./context.js";
-import { ixApiGate, type IxGateDeps } from "./middleware.js";
+import { IX_NOT_MEMBER_MESSAGE, ixApiGate, type IxGateDeps } from "./middleware.js";
 import { IX_SSO_SECRET_MIN_LENGTH, IxSsoError } from "./sso.js";
 
 const bootstrapSchema = z.object({
@@ -41,6 +49,33 @@ function requireRole(actor: IxActor | undefined, min: IxRole): void {
   }
 }
 
+function assetKind(value: string): IxBrandAssetKind {
+  const kind = parseIxBrandAssetKind(value);
+  if (kind === null) throw new ApiError(404, "ix_asset_kind", `Asset kind must be one of: ${IX_BRAND_ASSET_KINDS.join(", ")}`);
+  return kind;
+}
+
+async function readBoundedText(request: Request, maxBytes: number): Promise<string> {
+  const tooLarge = () => new ApiError(413, "ix_asset_too_large", "Brand assets are limited to 2 MB");
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declared) && declared > maxBytes) throw tooLarge();
+  if (request.body === null) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel();
+      throw tooLarge();
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 function applyCookies(context: { header(name: string, value: string, options?: { append?: boolean }): void }, headers: Headers): void {
   for (const [key, value] of headers.entries()) {
     if (key.toLowerCase() === "set-cookie") context.header("set-cookie", value, { append: true });
@@ -54,6 +89,30 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Ho
   app.get("/status", async (context) => context.json(await ixAuth.status()));
 
   app.get("/brand", (context) => context.json(ixAuth.brand()));
+
+  app.get("/brand/assets/:kind", (context) => {
+    const asset = ixAuth.brandAsset(assetKind(context.req.param("kind")));
+    if (asset === null) throw new ApiError(404, "ix_asset_missing", "No asset of this kind is set");
+    const etag = `"${asset.etag}"`;
+    const headers: Record<string, string> = {
+      "cache-control": "public, max-age=300",
+      etag,
+      "x-content-type-options": "nosniff",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+    };
+    const ifNoneMatch = context.req.header("if-none-match");
+    if (ifNoneMatch !== undefined && ifNoneMatch.split(",").some((tag) => tag.trim() === etag || tag.trim() === "*")) {
+      return new Response(null, { status: 304, headers });
+    }
+    const bytes = Buffer.from(asset.dataBase64, "base64");
+    return new Response(bytes, { status: 200, headers: { ...headers, "content-type": asset.contentType, "content-length": String(bytes.length) } });
+  });
+
+  app.post("/sign-out", async (context) => {
+    const headers = await ixAuth.signOut(context.req.raw.headers);
+    applyCookies(context, headers);
+    return context.json({ ok: true });
+  });
 
   app.post("/sso/accept", async (context) => {
     if (ixAuth.mode === "off") throw new ApiError(409, "ix_auth_off", "BB_IX_AUTH is off");
@@ -91,7 +150,7 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Ho
     }
     applyCookies(context, headers);
     const actor = await ixAuth.resolveActor(new Headers({ cookie: (headers.get("set-cookie") ?? "").split(";")[0] ?? "" }));
-    if (actor === null) throw new ApiError(403, "ix_not_member", "This account is not a member of this server");
+    if (actor === null) throw new ApiError(403, "ix_not_member", IX_NOT_MEMBER_MESSAGE);
     return context.json({ ok: true, actor });
   });
 
@@ -117,17 +176,43 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Ho
     return context.json({ actor: actor ?? { kind: "off" }, mode: status.mode, orgName: status.orgName });
   });
 
-  authed.post("/sign-out", async (context) => {
-    const headers = await ixAuth.signOut(context.req.raw.headers);
-    applyCookies(context, headers);
-    return context.json({ ok: true });
-  });
 
   authed.put("/brand", async (context) => {
     const actor = getIxActor(context);
     requireRole(actor, "admin");
     const input = await parseBody(context, ixBrandSchema);
     return context.json({ ok: true, brand: ixAuth.setBrand(input, actorLabel(actor)) });
+  });
+
+  authed.put("/brand/assets/:kind", async (context) => {
+    const actor = getIxActor(context);
+    requireRole(actor, "admin");
+    const kind = assetKind(context.req.param("kind"));
+    const text = await readBoundedText(context.req.raw, IX_BRAND_ASSET_MAX_BODY_BYTES + 1024);
+    const input = await parseBody({ req: { json: async () => JSON.parse(text) as unknown } }, ixBrandAssetInputSchema);
+    try {
+      const result = ixAuth.setBrandAsset(kind, input, actorLabel(actor));
+      return context.json({
+        ok: true,
+        kind,
+        contentType: result.asset.contentType,
+        size: result.asset.size,
+        etag: result.asset.etag,
+        brand: result.brand,
+      });
+    } catch (error) {
+      if (error instanceof IxBrandAssetError) {
+        throw new ApiError(error.code === "too_large" ? 413 : 400, `ix_asset_${error.code}`, error.message);
+      }
+      throw error;
+    }
+  });
+
+  authed.delete("/brand/assets/:kind", (context) => {
+    const actor = getIxActor(context);
+    requireRole(actor, "admin");
+    const kind = assetKind(context.req.param("kind"));
+    return context.json({ ok: true, brand: ixAuth.clearBrandAsset(kind, actorLabel(actor)) });
   });
 
   authed.put("/sso/secret", async (context) => {

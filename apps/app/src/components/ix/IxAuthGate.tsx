@@ -4,18 +4,23 @@ import { Input } from "@bb/shared-ui/input";
 import {
   acceptSsoToken,
   clearInviteTokenFromUrl,
+  clearSocialErrorFromUrl,
   clearSsoTokenFromUrl,
   ixRequest,
   readInviteTokenFromUrl,
+  readSocialErrorFromUrl,
   readSsoTokenFromUrl,
   refreshIxSession,
   rememberedTeamMode,
   setCurrentIxRole,
+  signOutIx,
+  startSocialSignIn,
   useIxSessionBoot,
   type IxBrand,
+  type IxSocialProvider,
   type IxStatus,
 } from "./ix-auth";
-import { setBrandProductName } from "@/lib/ix/brand";
+import { applyBrandIcons, setBrandProductName } from "@/lib/ix/brand";
 
 type Screen = "sign-in" | "bootstrap" | "invite";
 
@@ -49,6 +54,65 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="mb-1 block text-muted-foreground">{label}</span>
       {children}
     </label>
+  );
+}
+
+const PROVIDER_LABELS: Record<IxSocialProvider, string> = {
+  google: "Google",
+  microsoft: "Microsoft",
+  github: "GitHub",
+};
+
+function SocialButtons({ providers, inviteToken, onError }: { providers: IxSocialProvider[]; inviteToken: string | null; onError: (message: string) => void }) {
+  const [pending, setPending] = useState<IxSocialProvider | null>(null);
+  if (providers.length === 0) return null;
+  const start = async (provider: IxSocialProvider) => {
+    setPending(provider);
+    try {
+      await startSocialSignIn(provider, inviteToken);
+    } catch (caught) {
+      setPending(null);
+      onError(caught instanceof Error ? caught.message : "Could not start sign-in");
+    }
+  };
+  return (
+    <div className="mb-4">
+      <div className="flex flex-col gap-2">
+        {providers.map((provider) => (
+          <Button key={provider} type="button" variant="outline" className="w-full" disabled={pending !== null} onClick={() => void start(provider)}>
+            {pending === provider ? "Redirecting…" : `Continue with ${PROVIDER_LABELS[provider]}`}
+          </Button>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        or
+        <span className="h-px flex-1 bg-border" />
+      </div>
+    </div>
+  );
+}
+
+function NotMemberScreen({ brand, message }: { brand: IxBrand; message: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const signOut = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await signOutIx();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Sign-out failed");
+      setBusy(false);
+    }
+  };
+  return (
+    <Shell brand={brand} title="No access" subtitle={message}>
+      {error !== null && <p className="mb-3 text-sm text-destructive">{error}</p>}
+      <Button type="button" className="w-full" disabled={busy} onClick={() => void signOut()}>
+        {busy ? "Signing out…" : "Sign out"}
+      </Button>
+    </Shell>
   );
 }
 
@@ -97,6 +161,7 @@ function AuthForm({ status, screen, inviteToken, notice, onDone, onSwitch }: { s
 
   return (
     <Shell brand={brand} title={title} subtitle={subtitle}>
+      <SocialButtons providers={status.providers ?? []} inviteToken={screen === "invite" ? inviteToken : null} onError={setError} />
       <form onSubmit={submit}>
         {screen !== "invite" && (
           <Field label="Email">
@@ -137,16 +202,22 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
   const [inviteToken] = useState(readInviteTokenFromUrl);
   const [ssoToken, setSsoToken] = useState(readSsoTokenFromUrl);
   const [ssoError, setSsoError] = useState<string | null>(null);
+  const [socialError] = useState(readSocialErrorFromUrl);
+  useEffect(() => {
+    if (socialError !== null) clearSocialErrorFromUrl();
+  }, [socialError]);
   const [screen, setScreen] = useState<Screen | null>(null);
   const [holdForTeam] = useState(rememberedTeamMode);
   const actor = session.me?.actor ?? null;
   useEffect(() => {
     setCurrentIxRole(actor !== null && actor.kind === "user" ? actor.role : null);
-  }, [actor]);
+    if (actor !== null && actor.kind === "user" && inviteToken !== null) clearInviteTokenFromUrl();
+  }, [actor, inviteToken]);
   const brand = status?.brand;
   useEffect(() => {
     if (brand === undefined) return;
     setBrandProductName(brand.appTitle ?? brand.name ?? null);
+    applyBrandIcons(brand);
     if (brand.appTitle !== undefined && typeof document !== "undefined") document.title = brand.appTitle;
   }, [brand]);
   useEffect(() => {
@@ -175,13 +246,14 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
   if (status === undefined) return holdForTeam ? null : children;
   if (ssoToken !== null || session.mePending) return null;
   if (actor !== null) return children;
+  if (session.notMember !== null) return <NotMemberScreen brand={status.brand} message={session.notMember} />;
   const resolved: Screen = screen ?? (inviteToken !== null ? "invite" : status.bootstrapped ? "sign-in" : "bootstrap");
   return (
     <AuthForm
       status={status}
       screen={resolved}
       inviteToken={inviteToken}
-      notice={ssoError}
+      notice={ssoError ?? socialError}
       onDone={() => {
         void refreshIxSession();
       }}

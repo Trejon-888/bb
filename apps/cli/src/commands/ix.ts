@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { extname } from "node:path";
 import { Command } from "commander";
 import { createHttpTransport } from "@bb/sdk";
 import { z } from "zod";
@@ -53,7 +54,21 @@ const okSchema = z.object({ ok: z.literal(true) }).loose();
 type IxBrand = z.infer<typeof brandSchema>;
 type IxMember = z.infer<typeof memberSchema>;
 
-type IxMethod = "GET" | "PUT" | "POST";
+type IxMethod = "GET" | "PUT" | "POST" | "DELETE";
+
+export const IX_BRAND_ASSET_KINDS = ["logo", "favicon", "icon"] as const;
+type IxBrandAssetKind = (typeof IX_BRAND_ASSET_KINDS)[number];
+const ASSET_CONTENT_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".webp": "image/webp",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+};
+const assetUploadSchema = z
+  .object({ kind: z.enum(IX_BRAND_ASSET_KINDS), contentType: z.string(), size: z.number(), etag: z.string(), brand: brandSchema })
+  .loose();
 
 export interface IxRequest {
   (method: IxMethod, path: string, body?: unknown): Promise<unknown>;
@@ -137,11 +152,31 @@ async function resolveBrandInput(source: string): Promise<IxBrand> {
   if (!brand.success || Array.isArray(parsed)) {
     throw new CliUsageError({
       code: "invalid_value",
-      hint: "Every brand field is a string: name, logoUrl, accent, appTitle, loginTitle, loginSubtitle, supportUrl, faviconUrl.",
+      hint: "Every brand field is a string: name, logoUrl, accent, appTitle, loginTitle, loginSubtitle, supportUrl, faviconUrl, iconUrl.",
       message: "Brand input must be a JSON object of string fields.",
     });
   }
   return brand.data;
+}
+
+function parseAssetKind(value: string): IxBrandAssetKind {
+  const kind = z.enum(IX_BRAND_ASSET_KINDS).safeParse(value);
+  if (kind.success) return kind.data;
+  throw new CliUsageError({
+    code: "invalid_value",
+    hint: null,
+    message: `Invalid asset kind '${value}'. Expected one of: ${IX_BRAND_ASSET_KINDS.join(", ")}.`,
+  });
+}
+
+export function assetContentType(file: string): string {
+  const contentType = ASSET_CONTENT_TYPES[extname(file).toLowerCase()];
+  if (contentType !== undefined) return contentType;
+  throw new CliUsageError({
+    code: "invalid_value",
+    hint: `Supported extensions: ${Object.keys(ASSET_CONTENT_TYPES).join(", ")}`,
+    message: `Cannot infer an image type from '${file}'.`,
+  });
 }
 
 function parseRole(value: string): IxRole {
@@ -227,6 +262,44 @@ export function registerIxCommands(program: Command, getUrl: () => string): void
         const result = parseResponse(z.object({ brand: brandSchema }).loose(), raw, "brand");
         const keys = Object.keys(result.brand);
         console.log(keys.length === 0 ? "Brand cleared." : `Brand updated: ${keys.join(", ")}`);
+      }),
+    );
+
+  const asset = brand.command("asset").description("Upload or remove the logo, favicon or icon image the server hosts");
+
+  asset
+    .command("set <kind> <file>")
+    .description(`Upload an image (${IX_BRAND_ASSET_KINDS.join(", ")}); the brand's matching URL is pointed at it (admin or loopback owner)`)
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (kindArg: string, file: string, opts: JsonOutputOptions) => {
+        const kind = parseAssetKind(kindArg);
+        const contentType = assetContentType(file);
+        const bytes = await readFile(file).catch((error: unknown) => {
+          throw new CliUsageError({
+            code: "invalid_value",
+            hint: null,
+            message: `Could not read '${file}': ${error instanceof Error ? error.message : String(error)}`,
+          });
+        });
+        const raw = await request()("PUT", `/api/ix/brand/assets/${kind}`, { contentType, dataBase64: bytes.toString("base64") });
+        if (outputJson(opts, raw)) return;
+        const result = parseResponse(assetUploadSchema, raw, "asset");
+        console.log(`Uploaded ${result.kind} (${result.contentType}, ${result.size} bytes, etag ${result.etag}).`);
+      }),
+    );
+
+  asset
+    .command("clear <kind>")
+    .description("Remove an uploaded image and clear the brand URL that pointed at it")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (kindArg: string, opts: JsonOutputOptions) => {
+        const kind = parseAssetKind(kindArg);
+        const raw = await request()("DELETE", `/api/ix/brand/assets/${kind}`);
+        if (outputJson(opts, raw)) return;
+        parseResponse(okSchema, raw, "asset");
+        console.log(`Cleared ${kind}.`);
       }),
     );
 

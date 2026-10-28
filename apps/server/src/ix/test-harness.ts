@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createMigratedConnection } from "@bb/db/testing";
+import { makeSignature } from "better-auth/crypto";
 import { Hono } from "hono";
 import { afterEach } from "vitest";
 import { ApiError } from "../errors.js";
@@ -51,6 +52,21 @@ export async function json(response: Response): Promise<Record<string, unknown>>
 
 export function jsonInit(body: unknown, extra: Record<string, string> = {}): RequestInit {
   return { method: "POST", headers: { "content-type": "application/json", ...extra }, body: JSON.stringify(body) };
+}
+
+export async function oauthSessionCookie(
+  ixAuth: IxAuthService,
+  input: { email: string; name?: string; emailVerified: boolean; providerId?: "google" | "microsoft" | "github" },
+): Promise<{ cookie: string; userId: string }> {
+  const ctx = await ixAuth.internalAuthContext();
+  const providerId = input.providerId ?? "google";
+  const { user } = await ctx.internalAdapter.createOAuthUser(
+    { email: input.email, name: input.name ?? input.email.split("@")[0] ?? "user", emailVerified: input.emailVerified },
+    { providerId, accountId: `${providerId}-${input.email}` },
+  );
+  const session = await ctx.internalAdapter.createSession(user.id);
+  const signed = `${session.token}.${await makeSignature(session.token, ctx.secret)}`;
+  return { cookie: `${ctx.authCookies.sessionToken.name}=${encodeURIComponent(signed)}`, userId: user.id };
 }
 
 export function createIxTestHarness(): {

@@ -8,11 +8,22 @@ import { readOrCreateSecretFile } from "@bb/secret-storage";
 import type { ServerLogger } from "../types.js";
 import { readIxBrand, writeIxBrand, type IxBrand } from "./brand.js";
 import {
+  clearIxBrandAsset,
+  ixBrandAssetPath,
+  readIxBrandAsset,
+  writeIxBrandAsset,
+  type IxBrandAsset,
+  type IxBrandAssetInput,
+  type IxBrandAssetKind,
+} from "./brand-assets.js";
+import {
+  configuredIxSocialProviders,
   parseIxRole,
   roleAtLeast,
   type IxAuthConfig,
   type IxAuthMode,
   type IxRole,
+  type IxSocialProvider,
 } from "./config.js";
 import type { IxActor } from "./context.js";
 import { createIxKv, type IxKv } from "./kv.js";
@@ -53,6 +64,20 @@ export interface IxInvitation {
   inviterId: string;
 }
 
+export interface IxStatus {
+  mode: IxAuthMode;
+  bootstrapped: boolean;
+  orgName: string | null;
+  brand: IxBrand;
+  password: true;
+  providers: IxSocialProvider[];
+}
+
+export type IxSessionResolution =
+  | { kind: "member"; actor: IxActor }
+  | { kind: "non-member"; user: { id: string; email: string } }
+  | { kind: "anonymous" };
+
 export interface IxAuthService {
   readonly mode: IxAuthMode;
   readonly config: IxAuthConfig;
@@ -60,9 +85,14 @@ export interface IxAuthService {
   ensureReady(): Promise<void>;
   handler(request: Request): Promise<Response>;
   resolveActor(headers: Headers): Promise<IxActor | null>;
-  status(): Promise<{ mode: IxAuthMode; bootstrapped: boolean; orgName: string | null; brand: IxBrand }>;
+  resolveSession(headers: Headers): Promise<IxSessionResolution>;
+  status(): Promise<IxStatus>;
   brand(): IxBrand;
   setBrand(brand: IxBrand, by: string): IxBrand;
+  brandAsset(kind: IxBrandAssetKind): IxBrandAsset | null;
+  setBrandAsset(kind: IxBrandAssetKind, input: IxBrandAssetInput, by: string): { asset: IxBrandAsset; brand: IxBrand };
+  clearBrandAsset(kind: IxBrandAssetKind, by: string): IxBrand;
+  internalAuthContext(): Promise<IxInternalAuthContext>;
   setSsoSecret(secret: string, by: string): void;
   clearSsoSecret(by: string): void;
   acceptSso(token: string): Promise<{ userId: string; role: IxRole; headers: Headers }>;
@@ -91,29 +121,46 @@ export interface IxAuthService {
   signOut(headers: Headers): Promise<Headers>;
 }
 
+export interface IxInternalAuthContext {
+  adapter: {
+    findOne<T>(args: { model: string; where: Array<{ field: string; value: unknown; operator?: string }> }): Promise<T | null>;
+    findMany<T>(args: { model: string; where?: Array<{ field: string; value: unknown; operator?: string }>; limit?: number }): Promise<T[]>;
+    update<T>(args: { model: string; where: Array<{ field: string; value: unknown }>; update: Record<string, unknown> }): Promise<T | null>;
+    delete(args: { model: string; where: Array<{ field: string; value: unknown }> }): Promise<void>;
+    create<T>(args: { model: string; data: Record<string, unknown> }): Promise<T>;
+  };
+  internalAdapter: {
+    createSession(userId: string, dontRememberMe?: boolean, override?: Record<string, unknown>): Promise<{ token: string; expiresAt: Date }>;
+    createOAuthUser(
+      user: { email: string; name: string; emailVerified: boolean; image?: string | null },
+      account: { providerId: string; accountId: string; accessToken?: string | null },
+    ): Promise<{ user: { id: string; email: string; name: string; emailVerified: boolean } }>;
+  };
+  secret: string;
+  authCookies: {
+    sessionToken: {
+      name: string;
+      attributes: { maxAge?: number; path?: string; httpOnly?: boolean; secure?: boolean; sameSite?: string; domain?: string };
+    };
+  };
+}
+
 interface AuthLike {
   options: Parameters<typeof getMigrations>[0];
   handler(request: Request): Promise<Response>;
   api: Record<string, (args: never) => Promise<unknown>>;
-  $context: Promise<{
-    adapter: {
-      findOne<T>(args: { model: string; where: Array<{ field: string; value: unknown; operator?: string }> }): Promise<T | null>;
-      findMany<T>(args: { model: string; where?: Array<{ field: string; value: unknown; operator?: string }>; limit?: number }): Promise<T[]>;
-      update<T>(args: { model: string; where: Array<{ field: string; value: unknown }>; update: Record<string, unknown> }): Promise<T | null>;
-      delete(args: { model: string; where: Array<{ field: string; value: unknown }> }): Promise<void>;
-      create<T>(args: { model: string; data: Record<string, unknown> }): Promise<T>;
-    };
-    internalAdapter: {
-      createSession(userId: string, dontRememberMe?: boolean, override?: Record<string, unknown>): Promise<{ token: string; expiresAt: Date }>;
-    };
-    secret: string;
-    authCookies: {
-      sessionToken: {
-        name: string;
-        attributes: { maxAge?: number; path?: string; httpOnly?: boolean; secure?: boolean; sameSite?: string; domain?: string };
-      };
-    };
-  }>;
+  $context: Promise<IxInternalAuthContext>;
+}
+
+function socialProviders(config: IxAuthConfig) {
+  const { google, microsoft, github } = config.social;
+  return {
+    ...(google === null ? {} : { google: { clientId: google.clientId, clientSecret: google.clientSecret } }),
+    ...(microsoft === null
+      ? {}
+      : { microsoft: { clientId: microsoft.clientId, clientSecret: microsoft.clientSecret, tenantId: microsoft.tenantId } }),
+    ...(github === null ? {} : { github: { clientId: github.clientId, clientSecret: github.clientSecret } }),
+  };
 }
 
 function orgSlug(name: string): string {
@@ -127,6 +174,12 @@ function toIso(value: unknown): string {
   if (typeof value === "number") return new Date(value).toISOString();
   if (typeof value === "string") return value;
   return new Date(0).toISOString();
+}
+
+function brandFieldFor(kind: IxBrandAssetKind): "logoUrl" | "faviconUrl" | "iconUrl" {
+  if (kind === "logo") return "logoUrl";
+  if (kind === "favicon") return "faviconUrl";
+  return "iconUrl";
 }
 
 function sessionCookieHeaders(response: Response): Headers {
@@ -160,6 +213,7 @@ export async function createIxAuthService(args: {
     database: args.db.$client,
     trustedOrigins: [config.baseUrl],
     emailAndPassword: { enabled: true, minPasswordLength: 8 },
+    socialProviders: socialProviders(config),
     session: {
       modelName: MODEL_NAMES.session,
       expiresIn: config.sessionDays * 24 * 60 * 60,
@@ -189,7 +243,7 @@ export async function createIxAuthService(args: {
     return (await fn(callArgs as never)) as never;
   };
 
-  type UserRow = { id: string; email: string; name: string; createdAt?: unknown };
+  type UserRow = { id: string; email: string; name: string; emailVerified?: boolean; createdAt?: unknown };
   type OrgRow = { id: string; name: string; slug: string };
   type MemberRow = { id: string; userId: string; organizationId: string; role: string; createdAt?: unknown };
   type InvitationRow = { id: string; email: string; role: string; status: string; expiresAt: unknown; inviterId: string; organizationId: string };
@@ -213,6 +267,13 @@ export async function createIxAuthService(args: {
     });
   }
 
+  let membershipQueue: Promise<unknown> = Promise.resolve();
+  function serialized<T>(task: () => Promise<T>): Promise<T> {
+    const run = membershipQueue.then(task, task);
+    membershipQueue = run.catch(() => undefined);
+    return run;
+  }
+
   let ready: Promise<void> | null = null;
   async function ensureReady(): Promise<void> {
     if (ready === null) {
@@ -231,7 +292,11 @@ export async function createIxAuthService(args: {
     await ready;
   }
 
-  async function bootstrap(input: { email: string; password: string; name: string; orgName?: string }) {
+  function bootstrap(input: { email: string; password: string; name: string; orgName?: string }) {
+    return serialized(() => bootstrapUnserialized(input));
+  }
+
+  async function bootstrapUnserialized(input: { email: string; password: string; name: string; orgName?: string }) {
     if ((await primaryOrg()) !== null) {
       throw new Error("ix-auth: this server already has an owner; use an invitation");
     }
@@ -266,20 +331,76 @@ export async function createIxAuthService(args: {
     return sessionCookieHeaders(response);
   }
 
-  async function resolveActor(headers: Headers): Promise<IxActor | null> {
+  function isUnexpired(invitation: InvitationRow): boolean {
+    return new Date(toIso(invitation.expiresAt)).getTime() >= Date.now();
+  }
+
+  function claimMembership(user: UserRow): Promise<MemberRow | null> {
+    return serialized(async () => {
+      const existing = await memberOf(user.id);
+      if (existing !== null) return existing;
+      const db = await adapter();
+      const org = await primaryOrg();
+      if (org === null) {
+        const created = await db.create<OrgRow>({
+          model: "organization",
+          data: { name: config.orgName, slug: orgSlug(config.orgName), createdAt: new Date() },
+        });
+        const member = await db.create<MemberRow>({
+          model: "member",
+          data: { organizationId: created.id, userId: user.id, role: "owner", createdAt: new Date() },
+        });
+        logger.info(`ix-auth: ${user.email} claimed the unowned server as owner of organization ${created.id}`);
+        return member;
+      }
+      if (user.emailVerified !== true) return null;
+      const email = user.email.toLowerCase();
+      const pending = await db.findMany<InvitationRow>({
+        model: "invitation",
+        where: [
+          { field: "organizationId", value: org.id },
+          { field: "email", value: email },
+          { field: "status", value: "pending" },
+        ],
+      });
+      const invitation = pending
+        .filter((row) => row.email.toLowerCase() === email && isUnexpired(row))
+        .sort((a, b) => (toIso(a.expiresAt) < toIso(b.expiresAt) ? 1 : -1))[0];
+      if (invitation === undefined) return null;
+      const role = parseIxRole(invitation.role) ?? "member";
+      const member = await db.create<MemberRow>({
+        model: "member",
+        data: { organizationId: org.id, userId: user.id, role, createdAt: new Date() },
+      });
+      await db.update({ model: "invitation", where: [{ field: "id", value: invitation.id }], update: { status: "accepted" } });
+      logger.info(`ix-auth: ${email} accepted invitation ${invitation.id} as ${role} with a verified email`);
+      return member;
+    });
+  }
+
+  async function resolveSession(headers: Headers): Promise<IxSessionResolution> {
     const session = await api<{ user: UserRow; session: { id: string } } | null>("getSession", { headers });
-    if (session === null || session === undefined) return null;
-    const member = await memberOf(session.user.id);
-    if (member === null) return null;
+    if (session === null || session === undefined) return { kind: "anonymous" };
+    const nonMember: IxSessionResolution = { kind: "non-member", user: { id: session.user.id, email: session.user.email } };
+    const member = (await memberOf(session.user.id)) ?? (await claimMembership(session.user));
+    if (member === null) return nonMember;
     const role = parseIxRole(member.role);
-    if (role === null) return null;
+    if (role === null) return nonMember;
     return {
-      kind: "user",
-      user: { id: session.user.id, email: session.user.email, name: session.user.name },
-      organizationId: member.organizationId,
-      memberId: member.id,
-      role,
+      kind: "member",
+      actor: {
+        kind: "user",
+        user: { id: session.user.id, email: session.user.email, name: session.user.name },
+        organizationId: member.organizationId,
+        memberId: member.id,
+        role,
+      },
     };
+  }
+
+  async function resolveActor(headers: Headers): Promise<IxActor | null> {
+    const resolution = await resolveSession(headers);
+    return resolution.kind === "member" ? resolution.actor : null;
   }
 
   async function listMembers(): Promise<IxMember[]> {
@@ -380,6 +501,24 @@ export async function createIxAuthService(args: {
     return written;
   }
 
+  function setBrandAsset(kind: IxBrandAssetKind, input: IxBrandAssetInput, by: string): { asset: IxBrandAsset; brand: IxBrand } {
+    const asset = writeIxBrandAsset(kv, kind, input);
+    const brand = writeIxBrand(kv, { ...readIxBrand(kv), [brandFieldFor(kind)]: ixBrandAssetPath(kind, asset.etag) });
+    logger.info(`ix-brand: ${kind} asset uploaded by ${by} (${asset.contentType}, ${asset.size} bytes, etag ${asset.etag})`);
+    return { asset, brand };
+  }
+
+  function clearBrandAsset(kind: IxBrandAssetKind, by: string): IxBrand {
+    clearIxBrandAsset(kv, kind);
+    const field = brandFieldFor(kind);
+    const current = readIxBrand(kv);
+    const value = current[field];
+    const next = value !== undefined && value.startsWith(ixBrandAssetPath(kind, "")) ? { ...current, [field]: undefined } : current;
+    const brand = writeIxBrand(kv, next);
+    logger.info(`ix-brand: ${kind} asset cleared by ${by}`);
+    return brand;
+  }
+
   function setSsoSecret(value: string, by: string): void {
     if (value.length < IX_SSO_SECRET_MIN_LENGTH) throw new Error(`ix-sso: secret must be at least ${IX_SSO_SECRET_MIN_LENGTH} characters`);
     kv.set(IX_SSO_SECRET_KEY, value);
@@ -412,7 +551,11 @@ export async function createIxAuthService(args: {
     return headers;
   }
 
-  async function acceptSso(token: string): Promise<{ userId: string; role: IxRole; headers: Headers }> {
+  function acceptSso(token: string): Promise<{ userId: string; role: IxRole; headers: Headers }> {
+    return serialized(() => acceptSsoUnserialized(token));
+  }
+
+  async function acceptSsoUnserialized(token: string): Promise<{ userId: string; role: IxRole; headers: Headers }> {
     const payload = verifyIxSsoToken(token, kv.get(IX_SSO_SECRET_KEY));
     if (!replayGuard.consume(payload.nonce, payload.exp)) {
       logger.info(`ix-sso: replayed nonce for ${payload.sub} (workspace ${payload.workspaceId})`);
@@ -474,12 +617,24 @@ export async function createIxAuthService(args: {
     ensureReady,
     handler: (request) => auth.handler(request),
     resolveActor,
+    resolveSession,
     status: async () => {
       const org = await primaryOrg();
-      return { mode: config.mode, bootstrapped: org !== null, orgName: org?.name ?? null, brand: readIxBrand(kv) };
+      return {
+        mode: config.mode,
+        bootstrapped: org !== null,
+        orgName: org?.name ?? null,
+        brand: readIxBrand(kv),
+        password: true,
+        providers: configuredIxSocialProviders(config.social),
+      };
     },
     brand: () => readIxBrand(kv),
     setBrand,
+    brandAsset: (kind) => readIxBrandAsset(kv, kind),
+    setBrandAsset,
+    clearBrandAsset,
+    internalAuthContext: () => auth.$context,
     setSsoSecret,
     clearSsoSecret,
     acceptSso,

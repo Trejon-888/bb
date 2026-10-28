@@ -8,6 +8,13 @@ const httpUrl = z
   .max(2048)
   .url()
   .refine((value) => /^https?:\/\//i.test(value), { message: "must be an http(s) URL" });
+const assetUrl = z.union([
+  httpUrl,
+  z
+    .string()
+    .max(2048)
+    .regex(/^\/(?!\/)[^\s\\]*$/, { message: "must be an http(s) URL or a path starting with /" }),
+]);
 const cssColor = z
   .string()
   .max(64)
@@ -20,13 +27,14 @@ const longText = z.string().min(1).max(200);
 export const ixBrandSchema = z
   .object({
     name: shortText.optional(),
-    logoUrl: httpUrl.optional(),
+    logoUrl: assetUrl.optional(),
     accent: cssColor.optional(),
     appTitle: shortText.optional(),
     loginTitle: shortText.optional(),
     loginSubtitle: longText.optional(),
     supportUrl: httpUrl.optional(),
-    faviconUrl: httpUrl.optional(),
+    faviconUrl: assetUrl.optional(),
+    iconUrl: assetUrl.optional(),
   })
   .strict();
 

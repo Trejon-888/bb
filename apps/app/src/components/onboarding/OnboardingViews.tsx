@@ -26,6 +26,7 @@ import {
 } from "./onboarding-model";
 import bbLogoUrl from "../../../../../assets/bb-logo.svg";
 import { useProductName } from "@/lib/ix/brand";
+import { BrandLogo } from "@/components/ix/BrandLogo";
 
 const CONTENT_COLUMN_CLASS =
   "mx-auto w-full max-w-[600px] px-4 @min-[36rem]/onboarding:px-6";
@@ -85,12 +86,14 @@ export function OnboardingLayout({
             : "pl-4",
         )}
       >
-        <img
-          src={bbLogoUrl}
-          alt={productName}
-          draggable={false}
-          className="h-5 w-6 shrink-0 select-none object-contain dark:invert"
-        />
+        <BrandLogo alt={productName} className="h-5 w-6 shrink-0 select-none">
+          <img
+            src={bbLogoUrl}
+            alt={productName}
+            draggable={false}
+            className="h-5 w-6 shrink-0 select-none object-contain dark:invert"
+          />
+        </BrandLogo>
         <nav
           aria-label="Setup steps"
           className="col-start-2 row-start-1 flex min-w-0 items-center justify-center gap-1"

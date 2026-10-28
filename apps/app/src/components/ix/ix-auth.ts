@@ -27,12 +27,16 @@ export interface IxBrand {
   loginSubtitle?: string;
   supportUrl?: string;
   faviconUrl?: string;
+  iconUrl?: string;
 }
+export type IxSocialProvider = "google" | "microsoft" | "github";
 export interface IxStatus {
   mode: "off" | "team";
   bootstrapped: boolean;
   orgName: string | null;
   brand: IxBrand;
+  password?: boolean;
+  providers?: IxSocialProvider[];
 }
 export interface IxMember {
   id: string;
@@ -120,10 +124,11 @@ export interface IxSessionState {
   statusFailed: boolean;
   me: IxMe | null;
   mePending: boolean;
+  notMember: string | null;
   version: number;
 }
 const MODE_HINT_KEY = "ix.auth.mode";
-let state: IxSessionState = { status: null, statusFailed: false, me: null, mePending: false, version: 0 };
+let state: IxSessionState = { status: null, statusFailed: false, me: null, mePending: false, notMember: null, version: 0 };
 const listeners = new Set<() => void>();
 function publish(next: Partial<IxSessionState>): void {
   state = { ...state, ...next, version: state.version + 1 };
@@ -168,9 +173,13 @@ export async function loadIxMe(): Promise<void> {
   publish({ mePending: true });
   try {
     const me = await ixRequest<IxMe>("/me");
-    publish({ me, mePending: false });
+    publish({ me, mePending: false, notMember: null });
   } catch (error) {
-    publish({ me: null, mePending: false, statusFailed: !(error instanceof IxHttpError && error.status === 401) });
+    if (error instanceof IxHttpError && error.code === "ix_not_member") {
+      publish({ me: null, mePending: false, notMember: error.message });
+      return;
+    }
+    publish({ me: null, mePending: false, notMember: null, statusFailed: !(error instanceof IxHttpError && error.status === 401) });
   }
 }
 export async function refreshIxSession(): Promise<void> {
@@ -190,9 +199,10 @@ export function useIxSessionBoot(): IxSessionState {
 }
 export function resetIxSessionForTests(): void {
   started = false;
-  state = { status: null, statusFailed: false, me: null, mePending: false, version: 0 };
+  state = { status: null, statusFailed: false, me: null, mePending: false, notMember: null, version: 0 };
 }
 const INVITE_PARAM = "ix-invite";
+const AUTH_ERROR_PARAM = "ix-auth-error";
 const SSO_PARAM = "ix-sso";
 
 function readUrlParam(name: string): string | null {
@@ -227,4 +237,37 @@ export function clearSsoTokenFromUrl(): void {
 
 export function acceptSsoToken(token: string): Promise<{ ok: boolean; userId: string; role: IxRole }> {
   return ixRequest("/sso/accept", { method: "POST", body: { token } });
+}
+
+export function readSocialErrorFromUrl(): string | null {
+  if (readUrlParam(AUTH_ERROR_PARAM) === null) return null;
+  const code = readUrlParam("error") ?? "unknown";
+  return `Sign-in with the provider failed (${code.replace(/_/g, " ")}).`;
+}
+
+export function clearSocialErrorFromUrl(): void {
+  clearUrlParam(AUTH_ERROR_PARAM);
+  clearUrlParam("error");
+}
+
+export async function startSocialSignIn(provider: IxSocialProvider, inviteToken: string | null): Promise<void> {
+  const origin = window.location.origin;
+  const callbackURL = `${origin}/${inviteToken === null ? "" : `?${INVITE_PARAM}=${encodeURIComponent(inviteToken)}`}`;
+  const response = await fetchWithAppSurface(`${BASE_URL}/api/auth/sign-in/social`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ provider, callbackURL, errorCallbackURL: `${origin}/?${AUTH_ERROR_PARAM}=1` }),
+    credentials: "include",
+  });
+  const body = (await response.json().catch(() => null)) as { url?: unknown; message?: unknown } | null;
+  if (!response.ok || typeof body?.url !== "string") {
+    throw new Error(typeof body?.message === "string" ? body.message : `Could not start ${provider} sign-in (HTTP ${response.status})`);
+  }
+  window.location.assign(body.url);
+}
+
+export async function signOutIx(): Promise<void> {
+  await ixRequest("/sign-out", { method: "POST" });
+  publish({ me: null, notMember: null });
+  await refreshIxSession();
 }

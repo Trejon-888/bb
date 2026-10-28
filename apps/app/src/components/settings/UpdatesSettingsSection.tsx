@@ -105,6 +105,7 @@ import {
 import { sdk } from "@/lib/sdk";
 import { rawStringLocalStorage } from "@/lib/browser-storage";
 import { useProductName } from "@/lib/ix/brand";
+import { BrandLogo } from "@/components/ix/BrandLogo";
 
 const CHANGELOG_URL = "https://getbb.app/changelog";
 const CHANGELOG_STALE_TIME_MS = 5 * 60_000;
@@ -834,7 +835,9 @@ export function BbAppUpdateRows({
     <UpdatesRow
       leading={
         <span data-bb-update-role="app" aria-hidden>
-          <BbLogo className="size-4 -translate-y-px" />
+          <BrandLogo className="size-4 -translate-y-px">
+            <BbLogo className="size-4 -translate-y-px" />
+          </BrandLogo>
         </span>
       }
       actions={<RowActions>{indicator}</RowActions>}

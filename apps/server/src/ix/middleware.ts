@@ -13,6 +13,8 @@ const VIEWER_WRITE_ALLOWLIST = [
   /^\/plugins\/[^/]+\/rpc\//,
 ];
 
+export const IX_NOT_MEMBER_MESSAGE = "This account has no access to this workspace. Ask an admin for an invitation.";
+
 export interface IxGateDeps {
   ixAuth: IxAuthService;
 }
@@ -53,10 +55,13 @@ export async function resolveIxActor(
 ): Promise<IxActor | null> {
   const { ixAuth } = deps;
   if (ixAuth.mode === "off") return { kind: "off" };
-  const actor = await ixAuth.resolveActor(context.req.raw.headers);
-  if (actor !== null) return actor;
+  const resolution = await ixAuth.resolveSession(context.req.raw.headers);
+  if (resolution.kind === "member") return resolution.actor;
   if (ixAuth.config.loopback === "owner" && isLoopbackWithoutOrigin(context)) {
     return { kind: "loopback-owner" };
+  }
+  if (resolution.kind === "non-member") {
+    throw new ApiError(403, "ix_not_member", IX_NOT_MEMBER_MESSAGE);
   }
   return null;
 }

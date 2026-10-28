@@ -4,6 +4,8 @@ export const IX_AUTH_MODES = ["off", "team"] as const;
 export type IxAuthMode = (typeof IX_AUTH_MODES)[number];
 export const IX_ROLES = ["owner", "admin", "member", "viewer"] as const;
 export type IxRole = (typeof IX_ROLES)[number];
+export const IX_SOCIAL_PROVIDERS = ["google", "microsoft", "github"] as const;
+export type IxSocialProvider = (typeof IX_SOCIAL_PROVIDERS)[number];
 
 const envSchema = z.object({
   BB_IX_AUTH: z.enum(IX_AUTH_MODES).default("off"),
@@ -13,7 +15,20 @@ const envSchema = z.object({
   BB_IX_AUTH_BOOTSTRAP_NAME: z.string().min(1).optional(),
   BB_IX_AUTH_ORG_NAME: z.string().min(1).default("Workspace"),
   BB_IX_AUTH_SESSION_DAYS: z.coerce.number().int().positive().default(30),
+  BB_IX_AUTH_GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  BB_IX_AUTH_GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  BB_IX_AUTH_MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
+  BB_IX_AUTH_MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
+  BB_IX_AUTH_MICROSOFT_TENANT_ID: z.string().min(1).default("common"),
+  BB_IX_AUTH_GITHUB_CLIENT_ID: z.string().min(1).optional(),
+  BB_IX_AUTH_GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
 });
+
+export interface IxSocialProviderConfig {
+  google: { clientId: string; clientSecret: string } | null;
+  microsoft: { clientId: string; clientSecret: string; tenantId: string } | null;
+  github: { clientId: string; clientSecret: string } | null;
+}
 
 export interface IxAuthConfig {
   mode: IxAuthMode;
@@ -22,6 +37,15 @@ export interface IxAuthConfig {
   orgName: string;
   sessionDays: number;
   baseUrl: string;
+  social: IxSocialProviderConfig;
+}
+
+function credentials(clientId: string | undefined, clientSecret: string | undefined): { clientId: string; clientSecret: string } | null {
+  return clientId !== undefined && clientSecret !== undefined ? { clientId, clientSecret } : null;
+}
+
+export function configuredIxSocialProviders(social: IxSocialProviderConfig): IxSocialProvider[] {
+  return IX_SOCIAL_PROVIDERS.filter((provider) => social[provider] !== null);
 }
 
 export function readIxAuthConfig(
@@ -54,6 +78,14 @@ export function readIxAuthConfig(
     orgName: value.BB_IX_AUTH_ORG_NAME,
     sessionDays: value.BB_IX_AUTH_SESSION_DAYS,
     baseUrl,
+    social: {
+      google: credentials(value.BB_IX_AUTH_GOOGLE_CLIENT_ID, value.BB_IX_AUTH_GOOGLE_CLIENT_SECRET),
+      microsoft: (() => {
+        const base = credentials(value.BB_IX_AUTH_MICROSOFT_CLIENT_ID, value.BB_IX_AUTH_MICROSOFT_CLIENT_SECRET);
+        return base === null ? null : { ...base, tenantId: value.BB_IX_AUTH_MICROSOFT_TENANT_ID };
+      })(),
+      github: credentials(value.BB_IX_AUTH_GITHUB_CLIENT_ID, value.BB_IX_AUTH_GITHUB_CLIENT_SECRET),
+    },
   };
 }
 
