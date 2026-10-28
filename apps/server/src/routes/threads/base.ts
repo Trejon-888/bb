@@ -1,5 +1,5 @@
 import { countUnarchivedThreadDescendants } from "../../services/threads/thread-archive.js";
-import { filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds } from "../../ix/access.js";
+import { assertIxProjectAccess, filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds } from "../../ix/access.js";
 import { listThreadCascades } from "../../services/threads/thread-cascade.js";
 import { cancelAbandonedProviderCreations } from "../../services/threads/thread-environment-providers.js";
 import {
@@ -396,6 +396,9 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
   });
 
   post(routes.create, async (context, payload) => {
+    assertIxProjectAccess(payload.projectId);
+    if (payload.parentThreadId) requirePublicThread(deps.db, payload.parentThreadId);
+    if (payload.sourceThreadId) requirePublicThread(deps.db, payload.sourceThreadId);
     if (payload.sectionId) {
       requireThreadSection(deps, payload.sectionId);
     }
@@ -407,6 +410,7 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
   });
 
   post(routes.fork, async (context, payload) => {
+    requirePublicThread(deps.db, payload.sourceThreadId);
     const thread = await createThreadForkFromRequest(deps, payload);
     return context.json(toThreadResponseFromThread(deps, { thread }), 201);
   });
