@@ -1,6 +1,5 @@
 import type { PluginUpdateJobs } from "../services/plugins/plugin-update-jobs.js";
-import { requirePublicThread } from "../services/lib/entity-lookup.js";
-import { assertIxProjectAccess, ixRestricted } from "../ix/access.js";
+import { ixRestricted } from "../ix/access.js";
 import { getIxActor, withIxUser } from "../ix/context.js";
 import { timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -490,8 +489,6 @@ export function registerPluginRoutes(
         400,
       );
     }
-    if (projectId !== null && projectId.length > 0) assertIxProjectAccess(projectId);
-    if (threadId !== null && threadId.length > 0) requirePublicThread(deps.db, threadId);
     if (ixRestricted()) {
       return context.json({ ok: true, groups: [] });
     }
