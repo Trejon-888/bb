@@ -3,6 +3,7 @@ import {
   typedRoutes,
   type HostDaemonInternalSchema,
 } from "@bb/host-daemon-contract";
+import { ixThreadUserField } from "../ix/context.js";
 import type { ToolCallResponse } from "@bb/domain";
 import type { Hono } from "hono";
 import type { AppDeps } from "../types.js";
@@ -98,13 +99,14 @@ export function registerInternalToolCallRoutes(app: Hono, deps: AppDeps): void {
             context.req.raw.signal,
             roundTrip.signal,
           ]),
-          invoke: (signal) =>
+          invoke: async (signal) =>
             invokePluginAgentTool(pluginTool, {
               input: payload.arguments,
               ctx: {
                 threadId: thread.id,
                 projectId: thread.projectId,
                 signal,
+                ...(await ixThreadUserField(thread.id)),
               },
             }),
           onDetachedResult: (result) =>

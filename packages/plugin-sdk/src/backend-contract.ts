@@ -37,6 +37,7 @@ import type {
 } from "@bb/server-contract";
 import type { JsonValue, ReadonlyJsonValue } from "./json-value.js";
 import type {
+  ExperimentalPluginRpcCallerUser,
   ExperimentalPluginRpcHandlersWithContext,
   PluginRpcContract,
   StandardSchemaV1,
@@ -1096,6 +1097,8 @@ export type PluginAgentToolResult =
 export interface PluginAgentToolContext {
   threadId: string;
   projectId: string;
+  /** Signed-in person who owns the thread (ix multi-user servers); absent for threads started by the CLI, loopback or automation. */
+  experimental_user?: ExperimentalPluginRpcCallerUser;
   /**
    * Aborts when the tool-call request is cancelled, the thread is stopped or
    * deleted, or this plugin is disposed. Opening a form with `bb.ui.requestInput`
@@ -1718,7 +1721,7 @@ export interface PluginAgents {
    * A repeated registration within one factory execution is rejected.
    */
   contributeInstructions(
-    provider: (ctx: { threadId: string; projectId: string }) => string | null,
+    provider: (ctx: { threadId: string; projectId: string; experimental_user?: ExperimentalPluginRpcCallerUser }) => string | null,
   ): void;
 }
 

@@ -78,6 +78,7 @@ import type {
   StandardSchemaV1,
   PluginRpcContract,
   ExperimentalPluginRpcHandlerContext,
+  ExperimentalPluginRpcCallerUser,
 } from "@get-bb/plugin-sdk";
 import {
   KV_VALUE_MAX_BYTES,
@@ -318,6 +319,7 @@ interface PluginHostSignalHandler {
 type PluginInstructionProvider = (ctx: {
   threadId: string;
   projectId: string;
+  experimental_user?: ExperimentalPluginRpcCallerUser;
 }) => string | null;
 
 type PluginAgentConfigurationProvider = (

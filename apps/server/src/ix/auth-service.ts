@@ -25,7 +25,7 @@ import {
   type IxRole,
   type IxSocialProvider,
 } from "./config.js";
-import type { IxActor } from "./context.js";
+import { setIxThreadUserResolver, type IxActor } from "./context.js";
 import { createIxKv, type IxKv } from "./kv.js";
 import { createIxAccessStore, type IxAccessStore } from "./access.js";
 import { createIxDeskStore, type IxDeskStore } from "./desk.js";
@@ -615,6 +615,13 @@ export async function createIxAuthService(args: {
     );
     return sessionCookieHeaders(response);
   }
+
+  setIxThreadUserResolver(async (threadId) => {
+    const userId = access.threadOwner(threadId);
+    if (userId === null) return undefined;
+    const member = (await listMembers()).find((row) => row.userId === userId);
+    return member === undefined ? undefined : { id: member.userId, email: member.email, name: member.name, role: member.role };
+  });
 
   return {
     mode: config.mode,

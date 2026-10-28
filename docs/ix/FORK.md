@@ -79,6 +79,10 @@ A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own toke
 | `packages/db/src/data/threads.ts` | `threadIds` filter on `countThreads` | restricted counts in SQL |
 | `apps/server/src/routes/system.ts` | attention dot over `ixScopedThreadIds(undefined)` | project access: attention |
 | `apps/server/src/routes/system.ts` | appearance read/write through `ixDeskAppearance` / `setIxDeskAppearance` | personal desk: theme |
+| `apps/server/src/internal/tool-calls.ts` | plugin tool ctx gets `experimental_user` (thread owner) | per-person tools |
+| `apps/server/src/services/threads/thread-runtime-config.ts` | instruction providers get `experimental_user` | per-person tools |
+| `packages/plugin-sdk/src/backend-contract.ts` | `experimental_user` on `PluginAgentToolContext` and the instruction provider ctx | per-person tools |
+| `apps/server/src/services/plugins/plugin-api.ts` | internal instruction provider ctx type | per-person tools |
 | `apps/server/src/routes/ui-preferences.ts` | get/put/delete through `overlayIxDeskPreferences` / `writeIxDeskPreference` / `resetIxDeskPreference` | personal desk: layout |
 | `apps/server/src/routes/plugins.ts` (mention search) | project/thread check, no plugin mentions for restricted members (plugins search as owner) | project access: mentions |
 | `apps/app/src/components/promptbox/ExecutionControls.tsx`, `components/pickers/PermissionModePicker.tsx` | hidden for staff (`useIxStaffShell()`) in the simple shell | simple shell |

@@ -283,6 +283,14 @@ plugins' memory make the token a meaningful boundary for third-party plugins.
 bb account relies on it to keep `/api/connect/` requests, credential reads,
 refused-credential reports, and credential adoption to the connect plugin.
 
+## Thread owner on agent tools and instructions (`PluginAgentToolContext.experimental_user`)
+
+On ix multi-user servers, agent tool calls and `contributeInstructions` providers receive the signed-in person who owns the thread (`{ id, email, name, role }`, the same shape as `experimental_caller.experimental_user`). Threads started by the CLI, loopback or automation, and child threads whose root has no owner, carry no user. ix-connectors uses it to run tools with each person's own connected accounts.
+
+Callers: `apps/server/src/internal/tool-calls.ts`, `apps/server/src/services/threads/thread-runtime-config.ts`.
+
+Before stabilizing, audit whether upstream bb wants a user concept at all, whether HTTP routes and CLI commands need the same field, and whether the owner should be resolved once per turn instead of per call.
+
 ## `bb.http.experimental_websocket`
 
 Registers an exact-path WebSocket upgrade in the plugin's

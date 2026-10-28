@@ -49,3 +49,16 @@ export function withIxUser<T extends { kind: string }>(
   if (caller.kind !== "client" || user === undefined) return caller;
   return { ...caller, experimental_user: user };
 }
+
+type IxThreadUser = { id: string; email: string; name: string; role: IxRole };
+let threadUserResolver: ((threadId: string) => Promise<IxThreadUser | undefined>) | null = null;
+
+export function setIxThreadUserResolver(resolver: ((threadId: string) => Promise<IxThreadUser | undefined>) | null): void {
+  threadUserResolver = resolver;
+}
+
+export async function ixThreadUserField(threadId: string): Promise<{ experimental_user?: IxThreadUser }> {
+  if (threadUserResolver === null) return {};
+  const user = await threadUserResolver(threadId).catch(() => undefined);
+  return user === undefined ? {} : { experimental_user: user };
+}

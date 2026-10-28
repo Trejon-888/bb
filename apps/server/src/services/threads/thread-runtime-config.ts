@@ -2,6 +2,7 @@ import {
   resolveHostEnvironment,
   mergeHostAndProviderEnvironment,
 } from "../hosts/host-environment.js";
+import { ixThreadUserField } from "../../ix/context.js";
 import { getEnvironment, getHost, getProject } from "@bb/db";
 import type {
   DynamicTool,
@@ -230,12 +231,14 @@ export async function resolveThreadRuntimeCommandConfig(
       );
     }
   }
+  const ixUser = await ixThreadUserField(args.thread.id);
   for (const contribution of listPluginInstructionContributions()) {
     let text: string | null;
     try {
       text = contribution.provider({
         threadId: args.thread.id,
         projectId: args.thread.projectId,
+        ...ixUser,
       });
     } catch (error) {
       deps.logger.warn(

@@ -42,6 +42,10 @@ check apps/server/src/routes/ui-preferences.ts 'writeIxDeskPreference(deps.ixAut
 check apps/server/src/routes/ui-preferences.ts 'resetIxDeskPreference(deps.ixAuth.desk, key'
 check apps/server/src/routes/system.ts 'ixDeskAppearance(deps.ixAuth.desk)?.themeId ?? getStoredThemeId(deps.db)'
 check apps/server/src/routes/system.ts 'if (!setIxDeskAppearance(deps.ixAuth.desk, { themeId, faviconColor }))'
+check apps/server/src/internal/tool-calls.ts '...(await ixThreadUserField(thread.id)),'
+check apps/server/src/services/threads/thread-runtime-config.ts 'const ixUser = await ixThreadUserField(args.thread.id);'
+check packages/plugin-sdk/src/backend-contract.ts 'experimental_user?: ExperimentalPluginRpcCallerUser;'
+check apps/server/src/services/plugins/plugin-api.ts 'experimental_user?: ExperimentalPluginRpcCallerUser;'
 check apps/app/src/components/settings/settings-nav.tsx 'settingsSectionAllowed(section.id)'
 for f in apps/server/src/ix/auth-service.ts apps/server/src/ix/middleware.ts apps/server/src/ix/routes.ts apps/server/src/ix/context.ts apps/server/src/ix/config.ts apps/server/src/ix/kv.ts apps/server/src/ix/brand.ts apps/server/src/ix/sso.ts apps/server/src/ix/test-harness.ts apps/server/src/ix/brand.test.ts apps/server/src/ix/sso.test.ts apps/server/src/ix/brand-assets.ts apps/server/src/ix/brand-assets.test.ts apps/server/src/ix/social.test.ts apps/app/src/components/ix/IxAuthGate.tsx apps/app/src/components/ix/ix-auth.ts apps/app/src/components/ix/BrandLogo.tsx; do
   if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi
