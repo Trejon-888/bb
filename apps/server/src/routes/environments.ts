@@ -3,6 +3,7 @@ import {
   recoverEnvironmentCleanup,
   requestEnvironmentRemoval,
 } from "../services/environments/environment-engine.js";
+import { filterIxByProjectId } from "../ix/access.js";
 import { parsePaginationQuery } from "../services/lib/validation.js";
 import {
   clearDiffViewedFiles,
@@ -176,7 +177,7 @@ export function registerEnvironmentRoutes(
     return context.json(
       toEnvironmentResponses(
         deps.db,
-        listEnvironments(deps.db, {
+        filterIxByProjectId(listEnvironments(deps.db, {
           ...(query?.projectId ? { projectId: query.projectId } : {}),
           ...(query?.hostId ? { hostId: query.hostId } : {}),
           ...(query?.environmentProviderId
@@ -189,7 +190,7 @@ export function registerEnvironmentRoutes(
           statuses: query?.status
             ? [query.status]
             : LISTED_ENVIRONMENT_STATUSES,
-        }),
+        })),
       ),
     );
   });

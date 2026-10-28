@@ -67,6 +67,11 @@ export type ServerChangedMessage =
   | Extract<ChangedMessage, { entity: "system" | "tags" | "plugin" }>;
 
 type ChangedMessageListener = (message: ServerChangedMessage) => void;
+export interface HubSocketAccessFilter {
+  canSeeThread(threadId: string): boolean;
+  canSeeProject(projectId: string): boolean;
+  canSeeEnvironment(environmentId: string): boolean;
+}
 type ThreadTimelineTagListener = (
   target: ThreadTimelineSubscriptionTarget,
   tag: string,
@@ -358,6 +363,36 @@ export class NotificationHub implements DbNotifier {
     }
   }
 
+  private readonly socketAccessFilters = new Map<HubSocket, HubSocketAccessFilter>();
+
+  setSocketAccessFilter(socket: HubSocket, filter: HubSocketAccessFilter | null): void {
+    if (filter === null) this.socketAccessFilters.delete(socket);
+    else this.socketAccessFilters.set(socket, filter);
+  }
+
+  private socketMaySubscribe(socket: HubSocket, target: RealtimeSubscriptionTarget): boolean {
+    const filter = this.socketAccessFilters.get(socket);
+    if (filter === undefined) return true;
+    if ("threadId" in target && typeof target.threadId === "string") return filter.canSeeThread(target.threadId);
+    if ("projectId" in target && typeof target.projectId === "string") return filter.canSeeProject(target.projectId);
+    if ("environmentId" in target && typeof target.environmentId === "string") return filter.canSeeEnvironment(target.environmentId);
+    return true;
+  }
+
+  private socketMaySee(socket: HubSocket, message: ServerChangedMessage): boolean {
+    const filter = this.socketAccessFilters.get(socket);
+    if (filter === undefined) return true;
+    if (message.entity === "thread") return filter.canSeeThread(message.id);
+    if (message.entity === "project") return filter.canSeeProject(message.id);
+    if (message.entity === "environment") return filter.canSeeEnvironment(message.id);
+    return true;
+  }
+
+  private socketMaySeeThread(socket: HubSocket, threadId: string): boolean {
+    const filter = this.socketAccessFilters.get(socket);
+    return filter === undefined || filter.canSeeThread(threadId);
+  }
+
   setClientVisible(socket: HubSocket, visible: boolean): void {
     this.registerClient(socket);
     if (visible !== this.hiddenClients.has(socket)) {
@@ -390,6 +425,7 @@ export class NotificationHub implements DbNotifier {
 
   unregisterClient(socket: HubSocket): void {
     this.unregisterTerminalClientSocket(socket);
+    this.socketAccessFilters.delete(socket);
     const keys = this.clientKeysBySocket.get(socket);
     if (!keys) {
       return;
@@ -646,6 +682,9 @@ export class NotificationHub implements DbNotifier {
     timelineTag?: string | null,
   ): void {
     this.registerClient(socket);
+    if (!this.socketMaySubscribe(socket, target)) {
+      return;
+    }
     const key = subscriptionKey(target);
     this.clientKeysBySocket.get(socket)?.set(key, target);
     if (target.kind === "thread-timeline" && timelineTag !== undefined) {
@@ -739,8 +778,9 @@ export class NotificationHub implements DbNotifier {
         this.timelineTagsBySocket.get(socket)?.set(key, signal.timeline.tag);
       }
     }
+    const timelineThreadId = "threadId" in signal.target && typeof signal.target.threadId === "string" ? signal.target.threadId : null;
     this.notifyClientsByKeySet(
-      subscribers.map(({ socket }) => socket),
+      subscribers.map(({ socket }) => socket).filter((socket) => timelineThreadId === null || this.socketMaySeeThread(socket, timelineThreadId)),
       payload,
     );
     return payload.length;
@@ -1087,6 +1127,7 @@ export class NotificationHub implements DbNotifier {
     request: { split: ThreadOpenSplit; file: ThreadOpenFile | null },
   ): number {
     return this.broadcastToAllClients(
+      thread.threadId,
       JSON.stringify(
         threadOpenSignalSchema.parse({
           type: "thread-open",
@@ -1104,6 +1145,7 @@ export class NotificationHub implements DbNotifier {
     action: ThreadPaneAction,
   ): number {
     return this.broadcastToAllClients(
+      thread.threadId,
       JSON.stringify(
         threadPaneActionSignalSchema.parse({
           type: "thread-pane-action",
@@ -1121,6 +1163,7 @@ export class NotificationHub implements DbNotifier {
     payload: unknown,
   ): number {
     return this.broadcastToAllClients(
+      null,
       JSON.stringify(
         pluginSignalSchema.parse({
           type: "plugin-signal",
@@ -1132,9 +1175,12 @@ export class NotificationHub implements DbNotifier {
     );
   }
 
-  private broadcastToAllClients(payload: string): number {
+  private broadcastToAllClients(threadId: string | null, payload: string): number {
     let delivered = 0;
     for (const socket of this.clientKeysBySocket.keys()) {
+      if (threadId !== null && !this.socketMaySeeThread(socket, threadId)) {
+        continue;
+      }
       socket.send(payload);
       delivered += 1;
     }
@@ -1367,6 +1413,9 @@ export class NotificationHub implements DbNotifier {
       if (this.clientKeysBySocket.get(socket)?.has(detailKey)) {
         continue;
       }
+      if (!this.socketMaySeeThread(socket, threadId)) {
+        continue;
+      }
       socket.send(payload);
     }
   }
@@ -1389,7 +1438,10 @@ export class NotificationHub implements DbNotifier {
     if (payload === null) {
       return;
     }
-    this.notifyClientsByKeySet(sockets, payload);
+    this.notifyClientsByKeySet(
+      [...sockets].filter((socket) => this.socketMaySee(socket, message)),
+      payload,
+    );
     this.notifyChangedMessageListeners(message);
   }
 

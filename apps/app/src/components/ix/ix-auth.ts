@@ -296,3 +296,18 @@ export function cancelIxInvitation(id: string): Promise<{ ok: boolean }> {
 }
 export const IX_ROLE_LABEL: Record<IxRole, string> = { owner: "Owner", admin: "Admin", member: "Staff access", viewer: "View only" };
 export const IX_ORGANIZATION_PATH = "/ix/organization";
+export type IxProjectAccessLevel = "read" | "write";
+export interface IxAccessOverview {
+  mode: "open" | "restricted";
+  projects: Array<{ id: string; name: string }>;
+  members: Array<{ memberId: string; userId: string; email: string; name: string; role: IxRole; projects: Record<string, IxProjectAccessLevel> }>;
+}
+export function getIxAccess(): Promise<IxAccessOverview> {
+  return ixRequest<IxAccessOverview>("/access");
+}
+export function setIxAccessMode(mode: "open" | "restricted"): Promise<{ ok: boolean }> {
+  return ixRequest<{ ok: boolean }>("/access/mode", { method: "PUT", body: { mode } });
+}
+export function setIxProjectAccess(memberId: string, projectId: string, level: IxProjectAccessLevel | null): Promise<{ ok: boolean }> {
+  return ixRequest<{ ok: boolean }>(`/access/members/${encodeURIComponent(memberId)}/projects/${encodeURIComponent(projectId)}`, { method: "PUT", body: { level } });
+}

@@ -1,4 +1,5 @@
 import type { Hono } from "hono";
+import { ixRestricted } from "../ix/access.js";
 import type { PromptHistoryPosition } from "@bb/db";
 import {
   PROMPT_HISTORY_PAGE_DEFAULT_LIMIT,
@@ -41,6 +42,7 @@ export function registerPromptHistoryRoutes(app: Hono, deps: AppDeps): void {
         );
       }
     }
+    if (ixRestricted()) return context.json({ entries: [], nextCursor: null });
     return context.json(listPromptHistory(deps, { before, limit }));
   });
 }

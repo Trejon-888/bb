@@ -12,6 +12,7 @@ import type { HostDaemonCommand } from "@bb/host-daemon-contract";
 import type { LocalPathProjectSource } from "@bb/domain";
 import type { AppDeps } from "../../types.js";
 import { ApiError } from "../../errors.js";
+import { noteIxThreadCreated } from "../../ix/access.js";
 import { emitPluginThreadCreated } from "../plugins/plugin-thread-events.js";
 import type { ThreadCreateServiceRequest } from "./thread-create-request.js";
 import { sanitizeGeneratedBranchSlug } from "./title-generation.js";
@@ -125,6 +126,7 @@ export function createThreadRecord(
       status: "pending",
       startupContext: args.startupContext,
     });
+    noteIxThreadCreated(thread);
     emitPluginThreadCreated(thread);
     return thread;
   } catch (error) {

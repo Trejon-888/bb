@@ -5,6 +5,7 @@ import { getTrustedRemoteAddress } from "../request-context.js";
 import type { IxAuthService } from "./auth-service.js";
 import { roleAtLeast } from "./config.js";
 import { setIxActor, type IxActor } from "./context.js";
+import { restrictedScopeFor, runWithIxRequestAccess } from "./access.js";
 
 const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 const VIEWER_WRITE_ALLOWLIST = [
@@ -114,8 +115,27 @@ export function ixApiGate(deps: IxGateDeps): MiddlewareHandler {
         throw new ApiError(403, "ix_forbidden", "Viewers cannot change this server");
       }
     }
-    return next();
+    const apiPath = context.req.path.replace(/^\/api\/v1/, "");
+    const scope = restrictedScopeFor(actor, deps.ixAuth.access, context.req.method, VIEWER_WRITE_ALLOWLIST.some((pattern) => pattern.test(apiPath)));
+    if (scope !== null) assertRestrictedRoute(context.req.method, apiPath);
+    return runWithIxRequestAccess(actor, deps.ixAuth.access, scope, () => next());
   };
+}
+
+const RESTRICTED_DENY: Array<{ pattern: RegExp; methods: "all" | "write" }> = [
+  { pattern: /^\/files(\/|$)/, methods: "all" },
+  { pattern: /^\/file-previews(\/|$)/, methods: "all" },
+  { pattern: /^\/hosts(\/|$)/, methods: "all" },
+  { pattern: /^\/terminals(\/|$)/, methods: "all" },
+  { pattern: /^\/projects$/, methods: "write" },
+  { pattern: /^\/projects\/[^/]+(\/(sources|skills|machine-environment|order)(\/.*)?)?$/, methods: "write" },
+  { pattern: /^\/environments(\/|$)/, methods: "write" },
+];
+
+export function assertRestrictedRoute(method: string, path: string): void {
+  const writing = !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
+  const hit = RESTRICTED_DENY.find((rule) => rule.pattern.test(path) && (rule.methods === "all" || writing));
+  if (hit !== undefined) throw new ApiError(403, "ix_restricted", "Your access is limited to the projects you were granted");
 }
 
 export async function assertIxWebSocketAllowed(

@@ -2,6 +2,7 @@ import {
   projectMachineEnvironmentView,
   replaceMachineEnvironment,
 } from "../services/machines/environment-settings.js";
+import { filterIxProjects, filterIxThreads } from "../ix/access.js";
 import {
   setMachineEnvironmentVariable,
   deleteMachineEnvironmentVariable,
@@ -168,7 +169,7 @@ function listDiscoverableProjects(
   deps: AppDeps,
   options: ProjectListOptions,
 ): ProjectResponseProjectFields[] {
-  const projects = listPublicProjects(deps.db);
+  const projects = filterIxProjects(listPublicProjects(deps.db));
   if (!options.includePersonal) {
     return projects;
   }
@@ -227,12 +228,12 @@ function buildProjectsWithThreadsResponseFromRows(
   deps: AppDeps,
   projectRows: ProjectResponseProjectFields[],
 ): ProjectWithThreadsResponse[] {
-  const projects = buildProjectResponsesFromRows(deps, projectRows);
+  const projects = buildProjectResponsesFromRows(deps, filterIxProjects(projectRows));
   const projectIds = projects.map((project) => project.id);
-  const threadRows = listThreadsWithPendingInteractionStateForProjects(
+  const threadRows = filterIxThreads(listThreadsWithPendingInteractionStateForProjects(
     deps.db,
     { archived: false, projectIds },
-  );
+  ));
   const threadResponses = toThreadListEntryResponses(deps, {
     threads: threadRows,
   });

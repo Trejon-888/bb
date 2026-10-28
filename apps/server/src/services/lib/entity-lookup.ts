@@ -13,6 +13,7 @@ import type { Host, HostType } from "@bb/domain";
 import type { DbConnection } from "@bb/db";
 import type { NotificationHub } from "../../ws/hub.js";
 import { ApiError } from "../../errors.js";
+import { assertIxProjectAccess, assertIxThreadAccess } from "../../ix/access.js";
 import {
   destroyedHostUnavailableDetails,
   destroyedThreadEnvironmentDetails,
@@ -194,6 +195,7 @@ export function requirePublicProject(
       deletedAt: project.deletedAt,
     });
   }
+  assertIxProjectAccess(project.id);
   return project;
 }
 
@@ -225,6 +227,7 @@ export function requirePublicThread(
   if (thread.deletedAt !== null || project?.deletedAt !== null) {
     throw new ApiError(404, "thread_not_found", "Thread not found");
   }
+  assertIxThreadAccess(thread);
   return thread;
 }
 
@@ -236,6 +239,7 @@ export function requireEnvironment(
   if (!environment) {
     throw new ApiError(404, "environment_not_found", "Environment not found");
   }
+  if (environment.projectId !== null) assertIxProjectAccess(environment.projectId);
   return environment;
 }
 

@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { listPublicProjects, type DbConnection } from "@bb/db";
+import { ixAccessModeSchema, ixProjectAccessLevelSchema } from "./access.js";
 import { z } from "zod";
 import { ApiError } from "../errors.js";
 import type { IxAuthService } from "./auth-service.js";
@@ -82,7 +84,7 @@ function applyCookies(context: { header(name: string, value: string, options?: {
   }
 }
 
-export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Hono {
+export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService; db?: DbConnection }): Hono {
   const { ixAuth } = deps;
   const app = new Hono();
 
@@ -278,6 +280,37 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService }): Ho
       throw new ApiError(409, "ix_role", error instanceof Error ? error.message : "Role change failed");
     }
     return context.json({ ok: true });
+  });
+
+  authed.get("/access", async (context) => {
+    requireRole(getIxActor(context), "admin");
+    const members = await ixAuth.listMembers();
+    const projects = deps.db === undefined ? [] : listPublicProjects(deps.db).map((project) => ({ id: project.id, name: project.name }));
+    return context.json({
+      mode: ixAuth.access.mode(),
+      projects,
+      members: members.map((member) => ({ memberId: member.id, userId: member.userId, email: member.email, name: member.name, role: member.role, projects: ixAuth.access.grantsFor(member.userId) })),
+    });
+  });
+
+  authed.put("/access/mode", async (context) => {
+    requireRole(getIxActor(context), "admin");
+    const input = await parseBody(context, z.object({ mode: ixAccessModeSchema }).strict());
+    ixAuth.access.setMode(input.mode);
+    return context.json({ ok: true, mode: input.mode });
+  });
+
+  authed.put("/access/members/:memberId/projects/:projectId", async (context) => {
+    requireRole(getIxActor(context), "admin");
+    const input = await parseBody(context, z.object({ level: ixProjectAccessLevelSchema.nullable() }).strict());
+    const member = (await ixAuth.listMembers()).find((m) => m.id === context.req.param("memberId"));
+    if (member === undefined) throw new ApiError(404, "ix_member_not_found", "Member not found");
+    const projectId = context.req.param("projectId");
+    if (deps.db !== undefined && !listPublicProjects(deps.db).some((project) => project.id === projectId)) {
+      throw new ApiError(404, "project_not_found", "Project not found");
+    }
+    const projects = ixAuth.access.setGrant(member.userId, projectId, input.level);
+    return context.json({ ok: true, memberId: member.id, projects });
   });
 
   authed.delete("/members/:id", async (context) => {

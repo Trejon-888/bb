@@ -27,6 +27,7 @@ import {
 } from "./config.js";
 import type { IxActor } from "./context.js";
 import { createIxKv, type IxKv } from "./kv.js";
+import { createIxAccessStore, type IxAccessStore } from "./access.js";
 import {
   createIxSsoReplayGuard,
   IX_SSO_SECRET_KEY,
@@ -82,6 +83,7 @@ export interface IxAuthService {
   readonly mode: IxAuthMode;
   readonly config: IxAuthConfig;
   readonly kv: IxKv;
+  readonly access: IxAccessStore;
   ensureReady(): Promise<void>;
   handler(request: Request): Promise<Response>;
   resolveActor(headers: Headers): Promise<IxActor | null>;
@@ -198,6 +200,7 @@ export async function createIxAuthService(args: {
 }): Promise<IxAuthService> {
   const { config, logger } = args;
   const kv = createIxKv(args.db);
+  const access = createIxAccessStore(args.db, kv);
   const replayGuard = createIxSsoReplayGuard(kv);
   const secret = await readOrCreateSecretFile({
     bytes: 32,
@@ -614,6 +617,7 @@ export async function createIxAuthService(args: {
     mode: config.mode,
     config,
     kv,
+    access,
     ensureReady,
     handler: (request) => auth.handler(request),
     resolveActor,

@@ -1,5 +1,7 @@
 import { createPluginUpdateJobs } from "./services/plugins/plugin-update-jobs.js";
 import { assertIxWebSocketAllowed, ixApiGate, mountIxAuthHandler } from "./ix/middleware.js";
+import { ixSocketAccessFilter, ixTerminalSocketAllowed } from "./ix/access.js";
+import { getIxActor } from "./ix/context.js";
 import { createIxRoutes } from "./ix/routes.js";
 import { registerPluginUpdateJobRoutes } from "./routes/plugin-update-jobs.js";
 import {
@@ -995,7 +997,10 @@ export function createApp(
       assertBrowserWebSocketAllowed(context);
       await assertIxWebSocketAllowed(context, deps);
       return {
-        onOpen: (_event, socket) => onClientSocketOpen(deps.hub, socket),
+        onOpen: (_event, socket) => {
+          onClientSocketOpen(deps.hub, socket);
+          deps.hub.setSocketAccessFilter(socket, ixSocketAccessFilter(deps.db, deps.ixAuth.access, getIxActor(context)));
+        },
         onMessage: (event, socket) =>
           onClientSocketMessage(deps.hub, socket, event.data),
         onClose: (_event, socket) => onClientSocketClose(deps.hub, socket),
@@ -1008,6 +1013,9 @@ export function createApp(
     upgradeWebSocket(async (context) => {
       assertBrowserWebSocketAllowed(context);
       await assertIxWebSocketAllowed(context, deps);
+      if (!ixTerminalSocketAllowed(deps.ixAuth.access, getIxActor(context))) {
+        throw new ApiError(403, "ix_restricted", "Your access is limited to the projects you were granted", false);
+      }
       const terminalId = context.req.param("terminalId");
       const query = terminalWebSocketQuerySchema.safeParse({
         outputAcks: context.req.query("outputAcks"),

@@ -1,4 +1,5 @@
 import { countUnarchivedThreadDescendants } from "../../services/threads/thread-archive.js";
+import { filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds } from "../../ix/access.js";
 import { listThreadCascades } from "../../services/threads/thread-cascade.js";
 import { cancelAbandonedProviderCreations } from "../../services/threads/thread-environment-providers.js";
 import {
@@ -220,8 +221,8 @@ function buildThreadSearchResponse(
   args: BuildThreadSearchResponseArgs,
 ): ThreadSearchResponse {
   return {
-    active: buildThreadSearchGroupResponse(deps, { group: args.active }),
-    archived: buildThreadSearchGroupResponse(deps, { group: args.archived }),
+    active: buildThreadSearchGroupResponse(deps, { group: filterIxSearchGroup(args.active) }),
+    archived: buildThreadSearchGroupResponse(deps, { group: filterIxSearchGroup(args.archived) }),
   };
 }
 
@@ -235,7 +236,9 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
     if (query.projectId) {
       requirePublicProject(deps.db, query.projectId);
     }
+    const scopedThreadIds = ixScopedThreadIds(undefined);
     const result = countThreads(deps.db, {
+      ...(scopedThreadIds === undefined ? {} : { threadIds: scopedThreadIds }),
       ...(query.status !== undefined ? { status: query.status } : {}),
       ...(query.hostId !== undefined ? { hostId: query.hostId } : {}),
       ...(query.providerId !== undefined
@@ -301,7 +304,7 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
 
   get(routes.running, (context) => {
     return context.json(
-      listRunningThreadsWithIntendedHosts(deps) satisfies ThreadRunningResponse,
+      filterIxThreadsById(listRunningThreadsWithIntendedHosts(deps)) satisfies ThreadRunningResponse,
     );
   });
 
@@ -323,7 +326,8 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
     if (query.sectionId) {
       requireThreadSection(deps, query.sectionId);
     }
-    const threads = listThreadsWithPendingInteractionState(deps.db, {
+    const scopedThreadIds = ixScopedThreadIds(query.threadIds === undefined ? undefined : parseThreadListThreadIds(query.threadIds));
+    const threads = filterIxThreads(listThreadsWithPendingInteractionState(deps.db, {
       ...(query.projectId ? { projectId: query.projectId } : {}),
       ...(query.environmentId ? { environmentId: query.environmentId } : {}),
       ...(query.hostId ? { hostId: query.hostId } : {}),
@@ -333,9 +337,7 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
       ...(query.unsectioned === "true" ? { unsectioned: true } : {}),
       ...(query.originKind ? { originKind: query.originKind } : {}),
       ...(query.originPluginId ? { originPluginId: query.originPluginId } : {}),
-      ...(query.threadIds === undefined
-        ? {}
-        : { threadIds: parseThreadListThreadIds(query.threadIds) }),
+      ...(scopedThreadIds === undefined ? {} : { threadIds: scopedThreadIds }),
       includeHidden: query.includeHidden === "true",
       archived:
         query.archived === undefined ? undefined : query.archived === "true",
@@ -343,7 +345,7 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
         query.hasParent === undefined ? undefined : query.hasParent === "true",
       ...(limit !== undefined ? { limit } : {}),
       ...(offset !== undefined ? { offset } : {}),
-    });
+    }));
     return context.json(
       toThreadListEntryResponses(deps, { threads }) satisfies ThreadListEntry[],
     );
@@ -372,7 +374,7 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
   post(routes.resolveMentions, (context, payload) => {
     const uniqueThreadIds = [...new Set(payload.threadIds)];
     const rowsById = new Map(
-      listThreadMentionRowsByIds(deps.db, uniqueThreadIds).map((thread) => [
+      filterIxThreads(listThreadMentionRowsByIds(deps.db, uniqueThreadIds)).map((thread) => [
         thread.id,
         thread,
       ]),

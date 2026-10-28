@@ -1235,6 +1235,7 @@ export interface CountThreadsOptions {
   includeArchived?: boolean;
   /** Hidden rows are excluded unless this is true. */
   includeHidden?: boolean;
+  threadIds?: readonly string[];
 }
 
 export interface ThreadCountGroupRow {
@@ -1269,6 +1270,7 @@ export function countThreads(
     options.includeHidden === true
       ? undefined
       : eq(threads.visibility, "visible"),
+    options.threadIds === undefined ? undefined : inArray(threads.id, [...options.threadIds]),
     options.status !== undefined
       ? eq(threads.status, options.status)
       : undefined,

@@ -1,4 +1,5 @@
 import type { Hono } from "hono";
+import { filterIxByThreadId } from "../ix/access.js";
 import { listQueuedThreadMessagesForApi } from "@bb/db";
 import {
   publicApiRoutes,
@@ -26,12 +27,12 @@ export function registerQueueRoutes(app: Hono, deps: AppDeps): void {
 
   get(publicApiRoutes.queue.list, (context, query) => {
     return context.json(
-      listQueuedThreadMessagesForApi(deps.db, {
+      filterIxByThreadId(listQueuedThreadMessagesForApi(deps.db, {
         ...(query.threadId !== undefined ? { threadId: query.threadId } : {}),
         ...(query.waitHolder !== undefined
           ? { waitHolder: query.waitHolder }
           : {}),
-      }).map(toThreadQueuedMessage),
+      })).map(toThreadQueuedMessage),
     );
   });
 }

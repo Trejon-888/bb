@@ -7,6 +7,11 @@ import {
   IX_ROLE_LABEL,
   IxHttpError,
   cancelIxInvitation,
+  getIxAccess,
+  setIxAccessMode,
+  setIxProjectAccess,
+  type IxAccessOverview,
+  type IxProjectAccessLevel,
   inviteIxMember,
   listIxInvitations,
   listIxMembers,
@@ -38,12 +43,16 @@ export function IxOrganizationView() {
   const [role, setRole] = useState<IxRole>("member");
   const [busy, setBusy] = useState(false);
   const [lastLink, setLastLink] = useState<string | null>(null);
+  const [access, setAccess] = useState<IxAccessOverview | null>(null);
+  const [openAccess, setOpenAccess] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Record<string, IxProjectAccessLevel | "none">>({});
 
   const reload = useCallback(async () => {
     try {
       const [m, i] = await Promise.all([listIxMembers(), isAdmin ? listIxInvitations() : Promise.resolve({ invitations: [] })]);
       setMembers(m.members);
       setInvitations(i.invitations.filter((x) => x.status === "pending"));
+      if (isAdmin) setAccess(await getIxAccess());
     } catch (e) {
       setError(errorText(e));
     }
@@ -88,10 +97,43 @@ export function IxOrganizationView() {
                 </select>
               ) : <span className="text-sm text-muted-foreground">{IX_ROLE_LABEL[m.role]}</span>}
               {canEdit ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => { if (window.confirm(`Remove ${m.email} from ${companyName}?`)) void run(() => removeIxMember(m.id), `${m.email} removed.`); }}>Remove</Button> : null}
+              {isAdmin && access && (m.role === "member" || m.role === "viewer") ? (
+                <Button type="button" variant="secondary" size="sm" onClick={() => { const row = access.members.find((x) => x.memberId === m.id); setDraft(Object.fromEntries(access.projects.map((p) => [p.id, row?.projects[p.id] ?? "none"]))); setOpenAccess(openAccess === m.id ? null : m.id); }}>View access</Button>
+              ) : null}
+              {openAccess === m.id && access ? (
+                <div className="mt-2 w-full rounded-xl border border-border bg-card p-4">
+                  <h3 className="text-sm font-semibold">Project access for {m.name || m.email}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Choose which projects this member can use. Their chats remain private.{access.mode === "open" ? " Access limits apply once you turn on project access below." : ""}</p>
+                  <div className="mt-3 divide-y divide-border border-t border-border">
+                    {access.projects.length === 0 ? <p className="py-2 text-sm text-muted-foreground">No projects yet.</p> : null}
+                    {access.projects.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 py-2">
+                        <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
+                        <select aria-label={`Access to ${p.name}`} value={draft[p.id] ?? "none"} onChange={(e) => setDraft({ ...draft, [p.id]: e.target.value as IxProjectAccessLevel | "none" })} className="rounded-md border border-input bg-background px-2 py-1 text-sm">
+                          <option value="none">No access</option>
+                          <option value="read">Read only</option>
+                          <option value="write">Full access</option>
+                        </select>
+                        <Button type="button" size="sm" variant="outline" disabled={busy || (draft[p.id] ?? "none") === ((access.members.find((x) => x.memberId === m.id)?.projects[p.id]) ?? "none")} onClick={() => { const level = draft[p.id] ?? "none"; void run(() => setIxProjectAccess(m.id, p.id, level === "none" ? null : level), "Project access saved."); }}>Save</Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           );
         })}
       </div>
+
+      {isAdmin && access ? (
+        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold">Project access</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{access.mode === "restricted" ? "On: staff see only the projects you grant them, and only their own chats. Owners and admins see everything." : "Off: everyone can see every project and chat."}</p>
+          </div>
+          <Button type="button" variant={access.mode === "restricted" ? "outline" : "default"} disabled={busy} onClick={() => void run(() => setIxAccessMode(access.mode === "restricted" ? "open" : "restricted"), access.mode === "restricted" ? "Project access is off." : "Project access is on.")}>{access.mode === "restricted" ? "Turn off" : "Turn on"}</Button>
+        </div>
+      ) : null}
 
       {isAdmin ? (
         <form onSubmit={invite} className="mt-8 rounded-xl border border-border bg-card p-4">

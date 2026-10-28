@@ -355,6 +355,52 @@ export function registerIxCommands(program: Command, getUrl: () => string): void
       }),
     );
 
+  const accessSchema = z.object({
+    mode: z.enum(["open", "restricted"]),
+    projects: z.array(z.object({ id: z.string(), name: z.string() })),
+    members: z.array(z.object({ memberId: z.string(), email: z.string(), role: z.string(), projects: z.record(z.string(), z.enum(["read", "write"])) })),
+  });
+  const access = ix.command("access").description("Per-project access: in restricted mode members see only granted projects and their own chats");
+  access.command("show", { isDefault: true })
+    .description("Show the access mode, projects and each member's grants")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("GET", "/api/ix/access");
+        if (outputJson(opts, raw)) return;
+        const view = parseResponse(accessSchema, raw, "access");
+        const names = new Map(view.projects.map((p) => [p.id, p.name]));
+        console.log(`Mode: ${view.mode}`);
+        for (const m of view.members) {
+          const grants = Object.entries(m.projects).map(([id, level]) => `${names.get(id) ?? id}=${level}`).join(", ");
+          console.log(`${m.email} (${m.role}): ${m.role === "owner" || m.role === "admin" ? "all projects" : grants || "no projects"}`);
+        }
+      }),
+    );
+  access.command("mode <mode>")
+    .description("open = everyone sees everything; restricted = members see only granted projects and their own chats")
+    .action(
+      action(async (mode: string) => {
+        if (mode !== "open" && mode !== "restricted") throw new Error("mode must be open or restricted");
+        await request()("PUT", "/api/ix/access/mode", { mode });
+        console.log(`Access mode: ${mode}`);
+      }),
+    );
+  access.command("grant <email> <project> <level>")
+    .description("Set a member's access to a project (id or name): read, write, or none")
+    .action(
+      action(async (email: string, project: string, level: string) => {
+        if (!["read", "write", "none"].includes(level)) throw new Error("level must be read, write or none");
+        const view = parseResponse(accessSchema, await request()("GET", "/api/ix/access"), "access");
+        const member = view.members.find((m) => m.email.toLowerCase() === email.toLowerCase());
+        if (member === undefined) throw new Error(`No member with email ${email}`);
+        const target = view.projects.find((p) => p.id === project) ?? view.projects.find((p) => p.name.toLowerCase() === project.toLowerCase());
+        if (target === undefined) throw new Error(`No project ${project}`);
+        await request()("PUT", `/api/ix/access/members/${encodeURIComponent(member.memberId)}/projects/${encodeURIComponent(target.id)}`, { level: level === "none" ? null : level });
+        console.log(`${member.email} → ${target.name}: ${level}`);
+      }),
+    );
+
   ix.command("invite <email>")
     .description("Invite a member by email and print the accept URL to share")
     .option("--role <role>", `Role to grant (${IX_ROLES.join(", ")})`, "member")

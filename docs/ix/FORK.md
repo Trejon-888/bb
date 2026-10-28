@@ -54,6 +54,10 @@ Deployment: team mode is meant for a server behind your own reverse proxy with `
 
 A workspace whose brand record has `shell: "simple"` (`bb ix brand set '{"shell":"simple"}'`, or pushed by ix-superadmin from an org brand) renders a calm company layout instead of the full bb chrome: brand, chat-title search, New chat, Projects, Team, Organization (admins: members, roles, invitations at `/ix/organization`), Chats, and the signed-in person. Threads, the composer and realtime updates are the same bb views; only the sidebar and the organization page differ. `shell: "full"` or no value keeps the full app.
 
+## Project access
+
+`bb ix access mode restricted` (or Organization → Project access) limits members and viewers to the projects an admin grants (`read` = see the project and open their own chats, `write` = also start chats and send) and to chats they created; owners and admins see everything. Enforcement is server-side: the project/thread/environment lookups, the list and search queries, realtime subscriptions and fan-out, and a deny list for host files, host browsing, terminals and project settings. Chat ownership is recorded at thread creation (agent child chats inherit their parent's owner) in `ix_thread_owner`. `GET /api/ix/access`, `PUT /api/ix/access/mode`, `PUT /api/ix/access/members/:memberId/projects/:projectId`; CLI `bb ix access show|mode|grant`.
+
 ## Remote control plane calls
 
 A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own token in the `x-bb-plugin-token` header passes the ix gate as actor `plugin-token`; the route's own auth check still runs. This is how an ix control plane reaches a member server's ix-superadmin agent route through its tunnel. A wrong token, another plugin's token, a token in the query string, or any non-plugin path still needs a session.
@@ -66,6 +70,13 @@ A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own toke
 | `apps/server/src/start-server.ts` | create `ixAuth` after `machineAuth.ensureReady()`; `ixAuth,` in the `createApp` deps | construction |
 | `apps/server/src/server.ts` | `publicApi.use("*", ixApiGate({ ...deps, pluginToken: (id) => pluginService.httpToken(id) }))` after the browser-origin gate; `mountIxAuthHandler` + `app.route("/api/ix", …)` before `app.route("/api/v1", publicApi)`; `await assertIxWebSocketAllowed` in the `/ws` upgrade (callback made `async`) | the gate |
 | `apps/app/src/components/layout/AppLayout.tsx` | `useIxShell()`; `<SimpleSidebar />` in place of `<AppLayoutSidebar>` and `<IxOrganizationView />` in place of `children` on `/ix/organization` when the brand sets `shell: "simple"`; header hidden on that route | simple company shell |
+| `apps/server/src/services/lib/entity-lookup.ts` | `assertIxProjectAccess` in `requirePublicProject` and `requireEnvironment`, `assertIxThreadAccess` in `requirePublicThread` | project access: per-id routes |
+| `apps/server/src/services/threads/thread-create-helpers.ts` | `noteIxThreadCreated(thread)` after `createThread` | chat ownership |
+| `apps/server/src/routes/projects.ts` | `filterIxProjects` / `filterIxThreads` in the sidebar and project-list builders | project access: lists |
+| `apps/server/src/routes/threads/base.ts` | `ixScopedThreadIds`, `filterIxThreads`, `filterIxThreadsById`, `filterIxSearchGroup` in count, running, list, search, resolve-mentions | project access: lists |
+| `apps/server/src/routes/environments.ts`, `routes/queue.ts`, `routes/prompt-history.ts` | `filterIxByProjectId`, `filterIxByThreadId`, `ixRestricted()` | project access: lists |
+| `apps/server/src/ws/hub.ts` | `setSocketAccessFilter` and per-socket checks in subscribe, fan-out, thread-list, broadcasts and timeline signals | project access: realtime |
+| `packages/db/src/data/threads.ts` | `threadIds` filter on `countThreads` | restricted counts in SQL |
 | `apps/server/src/routes/plugins.ts` | `withIxUser(callerResolution.caller, getIxActor(context))` + import | identity to plugins |
 | `apps/server/test/helpers/test-app.ts` | create `ixAuth` (mode off) and pass it in deps | upstream tests keep passing |
 | `packages/plugin-sdk/src/rpc-contract.ts` | `experimental_user?` on the client caller; `ExperimentalPluginRpcCallerUser` | SDK type |
