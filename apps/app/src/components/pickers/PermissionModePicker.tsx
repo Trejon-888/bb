@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useIxStaffShell } from "@/components/ix/ix-auth";
 import type { PermissionMode } from "@bb/domain";
 import { LIST_HOVER_TRANSITION } from "@bb/shared-ui/motion";
 import { cn } from "@bb/shared-ui/lib/utils";
@@ -63,11 +64,13 @@ export function PermissionModePicker({
   showChevronWhenDisabled,
   showWhenSingleOption = false,
 }: PermissionModePickerProps) {
+  const ixStaffShell = useIxStaffShell();
   const compactOptions = useMemo(
     () => addPermissionModeCompactLabels(options),
     [options],
   );
   if (
+    ixStaffShell ||
     !supported ||
     value === undefined ||
     (!showWhenSingleOption && options.length <= 1)

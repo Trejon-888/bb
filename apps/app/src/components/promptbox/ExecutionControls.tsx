@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useIxStaffShell } from "@/components/ix/ix-auth";
 import type {
   PermissionMode,
   ProviderOptionDescriptor,
@@ -98,13 +99,15 @@ export const ExecutionControls = memo(function ExecutionControls({
     provider.options &&
     provider.options.length > 1,
   );
+  const ixStaffShell = useIxStaffShell();
   const showModelPicker =
-    model.isLoading ||
+    !ixStaffShell &&
+    (model.isLoading ||
     model.loadFailed ||
     model.options.length > 0 ||
     canSwitchProviders ||
     selectedProviderId.length > 0 ||
-    handoff !== undefined;
+    handoff !== undefined);
 
   return (
     <>

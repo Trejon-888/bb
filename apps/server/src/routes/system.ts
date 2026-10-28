@@ -1,4 +1,5 @@
 import { createMobileAppReleaseService } from "../services/install/mobile-app-releases.js";
+import { ixScopedThreadIds } from "../ix/access.js";
 import {
   setMachineEnvironmentVariable,
   deleteMachineEnvironmentVariable,
@@ -164,7 +165,7 @@ export function registerSystemRoutes(
   });
 
   get(routes.attention, (context) =>
-    context.json({ hasAttention: hasActiveThreadAttention(deps.db) }),
+    context.json({ hasAttention: hasActiveThreadAttention(deps.db, ixScopedThreadIds(undefined)) }),
   );
 
   function readAppKeybindingOverrides(): AppKeybindingOverrides {

@@ -77,6 +77,9 @@ A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own toke
 | `apps/server/src/routes/environments.ts`, `routes/queue.ts`, `routes/prompt-history.ts` | `filterIxByProjectId`, `filterIxByThreadId`, `ixRestricted()` | project access: lists |
 | `apps/server/src/ws/hub.ts` | `setSocketAccessFilter` and per-socket checks in subscribe, fan-out, thread-list, broadcasts and timeline signals | project access: realtime |
 | `packages/db/src/data/threads.ts` | `threadIds` filter on `countThreads` | restricted counts in SQL |
+| `apps/server/src/routes/system.ts` | attention dot over `ixScopedThreadIds(undefined)` | project access: attention |
+| `apps/server/src/routes/plugins.ts` (mention search) | project/thread check, no plugin mentions for restricted members (plugins search as owner) | project access: mentions |
+| `apps/app/src/components/promptbox/ExecutionControls.tsx`, `components/pickers/PermissionModePicker.tsx` | hidden for staff (`useIxStaffShell()`) in the simple shell | simple shell |
 | `apps/server/src/routes/plugins.ts` | `withIxUser(callerResolution.caller, getIxActor(context))` + import | identity to plugins |
 | `apps/server/test/helpers/test-app.ts` | create `ixAuth` (mode off) and pass it in deps | upstream tests keep passing |
 | `packages/plugin-sdk/src/rpc-contract.ts` | `experimental_user?` on the client caller; `ExperimentalPluginRpcCallerUser` | SDK type |

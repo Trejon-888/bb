@@ -1473,7 +1473,7 @@ export function listThreadsWithPendingInteractionState(
   return rows.map(toThreadWithPendingInteractionState);
 }
 
-export function hasActiveThreadAttention(db: DbConnection): boolean {
+export function hasActiveThreadAttention(db: DbConnection, threadIds?: readonly string[]): boolean {
   const unreadThread = or(
     isNull(threads.lastReadAt),
     lt(threads.lastReadAt, threads.latestAttentionAt),
@@ -1493,6 +1493,7 @@ export function hasActiveThreadAttention(db: DbConnection): boolean {
       liveThreads(
         eq(threads.visibility, "visible"),
         or(unreadThread, isNotNull(pendingInteractions.id)),
+        threadIds === undefined ? undefined : inArray(threads.id, [...threadIds]),
       ),
     )
     .limit(1)

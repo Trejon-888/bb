@@ -311,3 +311,9 @@ export function setIxAccessMode(mode: "open" | "restricted"): Promise<{ ok: bool
 export function setIxProjectAccess(memberId: string, projectId: string, level: IxProjectAccessLevel | null): Promise<{ ok: boolean }> {
   return ixRequest<{ ok: boolean }>(`/access/members/${encodeURIComponent(memberId)}/projects/${encodeURIComponent(projectId)}`, { method: "PUT", body: { level } });
 }
+
+export function useIxStaffShell(): boolean {
+  const session = useIxSession();
+  const actor = session.me?.actor;
+  return session.status?.brand.shell === "simple" && actor?.kind === "user" && !roleAtLeast(actor.role, "admin");
+}
