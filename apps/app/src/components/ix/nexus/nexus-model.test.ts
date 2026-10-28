@@ -15,6 +15,10 @@ import {
   nexusTimeAgo,
   resolveNexusNavId,
   type NexusPaletteItem,
+  nexusNavItems,
+  nexusSetupSteps,
+  NEXUS_CONNECTORS_PATH,
+  NEXUS_DEFAULT_INTEGRATIONS,
 } from "./nexus-model";
 
 function thread(overrides: Partial<ThreadListEntry>): ThreadListEntry {
@@ -248,4 +252,21 @@ it("formats relative times", () => {
   expect(nexusTimeAgo(now - 5 * 60_000, now)).toBe("5m ago");
   expect(nexusTimeAgo(now - 3 * 3_600_000, now)).toBe("3h ago");
   expect(nexusTimeAgo(now - 2 * 86_400_000, now)).toBe("2d ago");
+});
+
+describe("connectors nav item", () => {
+  const connectors = { scheduled: "/s", integrations: { label: "Connectors", to: NEXUS_CONNECTORS_PATH } };
+  it("labels and routes the integrations item from its target", () => {
+    const item = nexusNavItems(connectors).find((entry) => entry.id === "integrations");
+    expect(item).toMatchObject({ label: "Connectors", to: NEXUS_CONNECTORS_PATH });
+    expect(nexusNavItems({ scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS }).find((entry) => entry.id === "integrations")).toMatchObject({ label: "Integrations", to: "/plugins" });
+  });
+  it("highlights it on connectors pages and names the breadcrumb after it", () => {
+    expect(resolveNexusNavId(`${NEXUS_CONNECTORS_PATH}/notion`)).toBe("integrations");
+    expect(nexusBreadcrumbs({ pathname: NEXUS_CONNECTORS_PATH, organizationPath: "/ix/organization", pageTitle: null, threadTitle: null, integrationsLabel: "Connectors" })[0]?.label).toBe("Connectors");
+  });
+  it("points the setup step at connectors", () => {
+    const step = nexusSetupSteps({ ...connectors, organization: "/ix/organization" }).find((entry) => entry.id === "integrations");
+    expect(step).toMatchObject({ cta: "Open connectors", to: NEXUS_CONNECTORS_PATH });
+  });
 });

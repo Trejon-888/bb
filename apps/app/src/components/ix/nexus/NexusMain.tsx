@@ -201,6 +201,7 @@ export function NexusMain({
   const navigate = useNavigate();
   const { toggleSidebar, isCompactViewport } = useSidebar();
   const pageTitle = usePageTitleValue();
+  const targets = useNexusNavTargets();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const mod = modifierLabel();
 
@@ -243,6 +244,7 @@ export function NexusMain({
     organizationPath: IX_ORGANIZATION_PATH,
     pageTitle,
     threadTitle,
+    integrationsLabel: targets.integrations.label,
   });
   const page = nexusPageFor(location.pathname);
 

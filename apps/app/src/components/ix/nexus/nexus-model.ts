@@ -28,16 +28,21 @@ export interface NexusNavItem {
 
 export interface NexusNavTargets {
   scheduled: string;
+  integrations: { label: string; to: string };
 }
+
+export const NEXUS_CONNECTORS_PLUGIN_ID = "ix-connectors";
+export const NEXUS_CONNECTORS_PATH = "/plugins/ix-connectors/connectors";
+export const NEXUS_DEFAULT_INTEGRATIONS = { label: "Integrations", to: "/plugins" };
 
 export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
   return [
     { id: "home", label: "Home", icon: "Home", to: "/" },
     {
       id: "integrations",
-      label: "Integrations",
+      label: targets.integrations.label,
       icon: "Plug02",
-      to: "/plugins",
+      to: targets.integrations.to,
     },
     {
       id: "scheduled",
@@ -66,7 +71,9 @@ export function resolveNexusNavId(pathname: string): NexusNavId | null {
     return "scheduled";
   if (
     pathname === "/plugins" ||
-    matchPath("/plugins/:pluginId", pathname) !== null
+    matchPath("/plugins/:pluginId", pathname) !== null ||
+    pathname === NEXUS_CONNECTORS_PATH ||
+    pathname.startsWith(`${NEXUS_CONNECTORS_PATH}/`)
   )
     return "integrations";
   if (pathname === "/skills" || pathname.startsWith("/skills/"))
@@ -230,9 +237,9 @@ export function nexusSetupSteps(
     {
       id: "integrations",
       title: "Connect your tools",
-      body: "Install the integrations your team already uses so Nexus can work across them.",
-      cta: "Open integrations",
-      to: "/plugins",
+      body: "Connect the tools your team already uses so Nexus can work across them.",
+      cta: `Open ${targets.integrations.label.toLowerCase()}`,
+      to: targets.integrations.to,
       adminOnly: true,
     },
     {
@@ -286,6 +293,7 @@ export function nexusBreadcrumbs(args: {
   organizationPath: string;
   pageTitle: NexusPageTitle;
   threadTitle: string | null;
+  integrationsLabel?: string;
 }): NexusCrumb[] {
   const { pathname, organizationPath, pageTitle, threadTitle } = args;
   if (threadTitle !== null)
@@ -305,7 +313,7 @@ export function nexusBreadcrumbs(args: {
     return pageCrumbs.length > 0
       ? [...pageCrumbs]
       : [{ label: NAV_LABELS.home, to: "/" }];
-  const base = NAV_LABELS[navId];
+  const base = navId === "integrations" && args.integrationsLabel ? args.integrationsLabel : NAV_LABELS[navId];
   const tail = pageCrumbs.filter(
     (crumb) => crumb.label !== base && crumb.label !== "Plugins",
   );
