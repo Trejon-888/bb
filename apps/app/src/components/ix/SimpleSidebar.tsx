@@ -4,7 +4,6 @@ import { Sidebar } from "@/components/ui/sidebar.js";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { getRootComposeRoutePath, getThreadRoutePath } from "@/lib/route-paths";
 import { useRootComposeProjectId, useSetRootComposeProjectId } from "@/lib/root-compose-selection";
-import { BrandLogo } from "./BrandLogo";
 import { IX_ORGANIZATION_PATH, IX_ROLE_LABEL, listIxMembers, roleAtLeast, signOutIx, useIxSession, type IxMember, type IxRole } from "./ix-auth";
 
 type ThreadLike = { id: string; projectId: string; title?: string | null; titleFallback?: string | null; parentThreadId?: string | null; archivedAt?: number | null; updatedAt?: number | null };
@@ -80,9 +79,11 @@ export function SimpleSidebar() {
     <Sidebar data-ix-shell="simple">
       <div className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-[max(env(safe-area-inset-top),0.75rem)]">
         <div className="flex items-center gap-2.5 px-1 py-1">
-          <BrandLogo className="h-9 w-9 rounded-lg" alt={companyName}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">{companyName.slice(0, 1)}</div>
-          </BrandLogo>
+          {brand.iconUrl ? (
+            <img src={brand.iconUrl} alt={companyName} draggable={false} className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">{companyName.slice(0, 1)}</div>
+          )}
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{companyName}</div>
             <div className="truncate text-xs text-muted-foreground">Company workspace</div>

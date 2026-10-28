@@ -867,10 +867,12 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                     </main>
                   </div>
                 </SidebarInset>
-                <SidebarTriggerOverlay
-                  reserveMacosTrafficLights={reserveMacosTrafficLights}
-                  usesDesktopChrome={usesDesktopChrome}
-                />
+                {ixShell === "simple" ? null : (
+                  <SidebarTriggerOverlay
+                    reserveMacosTrafficLights={reserveMacosTrafficLights}
+                    usesDesktopChrome={usesDesktopChrome}
+                  />
+                )}
               </SidebarStateBridge>
               <PluginAppOverlays />
               <IframeDragGuardOverlay
