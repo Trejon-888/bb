@@ -35,7 +35,7 @@ export function useNexusNavTargets(): NexusNavTargets {
         ? { label: "Connectors", to: NEXUS_CONNECTORS_PATH }
         : NEXUS_DEFAULT_INTEGRATIONS,
       docs: hasAssets
-        ? { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Library" }
+        ? { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" }
         : NEXUS_DEFAULT_DOCS,
     }),
     [hasAutomations, hasConnectors, hasAssets],

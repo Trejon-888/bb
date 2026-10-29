@@ -274,9 +274,9 @@ describe("connectors nav item", () => {
 });
 
 describe("assets nav item", () => {
-  const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Library" } };
+  const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" } };
   it("replaces Docs with the ix-assets page", () => {
-    expect(nexusNavItems(targets).find((entry) => entry.id === "docs")).toMatchObject({ label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Library" });
+    expect(nexusNavItems(targets).find((entry) => entry.id === "docs")).toMatchObject({ label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" });
     expect(resolveNexusNavId(`${NEXUS_ASSETS_PATH}/item-1`)).toBe("docs");
     expect(nexusBreadcrumbs({ pathname: NEXUS_ASSETS_PATH, organizationPath: "/ix/organization", pageTitle: null, threadTitle: null, docsLabel: "Assets" })[0]?.label).toBe("Assets");
   });
