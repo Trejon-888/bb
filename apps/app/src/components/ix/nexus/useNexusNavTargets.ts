@@ -21,6 +21,9 @@ import {
   NEXUS_MEMORY_PLUGIN_ID,
   NEXUS_BROWSER_PATH,
   NEXUS_BROWSER_PLUGIN_ID,
+  NEXUS_SKILLS_PATH,
+  NEXUS_SKILLS_PLUGIN_ID,
+  NEXUS_SKILLS_FALLBACK_PATH,
   type NexusNavTargets,
 } from "./nexus-model";
 
@@ -47,6 +50,9 @@ export function useNexusNavTargets(): NexusNavTargets {
   const hasBrowser = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_BROWSER_PLUGIN_ID,
   );
+  const hasSkills = panels.some(
+    (entry) => entry.chrome.pluginId === NEXUS_SKILLS_PLUGIN_ID,
+  );
   return useMemo(
     () => ({
       scheduled: hasWorkflows
@@ -65,7 +71,8 @@ export function useNexusNavTargets(): NexusNavTargets {
       sites: hasSites ? NEXUS_SITES_PATH : NEXUS_SITES_FALLBACK_PATH,
       memory: hasMemory ? NEXUS_MEMORY_PATH : null,
       browser: hasBrowser ? NEXUS_BROWSER_PATH : null,
+      skills: hasSkills ? NEXUS_SKILLS_PATH : NEXUS_SKILLS_FALLBACK_PATH,
     }),
-    [hasAutomations, hasWorkflows, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser],
+    [hasAutomations, hasWorkflows, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser, hasSkills],
   );
 }

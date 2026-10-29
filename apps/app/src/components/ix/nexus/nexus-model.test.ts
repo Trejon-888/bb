@@ -8,6 +8,7 @@ import {
   NEXUS_WORKFLOWS_PATH,
   NEXUS_SITES_FALLBACK_PATH,
   NEXUS_MEMORY_PATH,
+  NEXUS_SKILLS_PATH,
   NEXUS_BROWSER_PATH,
   filterNexusPaletteItems,
   nexusBreadcrumbs,
@@ -302,6 +303,13 @@ describe("memory and agent browser nav items", () => {
     expect(ids).not.toContain("memory");
     expect(ids).not.toContain("browser");
   });
+  it("opens ix-skills when installed, else bb's skills page", () => {
+    expect(nexusNavItems(base).find((entry) => entry.id === "skills")).toMatchObject({ label: "Skills", to: "/skills" });
+    expect(nexusNavItems({ ...base, skills: NEXUS_SKILLS_PATH }).find((entry) => entry.id === "skills")).toMatchObject({ label: "Skills", to: NEXUS_SKILLS_PATH });
+    expect(resolveNexusNavId(NEXUS_SKILLS_PATH)).toBe("skills");
+    expect(resolveNexusNavId(`${NEXUS_SKILLS_PATH}/abc`)).toBe("skills");
+  });
+
   it("open the ix-memory and ix-browser panels when installed", () => {
     const items = nexusNavItems({ ...base, memory: NEXUS_MEMORY_PATH, browser: NEXUS_BROWSER_PATH });
     expect(items.find((entry) => entry.id === "memory")).toMatchObject({ label: "Memory", to: NEXUS_MEMORY_PATH });

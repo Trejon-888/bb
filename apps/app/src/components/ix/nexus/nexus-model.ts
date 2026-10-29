@@ -35,6 +35,8 @@ export interface NexusNavTargets {
   sites: string;
   memory: string | null;
   browser: string | null;
+  /** ix-skills when installed, else bb's own skills page. */
+  skills?: string;
 }
 
 export const NEXUS_CONNECTORS_PLUGIN_ID = "ix-connectors";
@@ -51,6 +53,9 @@ export const NEXUS_MEMORY_PLUGIN_ID = "ix-memory";
 export const NEXUS_MEMORY_PATH = "/plugins/ix-memory/memory";
 export const NEXUS_BROWSER_PLUGIN_ID = "ix-browser";
 export const NEXUS_BROWSER_PATH = "/plugins/ix-browser/ix-browser";
+export const NEXUS_SKILLS_PLUGIN_ID = "ix-skills";
+export const NEXUS_SKILLS_PATH = "/plugins/ix-skills/skills";
+export const NEXUS_SKILLS_FALLBACK_PATH = "/skills";
 export const NEXUS_DEFAULT_DOCS = { label: "Docs", to: NEXUS_DOCS_PATH, icon: "FileText" };
 
 export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
@@ -68,7 +73,7 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
       icon: targets.scheduled.icon,
       to: targets.scheduled.to,
     },
-    { id: "skills", label: "Skills", icon: "Zap", to: "/skills" },
+    { id: "skills", label: "Skills", icon: "Zap", to: targets.skills ?? NEXUS_SKILLS_FALLBACK_PATH },
     { id: "sites", label: "Sites", icon: "Layers", to: targets.sites },
     { id: "docs", label: targets.docs.label, icon: targets.docs.icon, to: targets.docs.to },
   ];
@@ -112,7 +117,12 @@ export function resolveNexusNavId(pathname: string): NexusNavId | null {
     pathname.startsWith(`${NEXUS_CONNECTORS_PATH}/`)
   )
     return "integrations";
-  if (pathname === "/skills" || pathname.startsWith("/skills/"))
+  if (
+    pathname === "/skills" ||
+    pathname.startsWith("/skills/") ||
+    pathname === NEXUS_SKILLS_PATH ||
+    pathname.startsWith(`${NEXUS_SKILLS_PATH}/`)
+  )
     return "skills";
   return null;
 }
