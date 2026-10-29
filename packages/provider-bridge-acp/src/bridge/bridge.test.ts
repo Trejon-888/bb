@@ -2321,6 +2321,24 @@ describe("acp bridge", () => {
     expect(agentMessageTexts()).toContain("auth-method:xai.api_key");
   });
 
+  it("authenticates Grok Build with XAI_API_KEY when it only advertises grok.com", async () => {
+    const { providerThreadId } = await startThread({
+      envVars: {
+        FAKE_ACP_AUTH_METHODS: "grok.com",
+        FAKE_ACP_HIDDEN_AUTH_METHODS: "xai.api_key",
+        XAI_API_KEY: "xai-test-key",
+      },
+    });
+
+    const turnId = sendTurnRequest("turn/start", providerThreadId, {
+      input: [{ type: "text", text: "echo-auth-method", mentions: [] }],
+    });
+    await waitForResponse(turnId);
+    await waitForTurnCompleted();
+
+    expect(agentMessageTexts()).toContain("auth-method:xai.api_key");
+  });
+
   it("lets agents surface their own error for unsupported advertised auth methods", async () => {
     nextThreadSerial += 1;
     const id = sendRequest("thread/start", {

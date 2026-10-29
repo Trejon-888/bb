@@ -3845,3 +3845,7 @@ precedence, bounded discovery failure, and module-ABI preservation after Node
 replacement. Settle the shared process-local instance lifecycle across SDK
 bundle versions and whether `bundledNpmCli` belongs on the public surface before
 removing the prefix.
+
+## Plugin HTTP routes with a path prefix (`<prefix>/*`)
+
+A plugin HTTP route registered as `<prefix>/*` serves any deeper path under that prefix when no exact route matches; the longest prefix wins. ix-providers proxies the Gemini API, which puts the model id in the path (`/v1beta/models/<model>:<method>`). Caller: `apps/server/src/services/plugins/plugin-service.ts` (`matchPluginHttpRoute`).

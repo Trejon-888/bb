@@ -803,6 +803,8 @@ let cachedSessionDiscoveredModels: {
   fetchedAt: number;
 } | null = null;
 
+const GROK_BUILD_AUTH_METHOD_ID = "grok.com";
+
 function resolveAcpAuthMethodId(
   authMethods: readonly { id: string }[],
   env: Record<string, string | undefined>,
@@ -811,7 +813,10 @@ function resolveAcpAuthMethodId(
   if (methodIds.size === 0) {
     return undefined;
   }
-  if (env.XAI_API_KEY && methodIds.has("xai.api_key")) {
+  if (
+    env.XAI_API_KEY &&
+    (methodIds.has("xai.api_key") || methodIds.has(GROK_BUILD_AUTH_METHOD_ID))
+  ) {
     return "xai.api_key";
   }
   if (methodIds.has("cached_token")) {

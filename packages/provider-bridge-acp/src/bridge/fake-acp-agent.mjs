@@ -144,6 +144,10 @@ const authMethods = (process.env.FAKE_ACP_AUTH_METHODS ?? "")
   .split(",")
   .map((method) => method.trim())
   .filter(Boolean);
+const hiddenAuthMethods = (process.env.FAKE_ACP_HIDDEN_AUTH_METHODS ?? "")
+  .split(",")
+  .map((method) => method.trim())
+  .filter(Boolean);
 const authOptional = process.env.FAKE_ACP_AUTH_OPTIONAL === "1";
 const terminalAuthArgs = process.env.FAKE_ACP_TERMINAL_AUTH_ARGS;
 const sessionNewError = process.env.FAKE_ACP_SESSION_NEW_ERROR;
@@ -915,7 +919,10 @@ async function handleMessage(message) {
       return;
     case "authenticate": {
       const methodId = message.params?.methodId;
-      if (!authMethods.includes(methodId)) {
+      if (
+        !authMethods.includes(methodId) &&
+        !hiddenAuthMethods.includes(methodId)
+      ) {
         send({
           jsonrpc: "2.0",
           id: message.id,

@@ -367,6 +367,16 @@ describe("acpProviderDeclaration", () => {
     );
   });
 
+  it("ships Gemini CLI as `gemini --acp` under the registry's provider id", () => {
+    const gemini = KNOWN_ACP_AGENTS.find((agent) => agent.id === "acp-gemini")!;
+    expect(gemini.id).toBe(formatCustomAcpProviderId("gemini"));
+    expect(gemini.launch).toMatchObject({ command: "gemini", args: ["--acp"] });
+    const declaration = acpProviderDeclaration(gemini);
+    expect(declaration.experimental_visibility).toBe("installed");
+    expect(declaration.capabilities.fork).toBe("none");
+    expect(RESERVED_ACP_PROVIDER_IDS.has("acp-gemini")).toBe(false);
+  });
+
   it("keeps each agent's own reasoning ladder and installed-only visibility", () => {
     const grok = acpProviderDeclaration(
       KNOWN_ACP_AGENTS.find((agent) => agent.id === "acp-grok")!,

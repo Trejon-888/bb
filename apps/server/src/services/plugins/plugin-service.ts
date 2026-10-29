@@ -240,6 +240,31 @@ export interface PluginStartOptions {
   hold: PluginLoadHold;
 }
 
+export function matchPluginHttpRoute<T extends { method: string; path: string }>(
+  routes: readonly T[],
+  method: string,
+  path: string,
+): T | undefined {
+  const normalizedMethod = method.toUpperCase();
+  const exact = routes.find(
+    (route) => route.method === normalizedMethod && route.path === path,
+  );
+  if (exact !== undefined) return exact;
+  let best: T | undefined;
+  for (const route of routes) {
+    if (route.method !== normalizedMethod || !route.path.endsWith("/*"))
+      continue;
+    const prefix = route.path.slice(0, -1);
+    if (
+      path.startsWith(prefix) &&
+      path.length > prefix.length &&
+      (best === undefined || route.path.length > best.path.length)
+    )
+      best = route;
+  }
+  return best;
+}
+
 export interface PluginService {
   isBuiltin(id: string): boolean;
   events: PluginThreadEventEmitter;
@@ -2040,11 +2065,8 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     },
 
     getHttpRoute(id, method, path) {
-      const normalizedMethod = method.toUpperCase();
       return wireLookup(id, (plugin) =>
-        plugin.handle.httpRoutes.find(
-          (route) => route.method === normalizedMethod && route.path === path,
-        ),
+        matchPluginHttpRoute(plugin.handle.httpRoutes, method, path),
       );
     },
 

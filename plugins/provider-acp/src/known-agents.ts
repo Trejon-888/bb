@@ -1,5 +1,6 @@
 import type { AcpAgentDefinition } from "./agents.js";
 import { resolveCursorNativeRoots } from "./native-roots/cursor.js";
+import { resolveGeminiNativeRoots } from "./native-roots/gemini.js";
 import { resolveGrokNativeRoots } from "./native-roots/grok.js";
 import { resolveHermesNativeRoots } from "./native-roots/hermes.js";
 import { resolveOmpNativeRoots } from "./native-roots/omp.js";
@@ -175,6 +176,26 @@ export const KNOWN_ACP_AGENTS: readonly AcpAgentDefinition[] = [
       },
     },
     nativeRootsResolver: resolveGrokNativeRoots,
+  },
+  {
+    id: "acp-gemini",
+    displayName: "Gemini CLI",
+    icon: declaredIcon("registry-gemini"),
+    signInCommand: "gemini",
+    installUrl: "https://github.com/google-gemini/gemini-cli",
+    visibility: "installed",
+    fork: "none",
+    launch: {
+      displayName: "Gemini CLI",
+      command: "gemini",
+      args: ["--acp"],
+      env: {},
+      nativeSkillRoots: {
+        user: plainRoots([".gemini/skills", ".agents/skills"]),
+        project: plainRoots([".gemini/skills", ".agents/skills"]),
+      },
+    },
+    nativeRootsResolver: resolveGeminiNativeRoots,
   },
   {
     id: "acp-hermes-agent",
