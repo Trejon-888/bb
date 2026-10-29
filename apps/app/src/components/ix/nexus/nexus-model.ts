@@ -17,7 +17,9 @@ export type NexusNavId =
   | "scheduled"
   | "skills"
   | "sites"
-  | "docs";
+  | "docs"
+  | "memory"
+  | "browser";
 
 export interface NexusNavItem {
   id: NexusNavId;
@@ -31,6 +33,8 @@ export interface NexusNavTargets {
   integrations: { label: string; to: string };
   docs: { label: string; to: string; icon: string };
   sites: string;
+  memory: string | null;
+  browser: string | null;
 }
 
 export const NEXUS_CONNECTORS_PLUGIN_ID = "ix-connectors";
@@ -40,10 +44,14 @@ export const NEXUS_ASSETS_PLUGIN_ID = "ix-assets";
 export const NEXUS_SITES_PLUGIN_ID = "ix-sites";
 export const NEXUS_SITES_PATH = "/plugins/ix-sites/sites";
 export const NEXUS_ASSETS_PATH = "/plugins/ix-assets/assets";
+export const NEXUS_MEMORY_PLUGIN_ID = "ix-memory";
+export const NEXUS_MEMORY_PATH = "/plugins/ix-memory/memory";
+export const NEXUS_BROWSER_PLUGIN_ID = "ix-browser";
+export const NEXUS_BROWSER_PATH = "/plugins/ix-browser/ix-browser";
 export const NEXUS_DEFAULT_DOCS = { label: "Docs", to: NEXUS_DOCS_PATH, icon: "FileText" };
 
 export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
-  return [
+  const items: NexusNavItem[] = [
     { id: "home", label: "Home", icon: "Home", to: "/" },
     {
       id: "integrations",
@@ -61,10 +69,19 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
     { id: "sites", label: "Sites", icon: "Layers", to: targets.sites },
     { id: "docs", label: targets.docs.label, icon: targets.docs.icon, to: targets.docs.to },
   ];
+  if (targets.memory !== null)
+    items.push({ id: "memory", label: "Memory", icon: "Brain", to: targets.memory });
+  if (targets.browser !== null)
+    items.push({ id: "browser", label: "Agent Browser", icon: "Browser", to: targets.browser });
+  return items;
 }
 
 export function resolveNexusNavId(pathname: string): NexusNavId | null {
   if (pathname === "/") return "home";
+  if (pathname === NEXUS_MEMORY_PATH || pathname.startsWith(`${NEXUS_MEMORY_PATH}/`))
+    return "memory";
+  if (pathname === NEXUS_BROWSER_PATH || pathname.startsWith(`${NEXUS_BROWSER_PATH}/`))
+    return "browser";
   if (
     pathname === NEXUS_SITES_FALLBACK_PATH ||
     pathname === NEXUS_SITES_PATH ||
@@ -300,6 +317,8 @@ const NAV_LABELS: Record<NexusNavId, string> = {
   skills: "Skills",
   sites: "Sites",
   docs: "Docs",
+  memory: "Memory",
+  browser: "Agent Browser",
 };
 
 export function nexusBreadcrumbs(args: {

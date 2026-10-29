@@ -5,6 +5,8 @@ import {
   NEXUS_DOCS_PATH,
   NEXUS_SCHEDULED_PATH,
   NEXUS_SITES_FALLBACK_PATH,
+  NEXUS_MEMORY_PATH,
+  NEXUS_BROWSER_PATH,
   filterNexusPaletteItems,
   nexusBreadcrumbs,
   nexusChatIndicator,
@@ -258,11 +260,11 @@ it("formats relative times", () => {
 });
 
 describe("connectors nav item", () => {
-  const connectors = { scheduled: "/s", integrations: { label: "Connectors", to: NEXUS_CONNECTORS_PATH }, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH };
+  const connectors = { scheduled: "/s", integrations: { label: "Connectors", to: NEXUS_CONNECTORS_PATH }, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH, memory: null, browser: null };
   it("labels and routes the integrations item from its target", () => {
     const item = nexusNavItems(connectors).find((entry) => entry.id === "integrations");
     expect(item).toMatchObject({ label: "Connectors", to: NEXUS_CONNECTORS_PATH });
-    expect(nexusNavItems({ scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH }).find((entry) => entry.id === "integrations")).toMatchObject({ label: "Integrations", to: "/plugins" });
+    expect(nexusNavItems({ scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH, memory: null, browser: null }).find((entry) => entry.id === "integrations")).toMatchObject({ label: "Integrations", to: "/plugins" });
   });
   it("highlights it on connectors pages and names the breadcrumb after it", () => {
     expect(resolveNexusNavId(`${NEXUS_CONNECTORS_PATH}/notion`)).toBe("integrations");
@@ -275,7 +277,7 @@ describe("connectors nav item", () => {
 });
 
 describe("assets nav item", () => {
-  const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" }, sites: NEXUS_SITES_FALLBACK_PATH };
+  const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" }, sites: NEXUS_SITES_FALLBACK_PATH, memory: null, browser: null };
   it("replaces Docs with the ix-assets page", () => {
     expect(nexusNavItems(targets).find((entry) => entry.id === "docs")).toMatchObject({ label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" });
     expect(resolveNexusNavId(`${NEXUS_ASSETS_PATH}/item-1`)).toBe("docs");
@@ -285,8 +287,24 @@ describe("assets nav item", () => {
 
 describe("sites nav item", () => {
   it("opens the ix-sites Sites page when that plugin is installed", () => {
-    const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_PATH };
+    const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_PATH, memory: null, browser: null };
     expect(nexusNavItems(targets).find((entry) => entry.id === "sites")).toMatchObject({ label: "Sites", to: NEXUS_SITES_PATH });
     expect(resolveNexusNavId(`${NEXUS_SITES_PATH}/test`)).toBe("sites");
+  });
+});
+
+describe("memory and agent browser nav items", () => {
+  const base = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH };
+  it("are hidden until their plugins are installed", () => {
+    const ids = nexusNavItems({ ...base, memory: null, browser: null }).map((entry) => entry.id);
+    expect(ids).not.toContain("memory");
+    expect(ids).not.toContain("browser");
+  });
+  it("open the ix-memory and ix-browser panels when installed", () => {
+    const items = nexusNavItems({ ...base, memory: NEXUS_MEMORY_PATH, browser: NEXUS_BROWSER_PATH });
+    expect(items.find((entry) => entry.id === "memory")).toMatchObject({ label: "Memory", to: NEXUS_MEMORY_PATH });
+    expect(items.find((entry) => entry.id === "browser")).toMatchObject({ label: "Agent Browser", to: NEXUS_BROWSER_PATH });
+    expect(resolveNexusNavId(NEXUS_MEMORY_PATH)).toBe("memory");
+    expect(resolveNexusNavId(NEXUS_BROWSER_PATH)).toBe("browser");
   });
 });
