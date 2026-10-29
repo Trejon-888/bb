@@ -96,7 +96,7 @@ export function NexusScheduledPage() {
   );
 }
 
-export function NexusSpacesPage() {
+export function NexusSitesPage() {
   const nav = useSidebarNavigation();
   const navigate = useNavigate();
   const setComposeProjectId = useSetRootComposeProjectId();
@@ -109,8 +109,8 @@ export function NexusSpacesPage() {
   );
   return (
     <NexusPage
-      title="Spaces"
-      subtitle="Each space keeps its own files, chats and settings."
+      title="Sites"
+      subtitle="Each site keeps its own files, chats and settings."
     >
       {nav.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -118,8 +118,8 @@ export function NexusSpacesPage() {
       {!nav.isLoading && projects.length === 0 ? (
         <PlaceholderCard
           icon="Layers"
-          title="No spaces yet"
-          body="Spaces appear here once a project is added to this workspace."
+          title="No sites yet"
+          body="Sites appear here once a project is added to this workspace."
         />
       ) : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -129,7 +129,7 @@ export function NexusSpacesPage() {
             <div
               key={project.id}
               className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4"
-              data-testid="nexus-space"
+              data-testid="nexus-site"
             >
               <div className="flex items-center gap-3">
                 <span className="grid size-9 place-items-center rounded-lg bg-sidebar text-sidebar-foreground">

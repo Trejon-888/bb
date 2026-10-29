@@ -4,7 +4,7 @@ import { makeThreadListEntry } from "@bb/test-helpers/domain-fixtures";
 import {
   NEXUS_DOCS_PATH,
   NEXUS_SCHEDULED_PATH,
-  NEXUS_SPACES_PATH,
+  NEXUS_SITES_FALLBACK_PATH,
   filterNexusPaletteItems,
   nexusBreadcrumbs,
   nexusChatIndicator,
@@ -43,8 +43,8 @@ describe("resolveNexusNavId", () => {
     [NEXUS_SCHEDULED_PATH, "scheduled"],
     ["/skills", "skills"],
     ["/skills/library/abc", "skills"],
-    [NEXUS_SPACES_PATH, "spaces"],
-    ["/projects/proj_1", "spaces"],
+    [NEXUS_SITES_FALLBACK_PATH, "sites"],
+    ["/projects/proj_1", "sites"],
     [NEXUS_DOCS_PATH, "docs"],
     ["/projects/proj_1/threads/thr_1", null],
     ["/plugins/other/panel", null],
@@ -258,11 +258,11 @@ it("formats relative times", () => {
 });
 
 describe("connectors nav item", () => {
-  const connectors = { scheduled: "/s", integrations: { label: "Connectors", to: NEXUS_CONNECTORS_PATH }, docs: NEXUS_DEFAULT_DOCS, spaces: NEXUS_SPACES_PATH };
+  const connectors = { scheduled: "/s", integrations: { label: "Connectors", to: NEXUS_CONNECTORS_PATH }, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH };
   it("labels and routes the integrations item from its target", () => {
     const item = nexusNavItems(connectors).find((entry) => entry.id === "integrations");
     expect(item).toMatchObject({ label: "Connectors", to: NEXUS_CONNECTORS_PATH });
-    expect(nexusNavItems({ scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, spaces: NEXUS_SPACES_PATH }).find((entry) => entry.id === "integrations")).toMatchObject({ label: "Integrations", to: "/plugins" });
+    expect(nexusNavItems({ scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH }).find((entry) => entry.id === "integrations")).toMatchObject({ label: "Integrations", to: "/plugins" });
   });
   it("highlights it on connectors pages and names the breadcrumb after it", () => {
     expect(resolveNexusNavId(`${NEXUS_CONNECTORS_PATH}/notion`)).toBe("integrations");
@@ -275,7 +275,7 @@ describe("connectors nav item", () => {
 });
 
 describe("assets nav item", () => {
-  const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" }, spaces: NEXUS_SPACES_PATH };
+  const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" }, sites: NEXUS_SITES_FALLBACK_PATH };
   it("replaces Docs with the ix-assets page", () => {
     expect(nexusNavItems(targets).find((entry) => entry.id === "docs")).toMatchObject({ label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" });
     expect(resolveNexusNavId(`${NEXUS_ASSETS_PATH}/item-1`)).toBe("docs");
@@ -283,10 +283,10 @@ describe("assets nav item", () => {
   });
 });
 
-describe("spaces nav item", () => {
-  it("opens the ix-sites Spaces page when that plugin is installed", () => {
-    const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, spaces: NEXUS_SITES_PATH };
-    expect(nexusNavItems(targets).find((entry) => entry.id === "spaces")).toMatchObject({ label: "Spaces", to: NEXUS_SITES_PATH });
-    expect(resolveNexusNavId(`${NEXUS_SITES_PATH}/test`)).toBe("spaces");
+describe("sites nav item", () => {
+  it("opens the ix-sites Sites page when that plugin is installed", () => {
+    const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_PATH };
+    expect(nexusNavItems(targets).find((entry) => entry.id === "sites")).toMatchObject({ label: "Sites", to: NEXUS_SITES_PATH });
+    expect(resolveNexusNavId(`${NEXUS_SITES_PATH}/test`)).toBe("sites");
   });
 });

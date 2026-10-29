@@ -103,8 +103,8 @@ it("renders bb's route content except on Nexus-owned pages", () => {
   expect(org.getByTestId("org-view")).toBeTruthy();
   expect(org.queryByTestId("route-content")).toBeNull();
   cleanup();
-  const spaces = renderAt("/ix/spaces");
-  expect(spaces.getAllByTestId("nexus-space")).toHaveLength(1);
+  const sites = renderAt("/ix/sites");
+  expect(sites.getAllByTestId("nexus-site")).toHaveLength(1);
 });
 
 it("toggles the sidebar on mod+B and starts a new chat on mod+Enter outside inputs", () => {

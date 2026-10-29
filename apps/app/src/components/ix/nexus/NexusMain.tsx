@@ -30,7 +30,7 @@ import { IxOrganizationView } from "../IxOrganizationView";
 import {
   NEXUS_DOCS_PATH,
   NEXUS_SCHEDULED_PATH,
-  NEXUS_SPACES_PATH,
+  NEXUS_SITES_FALLBACK_PATH,
   nexusBreadcrumbs,
   nexusChatTitle,
   nexusChats,
@@ -41,7 +41,7 @@ import { NexusPalette } from "./NexusPalette";
 import {
   NexusDocsPage,
   NexusScheduledPage,
-  NexusSpacesPage,
+  NexusSitesPage,
 } from "./NexusPages";
 import { useNexusNavTargets } from "./useNexusNavTargets";
 import { useNexusRootAttribute } from "./nexus-root";
@@ -64,7 +64,7 @@ function modifierLabel(): string {
 
 export function nexusPageFor(pathname: string): ReactNode | null {
   if (pathname === IX_ORGANIZATION_PATH) return <IxOrganizationView />;
-  if (pathname === NEXUS_SPACES_PATH) return <NexusSpacesPage />;
+  if (pathname === NEXUS_SITES_FALLBACK_PATH) return <NexusSitesPage />;
   if (pathname === NEXUS_DOCS_PATH) return <NexusDocsPage />;
   if (pathname === NEXUS_SCHEDULED_PATH) return <NexusScheduledPage />;
   return null;

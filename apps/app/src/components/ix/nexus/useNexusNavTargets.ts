@@ -7,7 +7,7 @@ import {
 import {
   NEXUS_SITES_PATH,
   NEXUS_SITES_PLUGIN_ID,
-  NEXUS_SPACES_PATH,
+  NEXUS_SITES_FALLBACK_PATH,
   NEXUS_ASSETS_PATH,
   NEXUS_ASSETS_PLUGIN_ID,
   NEXUS_DEFAULT_DOCS,
@@ -43,7 +43,7 @@ export function useNexusNavTargets(): NexusNavTargets {
       docs: hasAssets
         ? { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Folder02" }
         : NEXUS_DEFAULT_DOCS,
-      spaces: hasSites ? NEXUS_SITES_PATH : NEXUS_SPACES_PATH,
+      sites: hasSites ? NEXUS_SITES_PATH : NEXUS_SITES_FALLBACK_PATH,
     }),
     [hasAutomations, hasConnectors, hasAssets, hasSites],
   );

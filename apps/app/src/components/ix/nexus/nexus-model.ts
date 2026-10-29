@@ -7,7 +7,7 @@ import type { ThreadListEntry } from "@bb/domain";
 import type { IxActor } from "../ix-auth";
 
 export const NEXUS_SIDEBAR_WIDTH = "248px";
-export const NEXUS_SPACES_PATH = "/ix/spaces";
+export const NEXUS_SITES_FALLBACK_PATH = "/ix/sites";
 export const NEXUS_DOCS_PATH = "/ix/docs";
 export const NEXUS_SCHEDULED_PATH = "/ix/scheduled";
 
@@ -16,7 +16,7 @@ export type NexusNavId =
   | "integrations"
   | "scheduled"
   | "skills"
-  | "spaces"
+  | "sites"
   | "docs";
 
 export interface NexusNavItem {
@@ -30,7 +30,7 @@ export interface NexusNavTargets {
   scheduled: string;
   integrations: { label: string; to: string };
   docs: { label: string; to: string; icon: string };
-  spaces: string;
+  sites: string;
 }
 
 export const NEXUS_CONNECTORS_PLUGIN_ID = "ix-connectors";
@@ -38,7 +38,7 @@ export const NEXUS_CONNECTORS_PATH = "/plugins/ix-connectors/connectors";
 export const NEXUS_DEFAULT_INTEGRATIONS = { label: "Integrations", to: "/plugins" };
 export const NEXUS_ASSETS_PLUGIN_ID = "ix-assets";
 export const NEXUS_SITES_PLUGIN_ID = "ix-sites";
-export const NEXUS_SITES_PATH = "/plugins/ix-sites/spaces";
+export const NEXUS_SITES_PATH = "/plugins/ix-sites/sites";
 export const NEXUS_ASSETS_PATH = "/plugins/ix-assets/assets";
 export const NEXUS_DEFAULT_DOCS = { label: "Docs", to: NEXUS_DOCS_PATH, icon: "FileText" };
 
@@ -58,7 +58,7 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
       to: targets.scheduled,
     },
     { id: "skills", label: "Skills", icon: "Zap", to: "/skills" },
-    { id: "spaces", label: "Spaces", icon: "Layers", to: targets.spaces },
+    { id: "sites", label: "Sites", icon: "Layers", to: targets.sites },
     { id: "docs", label: targets.docs.label, icon: targets.docs.icon, to: targets.docs.to },
   ];
 }
@@ -66,12 +66,12 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
 export function resolveNexusNavId(pathname: string): NexusNavId | null {
   if (pathname === "/") return "home";
   if (
-    pathname === NEXUS_SPACES_PATH ||
+    pathname === NEXUS_SITES_FALLBACK_PATH ||
     pathname === NEXUS_SITES_PATH ||
     pathname.startsWith(`${NEXUS_SITES_PATH}/`) ||
     matchPath("/projects/:projectId", pathname) !== null
   )
-    return "spaces";
+    return "sites";
   if (
     pathname === NEXUS_DOCS_PATH ||
     pathname === NEXUS_ASSETS_PATH ||
@@ -298,7 +298,7 @@ const NAV_LABELS: Record<NexusNavId, string> = {
   integrations: "Integrations",
   scheduled: "Scheduled",
   skills: "Skills",
-  spaces: "Spaces",
+  sites: "Sites",
   docs: "Docs",
 };
 
