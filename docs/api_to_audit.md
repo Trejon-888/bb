@@ -289,6 +289,8 @@ On ix multi-user servers, agent tool calls and `contributeInstructions` provider
 
 Callers: `apps/server/src/internal/tool-calls.ts`, `apps/server/src/services/threads/thread-runtime-config.ts`.
 
+`experimental_user.projectIds` lists the projects the person may see while the workspace restricts members to granted projects (absent when unrestricted: open mode, owners and admins). Plugins that keep per-project data (ix-memory) filter by it so restricted members never see another project's records. Set by `ixCallerUser` (request access scope) and the thread-owner resolver (stored grants).
+
 Before stabilizing, audit whether upstream bb wants a user concept at all, whether HTTP routes and CLI commands need the same field, and whether the owner should be resolved once per turn instead of per call.
 
 ## `bb.http.experimental_websocket`

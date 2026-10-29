@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import type { IxRole } from "./config.js";
+import { currentIxAccessScope } from "./access.js";
 
 export const IX_ACTOR_CONTEXT_KEY = "ixActor";
 
@@ -36,9 +37,10 @@ export function ixActorRole(actor: IxActor | undefined): IxRole {
 
 export function ixCallerUser(
   actor: IxActor | undefined,
-): { id: string; email: string; name: string; role: IxRole } | undefined {
+): { id: string; email: string; name: string; role: IxRole; projectIds?: string[] } | undefined {
   if (actor === undefined || actor.kind !== "user") return undefined;
-  return { ...actor.user, role: actor.role };
+  const scope = currentIxAccessScope();
+  return { ...actor.user, role: actor.role, ...(scope === null ? {} : { projectIds: Object.keys(scope.projects) }) };
 }
 
 export function withIxUser<T extends { kind: string }>(
@@ -50,7 +52,7 @@ export function withIxUser<T extends { kind: string }>(
   return { ...caller, experimental_user: user };
 }
 
-type IxThreadUser = { id: string; email: string; name: string; role: IxRole };
+type IxThreadUser = { id: string; email: string; name: string; role: IxRole; projectIds?: string[] };
 let threadUserResolver: ((threadId: string) => Promise<IxThreadUser | undefined>) | null = null;
 
 export function setIxThreadUserResolver(resolver: ((threadId: string) => Promise<IxThreadUser | undefined>) | null): void {

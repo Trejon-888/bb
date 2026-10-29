@@ -280,6 +280,8 @@ export type ExperimentalPluginRpcCallerUser = {
   readonly email: string;
   readonly name: string;
   readonly role: "owner" | "admin" | "member" | "viewer";
+  /** Projects this person may see when the workspace restricts members to granted projects; absent means every project. Personal is always visible. */
+  readonly projectIds?: readonly string[];
 };
 export type ExperimentalPluginRpcCaller =
   | { readonly kind: "plugin"; readonly pluginId: string }

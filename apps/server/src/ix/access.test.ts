@@ -14,7 +14,7 @@ import {
   restrictedScopeFor,
   runWithIxRequestAccess,
 } from "./access.js";
-import type { IxActor } from "./context.js";
+import { withIxUser, type IxActor } from "./context.js";
 import { createIxKv } from "./kv.js";
 import { assertRestrictedRoute } from "./middleware.js";
 
@@ -83,5 +83,22 @@ describe("ix project access", () => {
     expect(code(() => assertRestrictedRoute("GET", "/projects/p1"))).toBe("ok");
     expect(code(() => assertRestrictedRoute("POST", "/projects/p1/attachments"))).toBe("ok");
     expect(code(() => assertRestrictedRoute("POST", "/threads/t1/send"))).toBe("ok");
+  });
+});
+
+describe("plugin caller user carries the person's granted projects", () => {
+  it("adds projectIds only while the workspace restricts that person", async () => {
+    const s = store();
+    const ana = member("ana");
+    const open = await runWithIxRequestAccess(ana, s, restrictedScopeFor(ana, s, "GET"), async () => withIxUser({ kind: "client" as const }, ana));
+    expect(open).toMatchObject({ experimental_user: { id: "ana" } });
+    expect((open as { experimental_user?: { projectIds?: string[] } }).experimental_user?.projectIds).toBeUndefined();
+    s.setMode("restricted");
+    s.setGrant("ana", "proj_a", "read");
+    const restricted = await runWithIxRequestAccess(ana, s, restrictedScopeFor(ana, s, "GET"), async () => withIxUser({ kind: "client" as const }, ana));
+    expect(restricted).toMatchObject({ experimental_user: { id: "ana", projectIds: ["proj_a"] } });
+    const admin = member("ben", "admin");
+    const unrestricted = await runWithIxRequestAccess(admin, s, restrictedScopeFor(admin, s, "GET"), async () => withIxUser({ kind: "client" as const }, admin));
+    expect((unrestricted as { experimental_user?: { projectIds?: string[] } }).experimental_user?.projectIds).toBeUndefined();
   });
 });

@@ -645,7 +645,9 @@ export async function createIxAuthService(args: {
     const userId = access.threadOwner(threadId);
     if (userId === null) return undefined;
     const member = (await listMembers()).find((row) => row.userId === userId);
-    return member === undefined ? undefined : { id: member.userId, email: member.email, name: member.name, role: member.role };
+    if (member === undefined) return undefined;
+    const restricted = access.mode() === "restricted" && !roleAtLeast(member.role, "admin");
+    return { id: member.userId, email: member.email, name: member.name, role: member.role, ...(restricted ? { projectIds: Object.keys(access.grantsFor(member.userId)) } : {}) };
   });
 
   // "Sign in with <workspace>": the workspace is an OpenID Connect provider for its own apps (ix-sites). Clients register
