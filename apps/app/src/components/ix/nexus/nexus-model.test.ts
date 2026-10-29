@@ -298,9 +298,9 @@ describe("sites nav item", () => {
 
 describe("memory and agent browser nav items", () => {
   const base = { scheduled: { label: "Scheduled", to: "/s", icon: "TimeSchedule" }, integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH, memory: null, browser: null };
-  it("adds Models and Capacity when ix-providers and ix-capacity are installed", () => {
+  it("adds Providers and Capacity when ix-providers and ix-capacity are installed", () => {
     const items = nexusNavItems({ ...base, providers: NEXUS_PROVIDERS_PATH, capacity: NEXUS_CAPACITY_PATH });
-    expect(items.find((entry) => entry.id === "providers")).toMatchObject({ label: "Models", to: NEXUS_PROVIDERS_PATH });
+    expect(items.find((entry) => entry.id === "providers")).toMatchObject({ label: "Providers", to: NEXUS_PROVIDERS_PATH });
     expect(items.find((entry) => entry.id === "capacity")).toMatchObject({ label: "Capacity", to: NEXUS_CAPACITY_PATH });
     expect(nexusNavItems(base).map((entry) => entry.id)).not.toContain("providers");
     expect(resolveNexusNavId(`${NEXUS_PROVIDERS_PATH}/x`)).toBe("providers");

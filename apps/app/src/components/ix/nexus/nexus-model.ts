@@ -90,7 +90,7 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
   if (targets.browser !== null)
     items.push({ id: "browser", label: "Agent Browser", icon: "Browser", to: targets.browser });
   if (targets.providers)
-    items.push({ id: "providers", label: "Models", icon: "AiBrain01", to: targets.providers });
+    items.push({ id: "providers", label: "Providers", icon: "AiBrain01", to: targets.providers });
   if (targets.capacity)
     items.push({ id: "capacity", label: "Capacity", icon: "ChartColumn", to: targets.capacity });
   return items;
@@ -350,7 +350,7 @@ const NAV_LABELS: Record<NexusNavId, string> = {
   docs: "Docs",
   memory: "Memory",
   browser: "Agent Browser",
-  providers: "Models",
+  providers: "Providers",
   capacity: "Capacity",
 };
 
