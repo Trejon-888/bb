@@ -10,3 +10,12 @@
   --nexus-online: var(--success);
   --nexus-tile: white;
 }
+
+:root[data-ix-shell="nexus"] :where([data-ix-secondary-panel]) {
+  --sidebar: color-mix(in oklch, var(--ink) 2.2%, var(--canvas));
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: color-mix(in oklab, var(--ink) 7%, transparent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  color: var(--foreground);
+}

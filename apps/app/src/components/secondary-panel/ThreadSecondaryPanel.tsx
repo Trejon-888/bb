@@ -1016,6 +1016,7 @@ function ThreadSecondaryPanelContent({
   const asideMarkup = (
     <aside
       ref={panelRef}
+      data-ix-secondary-panel=""
       aria-hidden={!isOpen}
       inert={!isOpen}
       onFocusCapture={handlePanelFocusCapture}
