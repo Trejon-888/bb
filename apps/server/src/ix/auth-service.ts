@@ -1,7 +1,8 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { betterAuth } from "better-auth";
 import { makeSignature } from "better-auth/crypto";
 import { getMigrations } from "better-auth/db/migration";
+import { oidcProvider } from "better-auth/plugins/oidc-provider";
 import { organization } from "better-auth/plugins/organization";
 import type { DbConnection } from "@bb/db";
 import { readOrCreateSecretFile } from "@bb/secret-storage";
@@ -26,6 +27,7 @@ import {
   type IxSocialProvider,
 } from "./config.js";
 import { setIxThreadUserResolver, type IxActor } from "./context.js";
+import { IX_NOT_MEMBER_MESSAGE } from "./middleware.js";
 import { createIxKv, type IxKv } from "./kv.js";
 import { createIxAccessStore, type IxAccessStore } from "./access.js";
 import { createIxDeskStore, type IxDeskStore } from "./desk.js";
@@ -38,6 +40,7 @@ import {
 } from "./sso.js";
 
 const AUTH_SECRET_FILE_NAME = "ix-auth-secret";
+const OIDC_REGISTRATION_TOKEN_FILE_NAME = "ix-oidc-registration-token";
 const MODEL_NAMES = {
   user: "ix_user",
   session: "ix_session",
@@ -46,6 +49,9 @@ const MODEL_NAMES = {
   organization: "ix_organization",
   member: "ix_member",
   invitation: "ix_invitation",
+  oauthApplication: "ix_oauth_application",
+  oauthAccessToken: "ix_oauth_access_token",
+  oauthConsent: "ix_oauth_consent",
 } as const;
 
 export interface IxMember {
@@ -211,6 +217,12 @@ export async function createIxAuthService(args: {
     encoding: "hex",
     fileName: AUTH_SECRET_FILE_NAME,
   });
+  const oidcRegistrationToken = await readOrCreateSecretFile({
+    bytes: 32,
+    dataDir: args.dataDir,
+    encoding: "hex",
+    fileName: OIDC_REGISTRATION_TOKEN_FILE_NAME,
+  });
   const auth = betterAuth({
     appName: "bb",
     baseURL: config.baseUrl,
@@ -238,6 +250,19 @@ export async function createIxAuthService(args: {
           organization: { modelName: MODEL_NAMES.organization },
           member: { modelName: MODEL_NAMES.member },
           invitation: { modelName: MODEL_NAMES.invitation },
+        },
+      }),
+      oidcProvider({
+        loginPage: "/",
+        allowDynamicClientRegistration: true,
+        requirePKCE: true,
+        scopes: ["openid", "profile", "email"],
+        storeClientSecret: "hashed",
+        getAdditionalUserInfoClaim: () => ({ iss: config.baseUrl }),
+        schema: {
+          oauthApplication: { modelName: MODEL_NAMES.oauthApplication },
+          oauthAccessToken: { modelName: MODEL_NAMES.oauthAccessToken },
+          oauthConsent: { modelName: MODEL_NAMES.oauthConsent },
         },
       }),
     ],
@@ -623,6 +648,45 @@ export async function createIxAuthService(args: {
     return member === undefined ? undefined : { id: member.userId, email: member.email, name: member.name, role: member.role };
   });
 
+  // "Sign in with <workspace>": the workspace is an OpenID Connect provider for its own apps (ix-sites). Clients register
+  // only with the server-held registration token, are the workspace's own apps (no consent screen), and only members get a code.
+  const registrationTokenMatches = (header: string | null) => {
+    const presented = Buffer.from(header?.replace(/^Bearer\s+/i, "") ?? "");
+    const expected = Buffer.from(oidcRegistrationToken);
+    return presented.length === expected.length && timingSafeEqual(presented, expected);
+  };
+  async function grantConsent(query: URLSearchParams, userId: string): Promise<void> {
+    const clientId = query.get("client_id");
+    if (clientId === null) return;
+    const db = await adapter();
+    if ((await db.findOne({ model: "oauthApplication", where: [{ field: "clientId", value: clientId }] })) === null) return;
+    const scopes = (query.get("scope") ?? "openid").split(" ").filter(Boolean).join(" ");
+    const where = [{ field: "clientId", value: clientId }, { field: "userId", value: userId }];
+    const now = new Date();
+    if ((await db.findOne({ model: "oauthConsent", where })) === null) {
+      await db.create({ model: "oauthConsent", data: { clientId, userId, scopes, consentGiven: true, createdAt: now, updatedAt: now } });
+    } else {
+      await db.update({ model: "oauthConsent", where, update: { scopes, consentGiven: true, updatedAt: now } });
+    }
+  }
+  async function handleAuthRequest(request: Request): Promise<Response> {
+    const path = new URL(request.url).pathname;
+    if (path === "/api/auth/oauth2/register" && request.method === "POST") {
+      if (!registrationTokenMatches(request.headers.get("authorization"))) {
+        return Response.json({ error: "invalid_token", error_description: "Client registration needs this workspace's registration token" }, { status: 401 });
+      }
+      return auth.handler(request);
+    }
+    if (path === "/api/auth/oauth2/authorize") {
+      const resolution = await resolveSession(request.headers);
+      if (resolution.kind === "non-member") {
+        return new Response(IX_NOT_MEMBER_MESSAGE, { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } });
+      }
+      if (resolution.kind === "member" && resolution.actor.kind === "user") await grantConsent(new URL(request.url).searchParams, resolution.actor.user.id);
+    }
+    return auth.handler(request);
+  }
+
   return {
     mode: config.mode,
     config,
@@ -630,7 +694,7 @@ export async function createIxAuthService(args: {
     access,
     desk,
     ensureReady,
-    handler: (request) => auth.handler(request),
+    handler: (request) => handleAuthRequest(request),
     resolveActor,
     resolveSession,
     status: async () => {

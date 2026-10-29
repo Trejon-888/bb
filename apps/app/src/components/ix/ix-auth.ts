@@ -230,6 +230,13 @@ export function clearInviteTokenFromUrl(): void {
   clearUrlParam(INVITE_PARAM);
 }
 
+export function readOidcContinueFromUrl(): string | null {
+  if (typeof window === "undefined" || window.location.pathname !== "/") return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("client_id") === null || params.get("redirect_uri") === null || params.get("response_type") === null) return null;
+  return `/api/auth/oauth2/authorize${window.location.search}`;
+}
+
 export function readSsoTokenFromUrl(): string | null {
   return readUrlParam(SSO_PARAM);
 }

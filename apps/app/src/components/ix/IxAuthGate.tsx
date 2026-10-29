@@ -9,6 +9,7 @@ import {
   ixRequest,
   readInviteTokenFromUrl,
   readSocialErrorFromUrl,
+  readOidcContinueFromUrl,
   readSsoTokenFromUrl,
   refreshIxSession,
   rememberedTeamMode,
@@ -214,6 +215,7 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
   const teamMode = status?.mode === "team";
   const [inviteToken] = useState(readInviteTokenFromUrl);
   const [ssoToken, setSsoToken] = useState(readSsoTokenFromUrl);
+  const [oidcContinue] = useState(readOidcContinueFromUrl);
   const [ssoError, setSsoError] = useState<string | null>(null);
   const [socialError] = useState(readSocialErrorFromUrl);
   useEffect(() => {
@@ -222,6 +224,9 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
   const [screen, setScreen] = useState<Screen | null>(null);
   const [holdForTeam] = useState(rememberedTeamMode);
   const actor = session.me?.actor ?? null;
+  useEffect(() => {
+    if (actor !== null && actor.kind === "user" && oidcContinue !== null) window.location.assign(oidcContinue);
+  }, [actor, oidcContinue]);
   useEffect(() => {
     setCurrentIxRole(actor !== null && actor.kind === "user" ? actor.role : null);
     if (actor !== null && actor.kind === "user" && inviteToken !== null) clearInviteTokenFromUrl();
@@ -258,7 +263,7 @@ export function IxAuthGate({ children }: { children: ReactNode }) {
   if (session.statusFailed || (status !== undefined && !teamMode)) return children;
   if (status === undefined) return holdForTeam ? null : children;
   if (ssoToken !== null || session.mePending) return null;
-  if (actor !== null) return children;
+  if (actor !== null) return oidcContinue !== null && actor.kind === "user" ? null : children;
   if (session.notMember !== null) return <NotMemberScreen brand={status.brand} message={session.notMember} />;
   const resolved: Screen = screen ?? (inviteToken !== null ? "invite" : status.bootstrapped ? "sign-in" : "bootstrap");
   return (
