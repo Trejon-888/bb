@@ -5,6 +5,9 @@ import {
   getAutomationsRoutePath,
 } from "@/lib/route-paths";
 import {
+  NEXUS_ASSETS_PATH,
+  NEXUS_ASSETS_PLUGIN_ID,
+  NEXUS_DEFAULT_DOCS,
   NEXUS_CONNECTORS_PATH,
   NEXUS_CONNECTORS_PLUGIN_ID,
   NEXUS_DEFAULT_INTEGRATIONS,
@@ -20,6 +23,9 @@ export function useNexusNavTargets(): NexusNavTargets {
   const hasConnectors = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_CONNECTORS_PLUGIN_ID,
   );
+  const hasAssets = panels.some(
+    (entry) => entry.chrome.pluginId === NEXUS_ASSETS_PLUGIN_ID,
+  );
   return useMemo(
     () => ({
       scheduled: hasAutomations
@@ -28,7 +34,10 @@ export function useNexusNavTargets(): NexusNavTargets {
       integrations: hasConnectors
         ? { label: "Connectors", to: NEXUS_CONNECTORS_PATH }
         : NEXUS_DEFAULT_INTEGRATIONS,
+      docs: hasAssets
+        ? { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Library" }
+        : NEXUS_DEFAULT_DOCS,
     }),
-    [hasAutomations, hasConnectors],
+    [hasAutomations, hasConnectors, hasAssets],
   );
 }

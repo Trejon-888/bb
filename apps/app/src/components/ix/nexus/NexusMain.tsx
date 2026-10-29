@@ -245,6 +245,7 @@ export function NexusMain({
     pageTitle,
     threadTitle,
     integrationsLabel: targets.integrations.label,
+    docsLabel: targets.docs.label,
   });
   const page = nexusPageFor(location.pathname);
 

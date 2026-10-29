@@ -19,6 +19,8 @@ import {
   nexusSetupSteps,
   NEXUS_CONNECTORS_PATH,
   NEXUS_DEFAULT_INTEGRATIONS,
+  NEXUS_ASSETS_PATH,
+  NEXUS_DEFAULT_DOCS,
 } from "./nexus-model";
 
 function thread(overrides: Partial<ThreadListEntry>): ThreadListEntry {
@@ -255,11 +257,11 @@ it("formats relative times", () => {
 });
 
 describe("connectors nav item", () => {
-  const connectors = { scheduled: "/s", integrations: { label: "Connectors", to: NEXUS_CONNECTORS_PATH } };
+  const connectors = { scheduled: "/s", integrations: { label: "Connectors", to: NEXUS_CONNECTORS_PATH }, docs: NEXUS_DEFAULT_DOCS };
   it("labels and routes the integrations item from its target", () => {
     const item = nexusNavItems(connectors).find((entry) => entry.id === "integrations");
     expect(item).toMatchObject({ label: "Connectors", to: NEXUS_CONNECTORS_PATH });
-    expect(nexusNavItems({ scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS }).find((entry) => entry.id === "integrations")).toMatchObject({ label: "Integrations", to: "/plugins" });
+    expect(nexusNavItems({ scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS }).find((entry) => entry.id === "integrations")).toMatchObject({ label: "Integrations", to: "/plugins" });
   });
   it("highlights it on connectors pages and names the breadcrumb after it", () => {
     expect(resolveNexusNavId(`${NEXUS_CONNECTORS_PATH}/notion`)).toBe("integrations");
@@ -268,5 +270,14 @@ describe("connectors nav item", () => {
   it("points the setup step at connectors", () => {
     const step = nexusSetupSteps({ ...connectors, organization: "/ix/organization" }).find((entry) => entry.id === "integrations");
     expect(step).toMatchObject({ cta: "Open connectors", to: NEXUS_CONNECTORS_PATH });
+  });
+});
+
+describe("assets nav item", () => {
+  const targets = { scheduled: "/s", integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: { label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Library" } };
+  it("replaces Docs with the ix-assets page", () => {
+    expect(nexusNavItems(targets).find((entry) => entry.id === "docs")).toMatchObject({ label: "Assets", to: NEXUS_ASSETS_PATH, icon: "Library" });
+    expect(resolveNexusNavId(`${NEXUS_ASSETS_PATH}/item-1`)).toBe("docs");
+    expect(nexusBreadcrumbs({ pathname: NEXUS_ASSETS_PATH, organizationPath: "/ix/organization", pageTitle: null, threadTitle: null, docsLabel: "Assets" })[0]?.label).toBe("Assets");
   });
 });

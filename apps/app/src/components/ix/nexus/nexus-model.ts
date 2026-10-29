@@ -29,11 +29,15 @@ export interface NexusNavItem {
 export interface NexusNavTargets {
   scheduled: string;
   integrations: { label: string; to: string };
+  docs: { label: string; to: string; icon: string };
 }
 
 export const NEXUS_CONNECTORS_PLUGIN_ID = "ix-connectors";
 export const NEXUS_CONNECTORS_PATH = "/plugins/ix-connectors/connectors";
 export const NEXUS_DEFAULT_INTEGRATIONS = { label: "Integrations", to: "/plugins" };
+export const NEXUS_ASSETS_PLUGIN_ID = "ix-assets";
+export const NEXUS_ASSETS_PATH = "/plugins/ix-assets/assets";
+export const NEXUS_DEFAULT_DOCS = { label: "Docs", to: NEXUS_DOCS_PATH, icon: "FileText" };
 
 export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
   return [
@@ -52,7 +56,7 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
     },
     { id: "skills", label: "Skills", icon: "Zap", to: "/skills" },
     { id: "spaces", label: "Spaces", icon: "Layers", to: NEXUS_SPACES_PATH },
-    { id: "docs", label: "Docs", icon: "FileText", to: NEXUS_DOCS_PATH },
+    { id: "docs", label: targets.docs.label, icon: targets.docs.icon, to: targets.docs.to },
   ];
 }
 
@@ -63,7 +67,12 @@ export function resolveNexusNavId(pathname: string): NexusNavId | null {
     matchPath("/projects/:projectId", pathname) !== null
   )
     return "spaces";
-  if (pathname === NEXUS_DOCS_PATH) return "docs";
+  if (
+    pathname === NEXUS_DOCS_PATH ||
+    pathname === NEXUS_ASSETS_PATH ||
+    pathname.startsWith(`${NEXUS_ASSETS_PATH}/`)
+  )
+    return "docs";
   if (
     pathname === NEXUS_SCHEDULED_PATH ||
     pathname.startsWith("/plugins/automations/")
@@ -294,6 +303,7 @@ export function nexusBreadcrumbs(args: {
   pageTitle: NexusPageTitle;
   threadTitle: string | null;
   integrationsLabel?: string;
+  docsLabel?: string;
 }): NexusCrumb[] {
   const { pathname, organizationPath, pageTitle, threadTitle } = args;
   if (threadTitle !== null)
@@ -313,7 +323,12 @@ export function nexusBreadcrumbs(args: {
     return pageCrumbs.length > 0
       ? [...pageCrumbs]
       : [{ label: NAV_LABELS.home, to: "/" }];
-  const base = navId === "integrations" && args.integrationsLabel ? args.integrationsLabel : NAV_LABELS[navId];
+  const base =
+    navId === "integrations" && args.integrationsLabel
+      ? args.integrationsLabel
+      : navId === "docs" && args.docsLabel
+        ? args.docsLabel
+        : NAV_LABELS[navId];
   const tail = pageCrumbs.filter(
     (crumb) => crumb.label !== base && crumb.label !== "Plugins",
   );
