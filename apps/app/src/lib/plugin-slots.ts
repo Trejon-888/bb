@@ -42,6 +42,7 @@ import {
   type CollectedSidebarFooterItem,
   type CollectedSidebarNavigationRegistration,
 } from "@get-bb/plugin-sdk/internal/plugin-app-collector";
+import { ixNavPanelThreadTabs } from "./ix-nav-panel-tabs";
 
 export interface PluginRegistrationSet {
   homepageSections: readonly PluginHomepageSectionRegistration[];
@@ -302,7 +303,7 @@ function flattenRegistrations(
       adaptExperimentalSidebarFooterItem,
     ),
   ];
-  const tabs = set.tabs ?? [
+  const declaredTabs = set.tabs ?? [
     ...set.threadPanelActions.map((action) => ({
       ...action,
       icon: action.icon ?? "",
@@ -317,6 +318,7 @@ function flattenRegistrations(
       })),
     ),
   ];
+  const tabs = [...declaredTabs, ...ixNavPanelThreadTabs(set, declaredTabs)];
   return {
     homepageSections: stamp(set.homepageSections),
     settingsSections: stamp(set.settingsSections),
