@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { usePluginNavPanelChrome } from "@/lib/plugin-nav-panel-chrome";
+import { currentIxRole, roleAtLeast } from "@/components/ix/ix-auth";
 import {
   AUTOMATIONS_PLUGIN_ID,
   getAutomationsRoutePath,
@@ -21,6 +22,10 @@ import {
   NEXUS_MEMORY_PLUGIN_ID,
   NEXUS_BROWSER_PATH,
   NEXUS_BROWSER_PLUGIN_ID,
+  NEXUS_PROVIDERS_PATH,
+  NEXUS_PROVIDERS_PLUGIN_ID,
+  NEXUS_CAPACITY_PATH,
+  NEXUS_CAPACITY_PLUGIN_ID,
   NEXUS_SKILLS_PATH,
   NEXUS_SKILLS_PLUGIN_ID,
   NEXUS_SKILLS_FALLBACK_PATH,
@@ -50,6 +55,12 @@ export function useNexusNavTargets(): NexusNavTargets {
   const hasBrowser = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_BROWSER_PLUGIN_ID,
   );
+  const hasProviders = panels.some(
+    (entry) => entry.chrome.pluginId === NEXUS_PROVIDERS_PLUGIN_ID,
+  );
+  const hasCapacity = panels.some(
+    (entry) => entry.chrome.pluginId === NEXUS_CAPACITY_PLUGIN_ID,
+  ) && roleAtLeast(currentIxRole(), "admin");
   const hasSkills = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_SKILLS_PLUGIN_ID,
   );
@@ -71,8 +82,10 @@ export function useNexusNavTargets(): NexusNavTargets {
       sites: hasSites ? NEXUS_SITES_PATH : NEXUS_SITES_FALLBACK_PATH,
       memory: hasMemory ? NEXUS_MEMORY_PATH : null,
       browser: hasBrowser ? NEXUS_BROWSER_PATH : null,
+      providers: hasProviders ? NEXUS_PROVIDERS_PATH : null,
+      capacity: hasCapacity ? NEXUS_CAPACITY_PATH : null,
       skills: hasSkills ? NEXUS_SKILLS_PATH : NEXUS_SKILLS_FALLBACK_PATH,
     }),
-    [hasAutomations, hasWorkflows, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser, hasSkills],
+    [hasAutomations, hasWorkflows, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser, hasProviders, hasCapacity, hasSkills],
   );
 }

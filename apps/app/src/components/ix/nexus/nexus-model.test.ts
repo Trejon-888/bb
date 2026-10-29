@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ThreadListEntry } from "@bb/domain";
 import { makeThreadListEntry } from "@bb/test-helpers/domain-fixtures";
-import {
+import { NEXUS_PROVIDERS_PATH, NEXUS_CAPACITY_PATH,
   NEXUS_DOCS_PATH,
   NEXUS_SCHEDULED_PATH,
   NEXUS_WORKFLOWS,
@@ -298,6 +298,13 @@ describe("sites nav item", () => {
 
 describe("memory and agent browser nav items", () => {
   const base = { scheduled: { label: "Scheduled", to: "/s", icon: "TimeSchedule" }, integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH, memory: null, browser: null };
+  it("adds Models and Capacity when ix-providers and ix-capacity are installed", () => {
+    const items = nexusNavItems({ ...base, providers: NEXUS_PROVIDERS_PATH, capacity: NEXUS_CAPACITY_PATH });
+    expect(items.find((entry) => entry.id === "providers")).toMatchObject({ label: "Models", to: NEXUS_PROVIDERS_PATH });
+    expect(items.find((entry) => entry.id === "capacity")).toMatchObject({ label: "Capacity", to: NEXUS_CAPACITY_PATH });
+    expect(nexusNavItems(base).map((entry) => entry.id)).not.toContain("providers");
+    expect(resolveNexusNavId(`${NEXUS_PROVIDERS_PATH}/x`)).toBe("providers");
+  });
   it("are hidden until their plugins are installed", () => {
     const ids = nexusNavItems({ ...base, memory: null, browser: null }).map((entry) => entry.id);
     expect(ids).not.toContain("memory");
