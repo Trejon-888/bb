@@ -15,6 +15,8 @@ import {
   NEXUS_CONNECTORS_PLUGIN_ID,
   NEXUS_DEFAULT_INTEGRATIONS,
   NEXUS_SCHEDULED_PATH,
+  NEXUS_WORKFLOWS,
+  NEXUS_WORKFLOWS_PLUGIN_ID,
   NEXUS_MEMORY_PATH,
   NEXUS_MEMORY_PLUGIN_ID,
   NEXUS_BROWSER_PATH,
@@ -36,6 +38,9 @@ export function useNexusNavTargets(): NexusNavTargets {
   const hasSites = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_SITES_PLUGIN_ID,
   );
+  const hasWorkflows = panels.some(
+    (entry) => entry.chrome.pluginId === NEXUS_WORKFLOWS_PLUGIN_ID,
+  );
   const hasMemory = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_MEMORY_PLUGIN_ID,
   );
@@ -44,9 +49,13 @@ export function useNexusNavTargets(): NexusNavTargets {
   );
   return useMemo(
     () => ({
-      scheduled: hasAutomations
-        ? getAutomationsRoutePath()
-        : NEXUS_SCHEDULED_PATH,
+      scheduled: hasWorkflows
+        ? NEXUS_WORKFLOWS
+        : {
+            label: "Scheduled",
+            to: hasAutomations ? getAutomationsRoutePath() : NEXUS_SCHEDULED_PATH,
+            icon: "TimeSchedule",
+          },
       integrations: hasConnectors
         ? { label: "Connectors", to: NEXUS_CONNECTORS_PATH }
         : NEXUS_DEFAULT_INTEGRATIONS,
@@ -57,6 +66,6 @@ export function useNexusNavTargets(): NexusNavTargets {
       memory: hasMemory ? NEXUS_MEMORY_PATH : null,
       browser: hasBrowser ? NEXUS_BROWSER_PATH : null,
     }),
-    [hasAutomations, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser],
+    [hasAutomations, hasWorkflows, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser],
   );
 }

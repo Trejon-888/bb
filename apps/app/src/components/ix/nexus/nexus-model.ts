@@ -29,7 +29,7 @@ export interface NexusNavItem {
 }
 
 export interface NexusNavTargets {
-  scheduled: string;
+  scheduled: { label: string; to: string; icon: string };
   integrations: { label: string; to: string };
   docs: { label: string; to: string; icon: string };
   sites: string;
@@ -41,6 +41,9 @@ export const NEXUS_CONNECTORS_PLUGIN_ID = "ix-connectors";
 export const NEXUS_CONNECTORS_PATH = "/plugins/ix-connectors/connectors";
 export const NEXUS_DEFAULT_INTEGRATIONS = { label: "Integrations", to: "/plugins" };
 export const NEXUS_ASSETS_PLUGIN_ID = "ix-assets";
+export const NEXUS_WORKFLOWS_PLUGIN_ID = "ix-workflows";
+export const NEXUS_WORKFLOWS_PATH = "/plugins/ix-workflows/workflows";
+export const NEXUS_WORKFLOWS = { label: "Workflows", to: NEXUS_WORKFLOWS_PATH, icon: "Workflow" };
 export const NEXUS_SITES_PLUGIN_ID = "ix-sites";
 export const NEXUS_SITES_PATH = "/plugins/ix-sites/sites";
 export const NEXUS_ASSETS_PATH = "/plugins/ix-assets/assets";
@@ -61,9 +64,9 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
     },
     {
       id: "scheduled",
-      label: "Scheduled",
-      icon: "TimeSchedule",
-      to: targets.scheduled,
+      label: targets.scheduled.label,
+      icon: targets.scheduled.icon,
+      to: targets.scheduled.to,
     },
     { id: "skills", label: "Skills", icon: "Zap", to: "/skills" },
     { id: "sites", label: "Sites", icon: "Layers", to: targets.sites },
@@ -97,7 +100,9 @@ export function resolveNexusNavId(pathname: string): NexusNavId | null {
     return "docs";
   if (
     pathname === NEXUS_SCHEDULED_PATH ||
-    pathname.startsWith("/plugins/automations/")
+    pathname.startsWith("/plugins/automations/") ||
+    pathname === NEXUS_WORKFLOWS_PATH ||
+    pathname.startsWith(`${NEXUS_WORKFLOWS_PATH}/`)
   )
     return "scheduled";
   if (
@@ -285,8 +290,8 @@ export function nexusSetupSteps(
       id: "scheduled",
       title: "Put repeat work on a schedule",
       body: "Anything you ask twice can run on its own and report back.",
-      cta: "Open scheduled",
-      to: targets.scheduled,
+      cta: `Open ${targets.scheduled.label.toLowerCase()}`,
+      to: targets.scheduled.to,
       adminOnly: false,
     },
     {
@@ -328,6 +333,7 @@ export function nexusBreadcrumbs(args: {
   threadTitle: string | null;
   integrationsLabel?: string;
   docsLabel?: string;
+  scheduledLabel?: string;
 }): NexusCrumb[] {
   const { pathname, organizationPath, pageTitle, threadTitle } = args;
   if (threadTitle !== null)
@@ -352,7 +358,9 @@ export function nexusBreadcrumbs(args: {
       ? args.integrationsLabel
       : navId === "docs" && args.docsLabel
         ? args.docsLabel
-        : NAV_LABELS[navId];
+        : navId === "scheduled" && args.scheduledLabel
+          ? args.scheduledLabel
+          : NAV_LABELS[navId];
   const tail = pageCrumbs.filter(
     (crumb) => crumb.label !== base && crumb.label !== "Plugins",
   );
