@@ -1774,6 +1774,7 @@ export interface ExperimentalPluginProviderEnvContext {
   threadId: string | null;
   projectId: string | null;
   hostId: string;
+  experimental_user?: { id: string; email: string; name: string; role: string; projectIds?: string[]; projectAccess?: Record<string, "read" | "write"> };
 }
 
 export interface ExperimentalPluginProviderEnvEntry {

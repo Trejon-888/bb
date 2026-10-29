@@ -293,6 +293,8 @@ Callers: `apps/server/src/internal/tool-calls.ts`, `apps/server/src/services/thr
 
 `experimental_user.projectAccess` carries the same restriction with each granted project's level (`read` | `write`); absent means write on every project. Plugins use it to decide who may change project-scoped records (ix-memory, ix-workflows, ix-connectors).
 
+`experimental_contributeEnv` resolvers receive the same `experimental_user` on their context (`ExperimentalPluginProviderEnvContext.experimental_user`) for a thread's acting person (its latest turn's sender, else its owner), so a provider environment can be chosen per person from the first turn. ix-providers routes each thread to that person's private, project or workspace subscription accounts. Caller: `apps/server/src/services/plugins/plugin-service.ts` (`resolveProviderEnv`).
+
 On ix servers the thread user an agent tool or instruction provider receives is the person who sent the thread's latest turn (a shared thread runs as its sender), else the thread's owner; a sub-agent thread follows its parent.
 
 ## Thread owner on spawn (`threads.spawn` / `POST /api/v1/threads` `experimental_ownerUserId`)

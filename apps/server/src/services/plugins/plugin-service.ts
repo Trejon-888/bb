@@ -1,3 +1,4 @@
+import { ixThreadUserField } from "../../ix/context.js";
 import { rpcResponseTags } from "@get-bb/plugin-sdk/internal/rpc-tags";
 import type {
   PluginRpcDiscoveryQuery,
@@ -2353,7 +2354,8 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
       return { tools, selectedSkillIdsByPlugin, dynamicInstructions };
     },
 
-    async resolveProviderEnv({ providerId, context }) {
+    async resolveProviderEnv({ providerId, context: baseContext }) {
+      const context = baseContext.threadId === null ? baseContext : { ...baseContext, ...(await ixThreadUserField(baseContext.threadId)) };
       const entries: PluginResolvedProviderEnv["entries"] = [];
       const ownerByName = new Map<string, string>();
       for (const [pluginId, plugin] of loaded) {
