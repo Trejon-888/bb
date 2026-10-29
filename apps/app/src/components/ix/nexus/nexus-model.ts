@@ -30,12 +30,15 @@ export interface NexusNavTargets {
   scheduled: string;
   integrations: { label: string; to: string };
   docs: { label: string; to: string; icon: string };
+  spaces: string;
 }
 
 export const NEXUS_CONNECTORS_PLUGIN_ID = "ix-connectors";
 export const NEXUS_CONNECTORS_PATH = "/plugins/ix-connectors/connectors";
 export const NEXUS_DEFAULT_INTEGRATIONS = { label: "Integrations", to: "/plugins" };
 export const NEXUS_ASSETS_PLUGIN_ID = "ix-assets";
+export const NEXUS_SITES_PLUGIN_ID = "ix-sites";
+export const NEXUS_SITES_PATH = "/plugins/ix-sites/spaces";
 export const NEXUS_ASSETS_PATH = "/plugins/ix-assets/assets";
 export const NEXUS_DEFAULT_DOCS = { label: "Docs", to: NEXUS_DOCS_PATH, icon: "FileText" };
 
@@ -55,7 +58,7 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
       to: targets.scheduled,
     },
     { id: "skills", label: "Skills", icon: "Zap", to: "/skills" },
-    { id: "spaces", label: "Spaces", icon: "Layers", to: NEXUS_SPACES_PATH },
+    { id: "spaces", label: "Spaces", icon: "Layers", to: targets.spaces },
     { id: "docs", label: targets.docs.label, icon: targets.docs.icon, to: targets.docs.to },
   ];
 }
@@ -64,6 +67,8 @@ export function resolveNexusNavId(pathname: string): NexusNavId | null {
   if (pathname === "/") return "home";
   if (
     pathname === NEXUS_SPACES_PATH ||
+    pathname === NEXUS_SITES_PATH ||
+    pathname.startsWith(`${NEXUS_SITES_PATH}/`) ||
     matchPath("/projects/:projectId", pathname) !== null
   )
     return "spaces";
