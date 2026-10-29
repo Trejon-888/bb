@@ -136,6 +136,7 @@ export const createThreadRequestSchema = z
     originPluginId: z.string().min(1).optional(),
     pluginMetadata: pluginMetadataSchema.optional(),
     lifecycleOwnerThreadId: z.string().min(1).optional(),
+    experimental_ownerUserId: z.string().min(1).optional(),
     visibility: threadVisibilitySchema.optional(),
     title: z.string().min(1).optional(),
     input: z.array(promptInputSchema),

@@ -5,6 +5,7 @@ import { ApiError } from "../errors.js";
 import {
   assertIxProjectAccess,
   assertIxThreadAccess,
+  assignIxThreadOwner,
   createIxAccessStore,
   filterIxProjects,
   filterIxSearchGroup,
@@ -96,9 +97,25 @@ describe("plugin caller user carries the person's granted projects", () => {
     s.setMode("restricted");
     s.setGrant("ana", "proj_a", "read");
     const restricted = await runWithIxRequestAccess(ana, s, restrictedScopeFor(ana, s, "GET"), async () => withIxUser({ kind: "client" as const }, ana));
-    expect(restricted).toMatchObject({ experimental_user: { id: "ana", projectIds: ["proj_a"] } });
+    expect(restricted).toMatchObject({ experimental_user: { id: "ana", projectIds: ["proj_a"], projectAccess: { proj_a: "read" } } });
     const admin = member("ben", "admin");
     const unrestricted = await runWithIxRequestAccess(admin, s, restrictedScopeFor(admin, s, "GET"), async () => withIxUser({ kind: "client" as const }, admin));
     expect((unrestricted as { experimental_user?: { projectIds?: string[] } }).experimental_user?.projectIds).toBeUndefined();
+  });
+});
+
+describe("starting a thread on someone's behalf", () => {
+  it("lets plugins and admins name the owner, and members only themselves", async () => {
+    const s = store();
+    await runWithIxRequestAccess(undefined, s, null, async () => assignIxThreadOwner("t_plugin", "ana"));
+    expect(s.threadOwner("t_plugin")).toBe("ana");
+    const ben = member("ben");
+    await expect(runWithIxRequestAccess(ben, s, null, async () => assignIxThreadOwner("t_ben", "ana"))).rejects.toMatchObject({ status: 403 });
+    await runWithIxRequestAccess(ben, s, null, async () => assignIxThreadOwner("t_ben", "ben"));
+    expect(s.threadOwner("t_ben")).toBe("ben");
+    const admin = member("root", "admin");
+    s.recordThreadOwner("t_admin", "root");
+    await runWithIxRequestAccess(admin, s, null, async () => assignIxThreadOwner("t_admin", "ana"));
+    expect(s.threadOwner("t_admin")).toBe("ana");
   });
 });

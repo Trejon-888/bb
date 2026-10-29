@@ -4,7 +4,7 @@ import { makeSignature } from "better-auth/crypto";
 import { getMigrations } from "better-auth/db/migration";
 import { oidcProvider } from "better-auth/plugins/oidc-provider";
 import { organization } from "better-auth/plugins/organization";
-import type { DbConnection } from "@bb/db";
+import { getThread, type DbConnection } from "@bb/db";
 import { readOrCreateSecretFile } from "@bb/secret-storage";
 import type { ServerLogger } from "../types.js";
 import { readIxBrand, writeIxBrand, type IxBrand } from "./brand.js";
@@ -641,13 +641,22 @@ export async function createIxAuthService(args: {
     return sessionCookieHeaders(response);
   }
 
+  const actingUser = (threadId: string): string | null => {
+    let id: string | null = threadId;
+    for (let depth = 0; id !== null && depth < 8; depth++) {
+      const sender = access.turnSender(id);
+      if (sender !== null) return sender;
+      id = getThread(args.db, id)?.parentThreadId ?? null;
+    }
+    return access.threadOwner(threadId);
+  };
   setIxThreadUserResolver(async (threadId) => {
-    const userId = access.threadOwner(threadId);
+    const userId = actingUser(threadId);
     if (userId === null) return undefined;
     const member = (await listMembers()).find((row) => row.userId === userId);
     if (member === undefined) return undefined;
     const restricted = access.mode() === "restricted" && !roleAtLeast(member.role, "admin");
-    return { id: member.userId, email: member.email, name: member.name, role: member.role, ...(restricted ? { projectIds: Object.keys(access.grantsFor(member.userId)) } : {}) };
+    return { id: member.userId, email: member.email, name: member.name, role: member.role, ...(restricted ? { projectIds: Object.keys(access.grantsFor(member.userId)), projectAccess: access.grantsFor(member.userId) } : {}) };
   });
 
   // "Sign in with <workspace>": the workspace is an OpenID Connect provider for its own apps (ix-sites). Clients register

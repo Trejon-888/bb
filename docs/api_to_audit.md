@@ -291,6 +291,18 @@ Callers: `apps/server/src/internal/tool-calls.ts`, `apps/server/src/services/thr
 
 `experimental_user.projectIds` lists the projects the person may see while the workspace restricts members to granted projects (absent when unrestricted: open mode, owners and admins). Plugins that keep per-project data (ix-memory) filter by it so restricted members never see another project's records. Set by `ixCallerUser` (request access scope) and the thread-owner resolver (stored grants).
 
+`experimental_user.projectAccess` carries the same restriction with each granted project's level (`read` | `write`); absent means write on every project. Plugins use it to decide who may change project-scoped records (ix-memory, ix-workflows, ix-connectors).
+
+On ix servers the thread user an agent tool or instruction provider receives is the person who sent the thread's latest turn (a shared thread runs as its sender), else the thread's owner; a sub-agent thread follows its parent.
+
+## Thread owner on spawn (`threads.spawn` / `POST /api/v1/threads` `experimental_ownerUserId`)
+
+Starts a thread on a signed-in person's behalf: the new thread's owner is that person, it is private to them, and its tools act as them. A plugin or loopback caller may name any member; a signed-in member only themselves; admins anyone (403 `ix_owner_forbidden` otherwise). ix-workflows uses it so a private workflow's run uses its owner's connected accounts.
+
+Callers: `apps/server/src/routes/threads/base.ts` (`assignIxThreadOwner`).
+
+Before stabilizing, audit whether upstream bb wants thread ownership at all, whether the field belongs in `startedOnBehalfOf`, and whether spawning on behalf of someone should require that person's consent or an admin-granted plugin capability.
+
 Before stabilizing, audit whether upstream bb wants a user concept at all, whether HTTP routes and CLI commands need the same field, and whether the owner should be resolved once per turn instead of per call.
 
 ## `bb.http.experimental_websocket`

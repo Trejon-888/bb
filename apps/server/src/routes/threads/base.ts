@@ -1,5 +1,5 @@
 import { countUnarchivedThreadDescendants } from "../../services/threads/thread-archive.js";
-import { assertIxProjectAccess, filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds } from "../../ix/access.js";
+import { assertIxProjectAccess, assignIxThreadOwner, filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds } from "../../ix/access.js";
 import { listThreadCascades } from "../../services/threads/thread-cascade.js";
 import { cancelAbandonedProviderCreations } from "../../services/threads/thread-environment-providers.js";
 import {
@@ -402,10 +402,12 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
     if (payload.sectionId) {
       requireThreadSection(deps, payload.sectionId);
     }
+    const { experimental_ownerUserId: ownerUserId, ...request } = payload;
     const thread = await createThreadFromRequest(deps, {
-      ...payload,
-      origin: payload.origin,
+      ...request,
+      origin: request.origin,
     });
+    if (ownerUserId !== undefined) assignIxThreadOwner(thread.id, ownerUserId);
     return context.json(toThreadResponseFromThread(deps, { thread }), 201);
   });
 

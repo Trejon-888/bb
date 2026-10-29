@@ -24,6 +24,7 @@ import {
   type PublicApiSchema,
 } from "@bb/server-contract";
 import type { Hono } from "hono";
+import { noteIxTurnSender } from "../../ix/access.js";
 import { type ThreadQueuedMessage } from "@bb/domain";
 import type { AppDeps } from "../../types.js";
 import { ApiError } from "../../errors.js";
@@ -208,6 +209,7 @@ export function registerThreadActionRoutes(app: Hono, deps: AppDeps): void {
 
   post(routes.send, async (context, payload) => {
     const thread = requirePublicThread(deps.db, context.req.param("id"));
+    noteIxTurnSender(thread.id);
     return context.json(
       await acceptThreadSendRequest(deps, { payload, thread }),
     );
@@ -215,6 +217,7 @@ export function registerThreadActionRoutes(app: Hono, deps: AppDeps): void {
 
   post(routes.editMessage, async (context, payload) => {
     const thread = requirePublicThread(deps.db, context.req.param("id"));
+    noteIxTurnSender(thread.id);
     const environment = await requireThreadCommandEnvironment(deps, {
       thread,
     });
@@ -228,6 +231,7 @@ export function registerThreadActionRoutes(app: Hono, deps: AppDeps): void {
 
   post(routes.retry, async (context, payload) => {
     const thread = requirePublicThread(deps.db, context.req.param("id"));
+    noteIxTurnSender(thread.id);
     ensureThreadIsWritable(thread);
     const result = await retryFailedTurn(deps, { request: payload, thread });
     return context.json(result);
@@ -235,6 +239,7 @@ export function registerThreadActionRoutes(app: Hono, deps: AppDeps): void {
 
   post(routes.createQueuedMessage, async (context, payload) => {
     const thread = requirePublicThread(deps.db, context.req.param("id"));
+    noteIxTurnSender(thread.id);
     const queuedMessage = await createQueuedMessageForThread(deps, {
       payload,
       thread,
@@ -244,6 +249,7 @@ export function registerThreadActionRoutes(app: Hono, deps: AppDeps): void {
 
   post(routes.sendQueuedMessage, async (context, payload) => {
     const thread = requirePublicThread(deps.db, context.req.param("id"));
+    noteIxTurnSender(thread.id);
     ensureThreadQueueIsWritable(thread);
     ensureThreadIsNotAwaitingUserInteraction(deps, thread.id);
     const result = await sendQueuedMessageNow(deps, {

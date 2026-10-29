@@ -282,6 +282,8 @@ export type ExperimentalPluginRpcCallerUser = {
   readonly role: "owner" | "admin" | "member" | "viewer";
   /** Projects this person may see when the workspace restricts members to granted projects; absent means every project. Personal is always visible. */
   readonly projectIds?: readonly string[];
+  /** The same restriction with each granted project's level: "read" sees, "write" may also change. Absent means write on every project. */
+  readonly projectAccess?: { readonly [projectId: string]: "read" | "write" };
 };
 export type ExperimentalPluginRpcCaller =
   | { readonly kind: "plugin"; readonly pluginId: string }

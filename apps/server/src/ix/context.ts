@@ -37,10 +37,10 @@ export function ixActorRole(actor: IxActor | undefined): IxRole {
 
 export function ixCallerUser(
   actor: IxActor | undefined,
-): { id: string; email: string; name: string; role: IxRole; projectIds?: string[] } | undefined {
+): { id: string; email: string; name: string; role: IxRole; projectIds?: string[]; projectAccess?: Record<string, "read" | "write"> } | undefined {
   if (actor === undefined || actor.kind !== "user") return undefined;
   const scope = currentIxAccessScope();
-  return { ...actor.user, role: actor.role, ...(scope === null ? {} : { projectIds: Object.keys(scope.projects) }) };
+  return { ...actor.user, role: actor.role, ...(scope === null ? {} : { projectIds: Object.keys(scope.projects), projectAccess: { ...scope.projects } }) };
 }
 
 export function withIxUser<T extends { kind: string }>(
@@ -52,7 +52,7 @@ export function withIxUser<T extends { kind: string }>(
   return { ...caller, experimental_user: user };
 }
 
-type IxThreadUser = { id: string; email: string; name: string; role: IxRole; projectIds?: string[] };
+type IxThreadUser = { id: string; email: string; name: string; role: IxRole; projectIds?: string[]; projectAccess?: Record<string, "read" | "write"> };
 let threadUserResolver: ((threadId: string) => Promise<IxThreadUser | undefined>) | null = null;
 
 export function setIxThreadUserResolver(resolver: ((threadId: string) => Promise<IxThreadUser | undefined>) | null): void {

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { listPublicProjects, type DbConnection } from "@bb/db";
-import { ixAccessModeSchema, ixProjectAccessLevelSchema } from "./access.js";
+import { getThread, listPublicProjects, type DbConnection } from "@bb/db";
+import { assertIxThreadAccess, ixAccessModeSchema, ixProjectAccessLevelSchema, ixThreadShareSchema } from "./access.js";
 import { ixDeskPolicySchema } from "./desk.js";
 import { z } from "zod";
 import { ApiError } from "../errors.js";
@@ -289,9 +289,47 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService; db?: 
     const projects = deps.db === undefined ? [] : listPublicProjects(deps.db).map((project) => ({ id: project.id, name: project.name }));
     return context.json({
       mode: ixAuth.access.mode(),
+      threadDefault: ixAuth.access.defaultThreadShare(),
       projects,
       members: members.map((member) => ({ memberId: member.id, userId: member.userId, email: member.email, name: member.name, role: member.role, projects: ixAuth.access.grantsFor(member.userId) })),
     });
+  });
+
+  authed.put("/access/thread-default", async (context) => {
+    requireRole(getIxActor(context), "admin");
+    const input = await parseBody(context, z.object({ share: ixThreadShareSchema }).strict());
+    ixAuth.access.setDefaultThreadShare(input.share);
+    return context.json({ ok: true, share: input.share });
+  });
+
+  const threadForShare = (context: { req: { param(name: string): string } }) => {
+    if (deps.db === undefined) throw new ApiError(404, "thread_not_found", "Thread not found");
+    const thread = getThread(deps.db, context.req.param("id"));
+    if (thread === null) throw new ApiError(404, "thread_not_found", "Thread not found");
+    assertIxThreadAccess(thread);
+    return thread;
+  };
+  const shareView = async (threadId: string, actor: IxActor | undefined) => {
+    const ownerId = ixAuth.access.threadOwner(threadId);
+    const share = ixAuth.access.threadShare(threadId);
+    const owner = ownerId === null ? null : (await ixAuth.listMembers()).find((m) => m.userId === ownerId) ?? null;
+    const me = actor?.kind === "user" ? actor.user.id : null;
+    const admin = actor === undefined || actor.kind !== "user" || roleAtLeast(actor.role, "admin");
+    return { share, owner: owner === null ? null : { id: owner.userId, name: owner.name, email: owner.email }, mine: ownerId !== null && ownerId === me, canChange: ownerId === null ? admin : ownerId === me || (admin && share !== "private") };
+  };
+
+  authed.get("/threads/:id/share", async (context) => {
+    const thread = threadForShare(context);
+    return context.json(await shareView(thread.id, getIxActor(context)));
+  });
+
+  authed.put("/threads/:id/share", async (context) => {
+    const thread = threadForShare(context);
+    const actor = getIxActor(context);
+    const input = await parseBody(context, z.object({ share: ixThreadShareSchema }).strict());
+    if (!(await shareView(thread.id, actor)).canChange) throw new ApiError(403, "ix_share_forbidden", "Only the person who started this chat can change who sees it");
+    ixAuth.access.setThreadShare(thread.id, input.share);
+    return context.json(await shareView(thread.id, actor));
   });
 
   authed.put("/access/mode", async (context) => {
