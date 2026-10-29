@@ -297,7 +297,7 @@ describe("sites nav item", () => {
 });
 
 describe("memory and agent browser nav items", () => {
-  const base = { scheduled: { label: "Scheduled", to: "/s", icon: "TimeSchedule" }, integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH };
+  const base = { scheduled: { label: "Scheduled", to: "/s", icon: "TimeSchedule" }, integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH, memory: null, browser: null };
   it("are hidden until their plugins are installed", () => {
     const ids = nexusNavItems({ ...base, memory: null, browser: null }).map((entry) => entry.id);
     expect(ids).not.toContain("memory");

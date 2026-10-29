@@ -6,6 +6,8 @@ import type {
 } from "@get-bb/plugin-sdk/app";
 import type { PluginRegistrationSet } from "./plugin-slots";
 
+export const IX_SIDE_PANEL_PLUGIN_ID = "ix-side-panel";
+
 const wrapped = new WeakMap<ComponentType<PluginNavPanelProps>, ComponentType<ExperimentalThreadActionTabProps>>();
 
 function navPanelInThread(component: ComponentType<PluginNavPanelProps>): ComponentType<ExperimentalThreadActionTabProps> {
@@ -13,7 +15,14 @@ function navPanelInThread(component: ComponentType<PluginNavPanelProps>): Compon
   if (known !== undefined) return known;
   const InThread: ComponentType<ExperimentalThreadActionTabProps> = () => createElement(component, { subPath: "" });
   wrapped.set(component, InThread);
+  generated.add(InThread);
   return InThread;
+}
+
+const generated = new WeakSet<ComponentType<ExperimentalThreadActionTabProps>>();
+
+export function isIxNavPanelThreadTab(tab: { component?: unknown }): boolean {
+  return typeof tab.component === "function" && generated.has(tab.component as ComponentType<ExperimentalThreadActionTabProps>);
 }
 
 export function ixNavPanelThreadTabs(

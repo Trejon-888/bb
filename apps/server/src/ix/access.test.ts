@@ -17,7 +17,7 @@ import {
 } from "./access.js";
 import { withIxUser, type IxActor } from "./context.js";
 import { createIxKv } from "./kv.js";
-import { assertRestrictedRoute } from "./middleware.js";
+import { assertPluginAdminRoute, assertRestrictedRoute } from "./middleware.js";
 
 const member = (id: string, role: "member" | "viewer" | "admin" = "member"): IxActor => ({ kind: "user", user: { id, email: `${id}@example.test`, name: id }, organizationId: "org", memberId: `m-${id}`, role });
 const store = () => { const db = createMigratedConnection(); return createIxAccessStore(db, createIxKv(db)); };
@@ -84,6 +84,17 @@ describe("ix project access", () => {
     expect(code(() => assertRestrictedRoute("GET", "/projects/p1"))).toBe("ok");
     expect(code(() => assertRestrictedRoute("POST", "/projects/p1/attachments"))).toBe("ok");
     expect(code(() => assertRestrictedRoute("POST", "/threads/t1/send"))).toBe("ok");
+  });
+});
+
+describe("plugin management is for owners and admins", () => {
+  it("blocks member writes that change plugins but leaves plugin use open", () => {
+    for (const [method, path] of [["POST", "/plugins/install"], ["POST", "/plugins/x/update"], ["DELETE", "/plugins/x"], ["PUT", "/plugins/x/settings"], ["POST", "/plugins/x/enable"], ["POST", "/plugins/x/disable"], ["POST", "/plugins/x/token"], ["POST", "/plugins/reload"], ["PUT", "/plugins/safe-mode"], ["POST", "/plugins/install-jobs/j/cancel"], ["POST", "/plugin-catalog/install"], ["POST", "/marketplaces"], ["DELETE", "/marketplaces/m"]] as const) {
+      expect(code(() => assertPluginAdminRoute(method, path))).toBe("403");
+    }
+    for (const [method, path] of [["POST", "/plugins/x/rpc/list"], ["POST", "/plugins/x/cli"], ["POST", "/plugins/x/http/api/run"], ["GET", "/plugins"], ["GET", "/plugins/x/settings"], ["GET", "/plugin-catalog"], ["POST", "/threads/t1/send"]] as const) {
+      expect(code(() => assertPluginAdminRoute(method, path))).toBe("ok");
+    }
   });
 });
 

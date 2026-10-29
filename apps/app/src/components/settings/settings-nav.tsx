@@ -115,10 +115,13 @@ export function useSettingsNavState(): SettingsNavState {
     resolveSettingsRoute(location);
 
   const installedPlugins = pluginListQuery.data?.plugins ?? [];
+  const managesPlugins = settingsSectionAllowed("plugins");
   const pluginEntries = buildPluginSettingsEntries({
     installedPlugins,
     settingsSections,
-  });
+  })
+    .filter((entry) => managesPlugins || settingsSections.some((section) => section.pluginId === entry.id))
+    .map((entry) => (managesPlugins ? entry : { ...entry, hasSettingsForm: false }));
 
   return {
     activePluginId,

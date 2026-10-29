@@ -117,6 +117,7 @@ export function ixApiGate(deps: IxGateDeps): MiddlewareHandler {
     }
     const apiPath = context.req.path.replace(/^\/api\/v1/, "");
     const scope = restrictedScopeFor(actor, deps.ixAuth.access, context.req.method, VIEWER_WRITE_ALLOWLIST.some((pattern) => pattern.test(apiPath)));
+    if (actor.kind === "user" && !roleAtLeast(actor.role, "admin")) assertPluginAdminRoute(context.req.method, apiPath);
     if (scope !== null) assertRestrictedRoute(context.req.method, apiPath);
     return runWithIxRequestAccess(actor, deps.ixAuth.access, scope, () => next());
   };
@@ -136,6 +137,17 @@ export function assertRestrictedRoute(method: string, path: string): void {
   const writing = !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
   const hit = RESTRICTED_DENY.find((rule) => rule.pattern.test(path) && (rule.methods === "all" || writing));
   if (hit !== undefined) throw new ApiError(403, "ix_restricted", "Your access is limited to the projects you were granted");
+}
+
+const PLUGIN_ADMIN_PATHS = [/^\/plugins(\/|$)/, /^\/plugin-catalog\/install$/, /^\/marketplaces(\/|$)/];
+const PLUGIN_USE_PATHS = /^\/plugins\/[^/]+\/(rpc|cli|http)(\/|$)/;
+
+export function assertPluginAdminRoute(method: string, path: string): void {
+  if (["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())) return;
+  if (PLUGIN_USE_PATHS.test(path)) return;
+  if (PLUGIN_ADMIN_PATHS.some((pattern) => pattern.test(path))) {
+    throw new ApiError(403, "ix_plugins_admin_only", "Only owners and admins can install, update, remove or configure plugins");
+  }
 }
 
 export async function assertIxWebSocketAllowed(

@@ -15,7 +15,7 @@ import {
 import type { IxActor } from "./context.js";
 import { createIxKv } from "./kv.js";
 
-const person = (id: string, role: "member" | "admin" | "owner" = "member"): IxActor => ({ kind: "user", user: { id, email: `${id}@example.test`, name: id }, organizationId: "org", role });
+const person = (id: string, role: "member" | "admin" | "owner" = "member"): IxActor => ({ kind: "user", user: { id, email: `${id}@example.test`, name: id }, organizationId: "org", memberId: `m-${id}`, role });
 
 function world() {
   const db: DbConnection = createMigratedConnection();

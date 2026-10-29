@@ -50,6 +50,7 @@ function makeApp(ixAuth: IxAuthService, remoteAddress = "203.0.113.9", pluginTok
   publicApi.post("/projects", (context) => context.json({ created: true }));
   publicApi.post("/threads/t1/read", (context) => context.json({ read: true }));
   publicApi.post("/plugins/p1/rpc/m", (context) => context.json({ rpc: true }));
+  publicApi.post("/plugins/install", (context) => context.json({ installed: true }));
   app.route("/api/v1", publicApi);
   return app;
 }
@@ -209,6 +210,12 @@ describe("ix auth: team mode", () => {
     expect(promote.status).toBe(200);
     const nowWrite = await app.request("/api/v1/projects", { method: "POST", headers: { cookie: viewerCookie, origin: BASE } });
     expect(nowWrite.status).toBe(200);
+    const memberInstall = await app.request("/api/v1/plugins/install", { method: "POST", headers: { cookie: viewerCookie, origin: BASE } });
+    expect(memberInstall.status).toBe(403);
+    const memberRpc = await app.request("/api/v1/plugins/p1/rpc/m", { method: "POST", headers: { cookie: viewerCookie, origin: BASE } });
+    expect(memberRpc.status).toBe(200);
+    const ownerInstall = await app.request("/api/v1/plugins/install", { method: "POST", headers: { cookie: ownerCookie, origin: BASE } });
+    expect(ownerInstall.status).toBe(200);
 
     const demoteOwner = await app.request(`/api/ix/members/${owner?.id}/role`, {
       method: "POST",

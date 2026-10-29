@@ -42,7 +42,7 @@ import {
   type CollectedSidebarFooterItem,
   type CollectedSidebarNavigationRegistration,
 } from "@get-bb/plugin-sdk/internal/plugin-app-collector";
-import { ixNavPanelThreadTabs } from "./ix-nav-panel-tabs";
+import { IX_SIDE_PANEL_PLUGIN_ID, isIxNavPanelThreadTab, ixNavPanelThreadTabs } from "./ix-nav-panel-tabs";
 
 export interface PluginRegistrationSet {
   homepageSections: readonly PluginHomepageSectionRegistration[];
@@ -382,10 +382,14 @@ function collectKind<K extends SlotKind>(
   if (kind === "tabs") {
     for (const slot of coreTabs) collected.push(slot);
   }
+  const sidePanel = pluginIds.includes(IX_SIDE_PANEL_PLUGIN_ID);
   for (const pluginId of pluginIds) {
     const flattened = flattenedByPluginId.get(pluginId);
     if (flattened === undefined) continue;
-    for (const slot of flattened[kind]) collected.push(slot);
+    for (const slot of flattened[kind]) {
+      if (!sidePanel && isIxNavPanelThreadTab(slot as { component?: unknown })) continue;
+      collected.push(slot);
+    }
   }
   return collected;
 }
