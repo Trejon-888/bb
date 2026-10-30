@@ -956,8 +956,11 @@ export interface PluginCliCommandInfo {
 /** Context forwarded from the invoking CLI when known; all fields optional. */
 export interface PluginCliContext {
   cwd?: string;
+  /** On ix servers, a call authenticated by a chat's scoped token always carries that chat's id here, whatever the CLI sent. */
   threadId?: string;
   projectId?: string;
+  /** Person the call acts as on ix multi-user servers: the chat's acting person for a scoped token, else the signed-in member. Absent for owner-level callers (owner token, loopback owner, auth off). */
+  experimental_user?: ExperimentalPluginRpcCallerUser;
   /** Aborted when the invoking CLI HTTP request disconnects. */
   signal?: AbortSignal;
 }

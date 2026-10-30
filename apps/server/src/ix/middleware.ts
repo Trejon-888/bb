@@ -6,6 +6,7 @@ import type { IxAuthService } from "./auth-service.js";
 import { roleAtLeast } from "./config.js";
 import { setIxActor, type IxActor } from "./context.js";
 import { restrictedScopeFor, runWithIxRequestAccess } from "./access.js";
+import { ixTokenKind } from "./agent-token.js";
 
 const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 const VIEWER_WRITE_ALLOWLIST = [
@@ -74,12 +75,33 @@ function isLoopbackWithoutOrigin(context: Context): boolean {
   );
 }
 
+function presentedIxToken(context: Context): string | null {
+  const header = context.req.header("authorization");
+  if (header === undefined) return null;
+  const match = /^Bearer\s+(\S+)\s*$/iu.exec(header);
+  const token = match?.[1];
+  return token !== undefined && ixTokenKind(token) !== null ? token : null;
+}
+
+async function ixTokenActor(context: Context, deps: IxGateDeps, token: string): Promise<IxActor> {
+  const invalid = () => new ApiError(401, "ix_invalid_token", "This server token is invalid, expired or no longer matches its chat", false);
+  if (ixTokenKind(token) === "owner") {
+    if (!isLoopbackWithoutOrigin(context) || !deps.ixAuth.verifyOwnerToken(token)) throw invalid();
+    return { kind: "loopback-owner", via: "owner-token" };
+  }
+  const actor = await deps.ixAuth.resolveAgentToken(token);
+  if (actor === null) throw invalid();
+  return actor;
+}
+
 export async function resolveIxActor(
   context: Context,
   deps: IxGateDeps,
 ): Promise<IxActor | null> {
   const { ixAuth } = deps;
   if (ixAuth.mode === "off") return { kind: "off" };
+  const token = presentedIxToken(context);
+  if (token !== null) return ixTokenActor(context, deps, token);
   const resolution = await ixAuth.resolveSession(context.req.raw.headers);
   if (resolution.kind === "member") return resolution.actor;
   if (ixAuth.config.loopback === "owner" && isLoopbackWithoutOrigin(context)) {
@@ -168,4 +190,12 @@ export function mountIxAuthHandler(app: Hono, deps: IxGateDeps): void {
   app.on(["GET", "POST"], "/api/auth/*", (context) =>
     deps.ixAuth.handler(context.req.raw),
   );
+}
+
+export function assertIxEnrollAllowed(ixAuth: IxAuthService, authorization: string | undefined): void {
+  if (ixAuth.mode === "off") return;
+  const token = /^Bearer\s+(\S+)\s*$/iu.exec(authorization ?? "")?.[1];
+  if (token === undefined || !ixAuth.verifyOwnerToken(token)) {
+    throw new ApiError(403, "ix_enroll_forbidden", "Host enrollment keys on this server need the owner token (<dataDir>/ix-owner-token)");
+  }
 }

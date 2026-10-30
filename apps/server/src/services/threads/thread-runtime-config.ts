@@ -3,6 +3,7 @@ import {
   mergeHostAndProviderEnvironment,
 } from "../hosts/host-environment.js";
 import { ixThreadUserField } from "../../ix/context.js";
+import { ixAgentTokenEnv, withoutReservedIxEnv } from "../../ix/agent-token.js";
 import { getEnvironment, getHost, getProject } from "@bb/db";
 import type {
   DynamicTool,
@@ -188,18 +189,23 @@ export async function resolveThreadRuntimeCommandConfig(
   });
   markTurnTraceSpan("runtimeConfig.pluginConfig");
   const contributedEnv = mergeHostAndProviderEnvironment(
-    await resolveHostEnvironment(deps, {
-      hostId: host.id,
-      projectId: project.id,
-    }),
-    await resolvePluginProviderEnv({
-      providerId: args.thread.providerId,
-      context: {
-        threadId: args.thread.id,
-        projectId: project.id,
-        hostId: host.id,
-      },
-    }),
+    withoutReservedIxEnv(
+      mergeHostAndProviderEnvironment(
+        await resolveHostEnvironment(deps, {
+          hostId: host.id,
+          projectId: project.id,
+        }),
+        await resolvePluginProviderEnv({
+          providerId: args.thread.providerId,
+          context: {
+            threadId: args.thread.id,
+            projectId: project.id,
+            hostId: host.id,
+          },
+        }),
+      ),
+    ),
+    await ixAgentTokenEnv({ threadId: args.thread.id }),
   );
   markTurnTraceSpan("runtimeConfig.env");
   const injectedSkillSources = (

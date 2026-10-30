@@ -347,6 +347,8 @@ This index lists every command path that the core CLI registers, including alias
 - `bb ix sso-secret`
 - `bb ix sso-secret set`
 - `bb ix sso-secret clear`
+- `bb ix tokens`
+- `bb ix tokens rotate`
 - `bb ix members`
 - `bb ix access`
 - `bb ix access show`

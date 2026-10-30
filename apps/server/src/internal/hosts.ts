@@ -17,6 +17,7 @@ import {
 } from "../request-context.js";
 import { issueHostEnrollKey } from "../services/hosts/host-enrollment.js";
 import { requireBearerToken } from "./auth.js";
+import { assertIxEnrollAllowed } from "../ix/middleware.js";
 
 function assertLoopbackRequest(remoteAddress: string | undefined): void {
   if (remoteAddress && isLoopbackAddress(remoteAddress)) {
@@ -62,6 +63,7 @@ export function registerInternalHostRoutes(app: Hono, deps: AppDeps): void {
         );
       }
       assertLoopbackRequest(getTrustedRemoteAddress(context));
+      assertIxEnrollAllowed(deps.ixAuth, context.req.header("authorization"));
       const issued = await issueHostEnrollKey(deps, {
         enrollSource: "loopback",
         ...(payload.hostId ? { hostId: payload.hostId } : {}),

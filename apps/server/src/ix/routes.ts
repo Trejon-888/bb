@@ -238,6 +238,14 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService; db?: 
     return context.json({ ok: true, secret: input.secret !== null });
   });
 
+  authed.post("/tokens/rotate", async (context) => {
+    if (ixAuth.mode === "off") throw new ApiError(409, "ix_auth_off", "BB_IX_AUTH is off");
+    const actor = getIxActor(context);
+    requireRole(actor, "owner");
+    await ixAuth.rotateTokens(actorLabel(actor));
+    return context.json({ ok: true, ownerTokenPath: ixAuth.ownerTokenPath });
+  });
+
   authed.get("/members", async (context) => {
     requireRole(getIxActor(context), "viewer");
     return context.json({ members: await ixAuth.listMembers() });

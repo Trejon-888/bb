@@ -248,6 +248,7 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     ),
   });
   await ixAuth.ensureReady();
+  if (ixAuth.mode === "team") process.env.BB_IX_OWNER_TOKEN_FILE = ixAuth.ownerTokenPath;
   const skillTreeRegistry = new SkillTreeRegistry();
   const pluginHostArtifacts = new PluginHostArtifactRegistry();
   const providerNativeRoots = createProviderNativeRootsCache();

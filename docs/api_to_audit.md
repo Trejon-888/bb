@@ -297,6 +297,12 @@ Callers: `apps/server/src/internal/tool-calls.ts`, `apps/server/src/services/thr
 
 On ix servers the thread user an agent tool or instruction provider receives is the person who sent the thread's latest turn (a shared thread runs as its sender), else the thread's owner; a sub-agent thread follows its parent.
 
+## Acting person on plugin CLI calls (`PluginCliContext.experimental_user`)
+
+On ix multi-user servers, `POST /api/v1/plugins/:id/cli` hands the plugin's CLI `run(argv, ctx)` the person the call acts as in `ctx.experimental_user` (same shape as `PluginAgentToolContext.experimental_user`). A call authenticated by a chat's scoped token (`BB_IX_TOKEN`, which the server mints into every agent's environment) carries that chat's acting person, and `ctx.threadId` / `ctx.projectId` are forced to the token's chat and its project whatever the CLI sent; a terminal's person-only token clears both. A signed-in member calling directly carries that member. Owner-level callers (the owner token file, the loopback owner, auth off) carry no user, so a plugin can treat a missing user as owner-level only on servers that have set `BB_IX_AUTH_LOOPBACK=deny`. ix-superadmin uses it to run `bb admin` as the chat's person instead of trusting a thread id argument.
+
+Caller: `apps/server/src/routes/plugins.ts` (`ixBindPluginCliContext` in `apps/server/src/ix/context.ts`). Stabilization: decide whether non-ix servers should carry a user at all, whether to also expose the caller kind (owner token vs. member), and rename together with `PluginAgentToolContext.experimental_user`.
+
 ## Thread owner on spawn (`threads.spawn` / `POST /api/v1/threads` `experimental_ownerUserId`)
 
 Starts a thread on a signed-in person's behalf: the new thread's owner is that person, it is private to them, and its tools act as them. A plugin or loopback caller may name any member; a signed-in member only themselves; admins anyone (403 `ix_owner_forbidden` otherwise). ix-workflows uses it so a private workflow's run uses its owner's connected accounts.

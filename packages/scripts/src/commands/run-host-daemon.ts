@@ -169,12 +169,20 @@ export async function maybeAddAutoJoinEnv(
   const requestedHostId =
     env.BB_HOST_ID?.trim() || (await readPersistedHostId(env.BB_DATA_DIR));
 
+  const ixOwnerToken = (
+    await readFile(join(env.BB_DATA_DIR, "ix-owner-token"), "utf8").catch(
+      () => "",
+    )
+  ).trim();
   const response = await fetch(
     `${env.BB_SERVER_URL}/internal/hosts/enroll-key`,
     {
       body: JSON.stringify(createAutoJoinRequest({ requestedHostId })),
       headers: {
         "content-type": "application/json",
+        ...(ixOwnerToken === ""
+          ? {}
+          : { authorization: `Bearer ${ixOwnerToken}` }),
       },
       method: "POST",
     },

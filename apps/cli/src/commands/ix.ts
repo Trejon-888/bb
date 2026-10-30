@@ -43,9 +43,10 @@ const actorSchema = z.discriminatedUnion("kind", [
       kind: z.literal("user"),
       user: z.object({ id: z.string(), email: z.string(), name: z.string() }).loose(),
       role: z.enum(IX_ROLES),
+      via: z.object({ kind: z.literal("agent-token"), threadId: z.string().nullable() }).optional(),
     })
     .loose(),
-  z.object({ kind: z.literal("loopback-owner") }).loose(),
+  z.object({ kind: z.literal("loopback-owner"), via: z.literal("owner-token").optional() }).loose(),
   z.object({ kind: z.literal("off") }).loose(),
 ]);
 const meSchema = z.object({ actor: actorSchema, mode: z.string(), orgName: z.string().nullable() }).loose();
@@ -344,6 +345,20 @@ export function registerIxCommands(program: Command, getUrl: () => string): void
       }),
     );
 
+  ix.command("tokens")
+    .description("Server tokens: agents' per-chat scoped tokens and the owner token file")
+    .command("rotate")
+    .description("Revoke every agent token and rewrite the owner token file; chats pick up new tokens on their next turn")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("POST", "/api/ix/tokens/rotate", {});
+        if (outputJson(opts, raw)) return;
+        const result = parseResponse(z.object({ ok: z.literal(true), ownerTokenPath: z.string() }).loose(), raw, "tokens rotate");
+        console.log(`Rotated. New owner token written to ${result.ownerTokenPath}`);
+      }),
+    );
+
   ix.command("members")
     .description("List the organization's members and roles")
     .option("--json", "Print machine-readable JSON output")
@@ -579,9 +594,10 @@ export function registerIxCommands(program: Command, getUrl: () => string): void
         console.log(`Mode: ${me.mode}`);
         console.log(`Organization: ${me.orgName ?? "(none)"}`);
         if (me.actor.kind === "user") {
-          console.log(`Actor: ${me.actor.user.email} (${me.actor.user.name}) role ${me.actor.role}`);
+          const via = me.actor.via === undefined ? "" : me.actor.via.threadId === null ? " via a scoped token" : ` via chat ${me.actor.via.threadId}'s scoped token`;
+          console.log(`Actor: ${me.actor.user.email} (${me.actor.user.name}) role ${me.actor.role}${via}`);
         } else if (me.actor.kind === "loopback-owner") {
-          console.log("Actor: loopback owner (no Origin header on a loopback request)");
+          console.log(me.actor.via === "owner-token" ? "Actor: owner (owner token file)" : "Actor: loopback owner (no Origin header on a loopback request)");
         } else {
           console.log("Actor: none (BB_IX_AUTH is off)");
         }

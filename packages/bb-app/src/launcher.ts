@@ -139,6 +139,7 @@ import {
 } from "./launcher-output.js";
 
 const HOST_AUTH_FILE_NAME = "auth.json";
+const IX_OWNER_TOKEN_FILE_NAME = "ix-owner-token";
 const HOST_ID_FILE_NAME = "host-id";
 const HEALTH_CHECK_TIMEOUT_MS = 60_000;
 const HEALTH_CHECK_INTERVAL_MS = 100;
@@ -609,6 +610,7 @@ interface WaitForHostDaemonStatusArgs {
 }
 
 interface RequestHostEnrollKeyArgs {
+  dataDir: string;
   requestedHostId: string | null;
   serverUrl: string;
 }
@@ -2274,9 +2276,19 @@ async function requireExpectedHostDaemonId(args: {
   return hostId;
 }
 
+async function readIxOwnerToken(dataDir: string): Promise<string | null> {
+  try {
+    const value = (await readFile(join(dataDir, IX_OWNER_TOKEN_FILE_NAME), "utf8")).trim();
+    return value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function requestMatchingHostEnrollKey(
   args: RequestHostEnrollKeyArgs,
 ): Promise<HostEnrollKeyResponse> {
+  const ixOwnerToken = await readIxOwnerToken(args.dataDir);
   const response = await fetch(`${args.serverUrl}/internal/hosts/enroll-key`, {
     body: JSON.stringify(
       createHostEnrollKeyRequestBody({
@@ -2285,6 +2297,7 @@ async function requestMatchingHostEnrollKey(
     ),
     headers: {
       "content-type": "application/json",
+      ...(ixOwnerToken === null ? {} : { authorization: `Bearer ${ixOwnerToken}` }),
     },
     method: "POST",
   });
@@ -2324,6 +2337,7 @@ async function maybeAddAutoJoinEnv(
     toOptionalString(args.env.BB_HOST_ID) ??
     (await readPersistedHostId(args.dataDir));
   const enrollKeyResponse = await requestMatchingHostEnrollKey({
+    dataDir: args.dataDir,
     requestedHostId,
     serverUrl: args.serverUrl,
   });
@@ -2710,6 +2724,7 @@ export async function createHostDaemonJoinEnv(
     };
   }
   const enrollKeyResponse = await requestMatchingHostEnrollKey({
+    dataDir: args.context.dataDir,
     requestedHostId,
     serverUrl: args.serverUrl,
   });

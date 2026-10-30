@@ -1,6 +1,7 @@
 import type { PluginUpdateJobs } from "../services/plugins/plugin-update-jobs.js";
+import { getThread } from "@bb/db";
 import { ixRestricted } from "../ix/access.js";
-import { getIxActor, withIxUser } from "../ix/context.js";
+import { getIxActor, ixBindPluginCliContext, withIxUser } from "../ix/context.js";
 import { timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
@@ -533,7 +534,7 @@ export function registerPluginRoutes(
     if (typeof body?.projectId === "string") ctx.projectId = body.projectId;
     ctx.signal = context.req.raw.signal;
     return pluginCliResponse(
-      plugins.runCliCommand(context.req.param("id"), argv, ctx),
+      plugins.runCliCommand(context.req.param("id"), argv, ixBindPluginCliContext(getIxActor(context), ctx, (id) => getThread(deps.db, id)?.projectId ?? null)),
       PLUGIN_CLI_KEEPALIVE_MS,
     );
   });

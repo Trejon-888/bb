@@ -96,6 +96,8 @@ const THREAD_CONTEXT_ENV_KEYS: readonly string[] = [
   "BB_ENVIRONMENT_ID",
   "BB_THREAD_ID",
   "BB_THREAD_STORAGE",
+  "BB_IX_TOKEN",
+  "BB_IX_OWNER_TOKEN_FILE",
 ];
 
 const MANAGED_WORKTREE_DIR_NAME = "worktrees";

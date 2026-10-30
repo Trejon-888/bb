@@ -88,6 +88,17 @@ check apps/app/src/components/onboarding/OnboardingViews.tsx 'import { BrandLogo
 check apps/app/src/components/settings/UpdatesSettingsSection.tsx '<BrandLogo className="size-4 -translate-y-px">'
 check apps/app/src/components/settings/UpdatesSettingsSection.tsx 'import { BrandLogo } from "@/components/ix/BrandLogo";'
 check plugins/bb-guide/skills/bb-cli/references/command-index.md '`bb ix brand asset set`'
+check apps/server/src/services/threads/thread-runtime-config.ts 'await ixAgentTokenEnv({ threadId: args.thread.id }),'
+check apps/server/src/services/terminals/terminal-session-lifecycle.ts 'contributedEnv: await ixTerminalTokenEnv('
+check apps/server/src/routes/plugins.ts 'ixBindPluginCliContext(getIxActor(context), ctx,'
+check apps/server/src/internal/hosts.ts 'assertIxEnrollAllowed(deps.ixAuth, context.req.header("authorization"));'
+check apps/server/src/start-server.ts 'BB_IX_OWNER_TOKEN_FILE = ixAuth.ownerTokenPath;'
+check packages/plugin-sdk/src/backend-contract.ts 'experimental_user?: ExperimentalPluginRpcCallerUser;'
+check packages/config/src/runtime.ts '"BB_IX_OWNER_TOKEN_FILE",'
+check packages/bb-app/src/launcher.ts 'const ixOwnerToken = await readIxOwnerToken(args.dataDir);'
+check apps/cli/src/client.ts 'headers.set("authorization", `Bearer ${token}`);'
+check apps/cli/src/commands/terminal.ts 'createNodeWebsocketFactory({ headers: cliAuthHeaders() })'
+check packages/sdk/src/node-websocket.ts 'new NodeWsWebSocket(url, { headers })'
 for f in packages/config/src/product-name.ts packages/bb-app/src/ix-env-aliases.ts packages/bb-app/src/bin/ix.ts packages/bb-app/src/bin/ix-app.ts apps/app/src/lib/ix/brand.ts; do
   if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi
 done

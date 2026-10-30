@@ -11,8 +11,9 @@ export type IxActor =
       organizationId: string;
       memberId: string;
       role: IxRole;
+      via?: { kind: "agent-token"; threadId: string | null };
     }
-  | { kind: "loopback-owner" }
+  | { kind: "loopback-owner"; via?: "owner-token" }
   | { kind: "plugin-token"; pluginId: string }
   | { kind: "off" };
 
@@ -63,4 +64,20 @@ export async function ixThreadUserField(threadId: string): Promise<{ experimenta
   if (threadUserResolver === null) return {};
   const user = await threadUserResolver(threadId).catch(() => undefined);
   return user === undefined ? {} : { experimental_user: user };
+}
+
+export function ixBindPluginCliContext<T extends { threadId?: string; projectId?: string }>(
+  actor: IxActor | undefined,
+  ctx: T,
+  projectOfThread: (threadId: string) => string | null,
+): T & { experimental_user?: IxThreadUser } {
+  const user = ixCallerUser(actor);
+  const bound: T & { experimental_user?: IxThreadUser } = user === undefined ? { ...ctx } : { ...ctx, experimental_user: user };
+  if (actor?.kind !== "user" || actor.via === undefined) return bound;
+  delete bound.threadId;
+  delete bound.projectId;
+  const threadId = actor.via.threadId;
+  if (threadId === null) return bound;
+  const projectId = projectOfThread(threadId);
+  return projectId === null ? { ...bound, threadId } : { ...bound, threadId, projectId };
 }

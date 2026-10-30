@@ -6,12 +6,14 @@ This fork (`Trejon-888/bb`, branch `ix`) adds a feature-flagged multi-user layer
 
 ## bb ix CLI
 
-The fork adds `bb ix status`, `brand get`, `brand set <json|@file|->`, `brand asset set <logo|favicon|icon> <file>`, `brand asset clear <kind>`, `sso-secret set [-]`, `sso-secret clear`, `members`, `invite <email> --role <owner|admin|member|viewer>`, and `me`. Requests use `BB_SERVER_URL` and `BB_SERVER_HEADERS`; `--json` prints the server's raw JSON response. Non-2xx responses exit with the server error code and message. The SSO secret is read from stdin only, never from an argument. `brand set` accepts inline JSON, a file prefixed with `@`, or stdin with `-`. Invitation output includes the `acceptUrl` to share. Clearing SSO sends `{ "secret": null }` and removes the stored secret. `brand asset set` reads the file, infers the content type from the extension (`.png`, `.svg`, `.ico`, `.webp`, `.jpg`/`.jpeg`; anything else is refused) and uploads it base64-encoded; `brand asset clear` sends `DELETE`.
+The fork adds `bb ix status`, `brand get`, `brand set <json|@file|->`, `brand asset set <logo|favicon|icon> <file>`, `brand asset clear <kind>`, `sso-secret set [-]`, `sso-secret clear`, `tokens rotate`, `members`, `invite <email> --role <owner|admin|member|viewer>`, and `me`. Requests use `BB_SERVER_URL`, `BB_SERVER_HEADERS` and the CLI's server token (`BB_IX_TOKEN` or the owner token file, see Scoped server tokens); `--json` prints the server's raw JSON response. Non-2xx responses exit with the server error code and message. The SSO secret is read from stdin only, never from an argument. `brand set` accepts inline JSON, a file prefixed with `@`, or stdin with `-`. Invitation output includes the `acceptUrl` to share. Clearing SSO sends `{ "secret": null }` and removes the stored secret. `brand asset set` reads the file, infers the content type from the extension (`.png`, `.svg`, `.ico`, `.webp`, `.jpg`/`.jpeg`; anything else is refused) and uploads it base64-encoded; `brand asset clear` sends `DELETE`.
 
 | Setting | Values | Meaning |
 |---|---|---|
 | `BB_IX_AUTH` | `off` (default) / `team` | `off` keeps upstream behavior exactly. `team` requires a signed-in member for `/api/v1/*` and `/ws`. |
-| `BB_IX_AUTH_LOOPBACK` | `owner` (default) / `deny` | In team mode, a loopback request with no `Origin` header (the `bb` CLI, plugins calling their own server) acts as the owner. `deny` turns that off. |
+| `BB_IX_AUTH_LOOPBACK` | `owner` (default) / `deny` | In team mode, a loopback request with no `Origin` header and no token acts as the owner. `deny` turns that off, so loopback callers need a token (see Scoped server tokens). |
+| `BB_IX_TOKEN` | set by the server | The scoped token the server puts in every agent's (and terminal's) environment. The `bb` CLI sends it as `Authorization: Bearer`. Never set it by hand. |
+| `BB_IX_OWNER_TOKEN_FILE` | path | For operator helpers and the server's own subprocesses: the `bb` CLI reads the owner token from this file. The server sets it on itself to `<dataDir>/ix-owner-token`. It is stripped from agent and daemon environments. |
 | `BB_IX_AUTH_BOOTSTRAP_EMAIL` / `_PASSWORD` / `_NAME` | | Create the owner and the organization at first start. Otherwise the first visitor creates the owner in the app. |
 | `BB_IX_AUTH_ORG_NAME` | default `Workspace` | Organization name used by bootstrap. |
 | `BB_IX_AUTH_SESSION_DAYS` | default `30` | Session lifetime. |
@@ -76,6 +78,34 @@ CLI: `bb ix sharing show|policy [--default] [--allow] [--who-can-change] [--part
 
 A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own token in the `x-bb-plugin-token` header passes the ix gate as actor `plugin-token`; the route's own auth check still runs. This is how an ix control plane reaches a member server's ix-superadmin agent route through its tunnel. A wrong token, another plugin's token, a token in the query string, or any non-plugin path still needs a session.
 
+## Scoped server tokens
+
+Every chat's agent acts as a person, not as the owner. In team mode the server mints a token per chat and puts it in the agent environment as `BB_IX_TOKEN` (`thread-runtime-config.ts`, on thread start and every turn). The token is `ixt1.<b64url threadId>.<b64url userId>.<epoch>.<HMAC-SHA256>`, keyed by `<dataDir>/ix-agent-token-key` (32 random bytes, 0600, never leaves the server). It is bound to the chat and its acting person: the latest turn's sender (walking up to 8 parent chats), else the chat's owner, else the workspace's first owner for chats with no person (loopback roots, legacy). It is deterministic for (chat, person, epoch), so the agent's environment only changes, and the provider CLI only restarts, when the acting person changes.
+
+The `bb` CLI sends `Authorization: Bearer <token>` on every request and on its WebSocket upgrades (`cliFetch`, `createCliBbSdk`, `bb terminal attach`). The gate (`resolveIxActor`) checks the MAC and the epoch, loads the person's membership and role live, and requires that the chat still exists, that the person is still its acting person, and that they can still see it. The caller then becomes that person (`kind: "user"`, `via: { kind: "agent-token", threadId }`), so every role, project-grant, chat-visibility and plugin-admin check applies: a member's chat gets member power (403 on plugin install, no other people's private chats), an owner's chat keeps owner power. A presented but invalid, tampered, earlier-epoch or no-longer-matching token gets `401 ix_invalid_token`; it never falls back to a session or the loopback owner. A shared chat whose latest sender is a member runs with that member's power, even if an owner started it.
+
+Terminals get a person-only token for whoever opened them (`ixt1.-.<user>...`). Host and plugin environment entries named `BB_IX_TOKEN` or `BB_IX_OWNER_TOKEN_FILE` are dropped before the core token is added, and the launcher strips both from the server and daemon environments; agents never receive the owner token path.
+
+Owner token: on start the server writes `<dataDir>/ix-owner-token` (0600, `ixo1.<epoch>.<HMAC>`) and sets `BB_IX_OWNER_TOKEN_FILE` on itself, so its own subprocesses (server-side plugins running `bb`, `BB_CLI` children, ix-superadmin's local `bb admin`) act as owner. It is accepted only from loopback without an `Origin` or proxy header and resolves to the `loopback-owner` actor (`via: "owner-token"`). The CLI picks a token in this order: `BB_IX_TOKEN`, then the file named by `BB_IX_OWNER_TOKEN_FILE` (an error if unreadable), then `<BB_DATA_DIR>/ix-owner-token` if present. `POST /api/ix/tokens/rotate` (owner; CLI `bb ix tokens rotate`) bumps the epoch in `ix_kv` (`agent_token:epoch`), which revokes every agent token and rewrites the owner token file; running chats get fresh tokens on their next turn.
+
+Plugin CLI calls (`POST /api/v1/plugins/:id/cli`) made with a chat token get `ctx.threadId` and `ctx.projectId` forced to that chat, whatever the CLI sent, and `ctx.experimental_user` set to its person (see `docs/api_to_audit.md`).
+
+Host enroll keys: `POST /internal/hosts/enroll-key` additionally needs `Authorization: Bearer <owner token>` in team mode (`403 ix_enroll_forbidden` otherwise). The launcher's auto-join reads `<dataDir>/ix-owner-token` and sends it, so first-boot enrollment still works.
+
+Same-uid limits: an agent running as the server's unix user can still read `ix-owner-token`, `ix-agent-token-key` or `bb.db` directly. Tokens stop accidental and casual owner power; separating the agent's uid is the next stage.
+
+### Switching a server to `BB_IX_AUTH_LOOPBACK=deny`
+
+Per workspace, after deploying a build with scoped tokens:
+
+1. Restart the server once with the new build (loopback still `owner`). Check `<dataDir>/ix-owner-token` exists, mode 0600, owned by the service user.
+2. Point operator helpers at it: `/srv/<ws>/bin/ix` runs `bb` with `BB_IX_OWNER_TOKEN_FILE=/srv/<ws>/data/ix-owner-token` (or `BB_DATA_DIR=/srv/<ws>/data`) kept in its environment allowlist; same for ix-superadmin's `fleetBbCommand`. Verify `/srv/<ws>/bin/ix ix me` prints `Actor: owner (owner token file)`.
+3. Start a new turn in an existing chat and confirm from inside it that `bb ix me` prints the chat's person `via chat <id>'s scoped token`.
+4. Add `Environment=BB_IX_AUTH_LOOPBACK=deny` to the unit, `systemctl daemon-reload`, restart.
+5. Verify: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:<port>/api/v1/system/config` returns `401`; `/srv/<ws>/bin/ix status` works; a member's chat gets 403 from `bb plugin install`; an owner's chat still can.
+
+Rollback: remove the `Environment=` line and restart (loopback goes back to owner; tokens keep working).
+
 ## Upstream files touched (keep this list exact)
 
 | File | Insert | Why |
@@ -114,7 +144,17 @@ A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own toke
 | `apps/app/src/components/settings/settings-nav.tsx` | `settingsSectionAllowed(section.id) &&` + import | role-gated settings |
 | `apps/app/src/components/onboarding/OnboardingViews.tsx` | import; `<BrandLogo alt={productName} …>` wrapped around the onboarding header logo `img` | brand logo in onboarding chrome |
 | `apps/app/src/components/settings/UpdatesSettingsSection.tsx` | import; `<BrandLogo className="size-4 -translate-y-px">` wrapped around the app row's `BbLogo` | brand logo on the About/Updates card |
-| `plugins/bb-guide/skills/bb-cli/references/command-index.md` | `bb ix brand asset`, `asset set`, `asset clear`, `ix sharing`, `ix chat` lines | CLI coverage test lists every command |
+| `plugins/bb-guide/skills/bb-cli/references/command-index.md` | `bb ix brand asset`, `asset set`, `asset clear`, `ix sharing`, `ix chat`, `ix tokens` lines | CLI coverage test lists every command |
+| `apps/server/src/services/threads/thread-runtime-config.ts` | `withoutReservedIxEnv(...)` around the host + plugin env merge, then `ixAgentTokenEnv({ threadId })` | scoped tokens: agent env |
+| `apps/server/src/services/terminals/terminal-session-lifecycle.ts` | `ixTerminalTokenEnv(...)` around `resolveHostEnvironment` in `terminal.open` + import | scoped tokens: terminal env |
+| `apps/server/src/routes/plugins.ts` (plugin CLI) | `ixBindPluginCliContext(getIxActor(context), ctx, ...)` around the `runCliCommand` ctx + `getThread` import | scoped tokens: thread-bound plugin CLI |
+| `apps/server/src/internal/hosts.ts` | `assertIxEnrollAllowed(deps.ixAuth, ...)` after `assertLoopbackRequest` + import | scoped tokens: enroll-key gate |
+| `apps/server/src/start-server.ts` | set `BB_IX_OWNER_TOKEN_FILE` on the server process to `ixAuth.ownerTokenPath` in team mode | owner token for server subprocesses |
+| `packages/plugin-sdk/src/backend-contract.ts` | `experimental_user` on `PluginCliContext` | thread-bound plugin CLI |
+| `packages/config/src/runtime.ts` | `BB_IX_TOKEN`, `BB_IX_OWNER_TOKEN_FILE` in `THREAD_CONTEXT_ENV_KEYS` | never forwarded to server or daemon |
+| `packages/bb-app/src/launcher.ts`, `packages/scripts/src/commands/run-host-daemon.ts` | read `<dataDir>/ix-owner-token` and send it on the enroll-key request | enroll-key gate |
+| `apps/cli/src/client.ts`, `apps/cli/src/commands/terminal.ts` | bearer token on `cliFetch`, SDK websocket and terminal attach | CLI sends the token |
+| `packages/sdk/src/node-websocket.ts` | optional `headers` on `createNodeWebsocketFactory` | CLI websocket auth |
 
 Everything else lives in `apps/server/src/ix/*` (`auth-service`, `middleware`, `routes`, `context`, `config`, `kv`, `brand`, `brand-assets`, `sso`, `test-harness` and the `*.test.ts` files), `apps/app/src/components/ix/*` (`IxAuthGate`, `ix-auth`, `BrandLogo`, `SimpleSidebar`, `IxOrganizationView`, the `nexus/` shell and their tests), `apps/app/src/lib/ix/brand.ts`, `docs/ix/*`, `scripts/ix/*`.
 
@@ -134,7 +174,7 @@ Expect conflicts in `server.ts` and `start-server.ts` (hot upstream files). Each
 - Per-project membership. Workspace = server; ix-superadmin keeps the directory across servers.
 - Email delivery for invitations.
 - The desktop app's own window still talks to a local server as loopback owner.
-- Agent tool and CLI contexts do not carry the user (the daemon originates those); thread ownership is tracked by ix-superadmin's thread bindings.
+- Agents run as the server's unix user, so a hostile agent can still read the owner token file or the token key from disk (see Scoped server tokens).
 
 ## Personal desks
 

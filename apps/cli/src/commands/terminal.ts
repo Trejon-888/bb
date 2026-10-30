@@ -8,7 +8,7 @@ import {
   type TerminalSession,
 } from "@bb/server-contract";
 import { action, CliExitError, CliUsageError } from "../action.js";
-import { createCliBbSdk } from "../client.js";
+import { cliAuthHeaders, createCliBbSdk } from "../client.js";
 import { terminalScopeHint } from "../context-hints.js";
 import { durationHelp, parseDurationMs } from "../duration.js";
 import { columnWidths, printBorderlessTable } from "../table.js";
@@ -578,7 +578,7 @@ async function attachTerminal(args: {
     throw new Error("Attach requires an interactive terminal");
   }
 
-  const socket = createNodeWebsocketFactory()(
+  const socket = createNodeWebsocketFactory({ headers: cliAuthHeaders() })(
     terminalWebsocketUrl({
       baseUrl: args.baseUrl,
       terminalId: args.terminalId,

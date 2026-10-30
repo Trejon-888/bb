@@ -29,7 +29,18 @@ import {
 import { setIxThreadUserResolver, type IxActor } from "./context.js";
 import { IX_NOT_MEMBER_MESSAGE } from "./middleware.js";
 import { createIxKv, type IxKv } from "./kv.js";
-import { createIxAccessStore, setIxFallbackAccessStore, type IxAccessStore } from "./access.js";
+import { createIxAccessStore, ixSocketAccessFilter, setIxFallbackAccessStore, type IxAccessStore } from "./access.js";
+import {
+  IX_AGENT_TOKEN_EPOCH_KEY,
+  IX_AGENT_TOKEN_KEY_FILE_NAME,
+  ixOwnerTokenPath,
+  mintIxAgentToken,
+  mintIxOwnerToken,
+  setIxAgentTokenIssuer,
+  verifyIxAgentToken,
+  verifyIxOwnerToken,
+  writeIxOwnerTokenFile,
+} from "./agent-token.js";
 import { createIxDeskStore, type IxDeskStore } from "./desk.js";
 import {
   createIxSsoReplayGuard,
@@ -129,6 +140,12 @@ export interface IxAuthService {
   removeMember(memberId: string): Promise<void>;
   signIn(input: { email: string; password: string }): Promise<Headers>;
   signOut(headers: Headers): Promise<Headers>;
+  readonly ownerTokenPath: string;
+  ownerToken(): string;
+  verifyOwnerToken(raw: string): boolean;
+  mintAgentToken(target: { threadId: string } | { userId: string }): Promise<string | null>;
+  resolveAgentToken(raw: string): Promise<IxActor | null>;
+  rotateTokens(by: string): Promise<void>;
 }
 
 export interface IxInternalAuthContext {
@@ -224,6 +241,13 @@ export async function createIxAuthService(args: {
     encoding: "hex",
     fileName: OIDC_REGISTRATION_TOKEN_FILE_NAME,
   });
+  const agentTokenKey = await readOrCreateSecretFile({
+    bytes: 32,
+    dataDir: args.dataDir,
+    encoding: "hex",
+    fileName: IX_AGENT_TOKEN_KEY_FILE_NAME,
+  });
+  const ownerTokenPath = ixOwnerTokenPath(args.dataDir);
   const auth = betterAuth({
     appName: "bb",
     baseURL: config.baseUrl,
@@ -319,6 +343,7 @@ export async function createIxAuthService(args: {
             `ix-auth: bootstrapped owner ${config.bootstrap.email} in organization ${result.organizationId}`,
           );
         }
+        if (config.mode === "team") await writeIxOwnerTokenFile(args.dataDir, ownerToken());
       })();
     }
     await ready;
@@ -642,6 +667,73 @@ export async function createIxAuthService(args: {
     return sessionCookieHeaders(response);
   }
 
+  function tokenEpoch(): number {
+    const raw = kv.get(IX_AGENT_TOKEN_EPOCH_KEY);
+    const value = raw === null ? 0 : Number(raw);
+    return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+  }
+
+  function ownerToken(): string {
+    return mintIxOwnerToken(agentTokenKey, tokenEpoch());
+  }
+
+  function verifyOwnerToken(raw: string): boolean {
+    return config.mode === "team" && verifyIxOwnerToken(agentTokenKey, tokenEpoch(), raw);
+  }
+
+  async function rotateTokens(by: string): Promise<void> {
+    kv.set(IX_AGENT_TOKEN_EPOCH_KEY, String(tokenEpoch() + 1));
+    if (config.mode === "team") await writeIxOwnerTokenFile(args.dataDir, ownerToken());
+    logger.info(`ix-auth: agent and owner tokens rotated to epoch ${tokenEpoch()} by ${by}`);
+  }
+
+  async function memberRecord(userId: string): Promise<{ member: MemberRow; user: UserRow; role: IxRole } | null> {
+    const member = await memberOf(userId);
+    if (member === null) return null;
+    const role = parseIxRole(member.role);
+    if (role === null) return null;
+    const user = await (await adapter()).findOne<UserRow>({ model: "user", where: [{ field: "id", value: userId }] });
+    return user === null ? null : { member, user, role };
+  }
+
+  async function bootstrapOwnerUserId(): Promise<string | null> {
+    const owners = (await listMembers()).filter((row) => row.role === "owner").sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+    return owners[0]?.userId ?? null;
+  }
+
+  async function threadTokenPerson(threadId: string): Promise<string | null> {
+    return actingUser(threadId) ?? (await bootstrapOwnerUserId());
+  }
+
+  async function mintAgentToken(target: { threadId: string } | { userId: string }): Promise<string | null> {
+    if (config.mode !== "team") return null;
+    if ("userId" in target) return mintIxAgentToken(agentTokenKey, { threadId: null, userId: target.userId, epoch: tokenEpoch() });
+    const userId = await threadTokenPerson(target.threadId);
+    if (userId === null) return null;
+    return mintIxAgentToken(agentTokenKey, { threadId: target.threadId, userId, epoch: tokenEpoch() });
+  }
+
+  async function resolveAgentToken(raw: string): Promise<IxActor | null> {
+    if (config.mode !== "team") return null;
+    const claims = verifyIxAgentToken(agentTokenKey, raw);
+    if (claims === null || claims.epoch !== tokenEpoch()) return null;
+    const record = await memberRecord(claims.userId);
+    if (record === null) return null;
+    const actor: IxActor = {
+      kind: "user",
+      user: { id: record.user.id, email: record.user.email, name: record.user.name },
+      organizationId: record.member.organizationId,
+      memberId: record.member.id,
+      role: record.role,
+      via: { kind: "agent-token", threadId: claims.threadId },
+    };
+    if (claims.threadId === null) return actor;
+    if (getThread(args.db, claims.threadId) === null) return null;
+    if ((await threadTokenPerson(claims.threadId)) !== claims.userId) return null;
+    if (ixSocketAccessFilter(args.db, access, actor)?.canSeeThread(claims.threadId) !== true) return null;
+    return actor;
+  }
+
   const actingUser = (threadId: string): string | null => {
     let id: string | null = threadId;
     for (let depth = 0; id !== null && depth < 8; depth++) {
@@ -659,6 +751,7 @@ export async function createIxAuthService(args: {
     const restricted = access.mode() === "restricted" && !roleAtLeast(member.role, "admin");
     return { id: member.userId, email: member.email, name: member.name, role: member.role, ...(restricted ? { projectIds: Object.keys(access.grantsFor(member.userId)), projectAccess: access.grantsFor(member.userId) } : {}) };
   });
+  setIxAgentTokenIssuer(config.mode === "team" ? mintAgentToken : null);
 
   // "Sign in with <workspace>": the workspace is an OpenID Connect provider for its own apps (ix-sites). Clients register
   // only with the server-held registration token, are the workspace's own apps (no consent screen), and only members get a code.
@@ -739,5 +832,11 @@ export async function createIxAuthService(args: {
     removeMember,
     signIn,
     signOut,
+    ownerTokenPath,
+    ownerToken,
+    verifyOwnerToken,
+    mintAgentToken,
+    resolveAgentToken,
+    rotateTokens,
   };
 }
