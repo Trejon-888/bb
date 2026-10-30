@@ -62,6 +62,16 @@ A workspace whose brand record has `shell: "simple"` (`bb ix brand set '{"shell"
 
 `bb ix access mode restricted` (or Organization → Project access) limits members and viewers to the projects an admin grants (`read` = see the project and open their own chats, `write` = also start chats and send) and to chats they created; owners and admins see everything. Enforcement is server-side: the project/thread/environment lookups, the list and search queries, realtime subscriptions and fan-out, and a deny list for host files, host browsing, terminals and project settings. Chat ownership is recorded at thread creation (agent child chats inherit their parent's owner) in `ix_thread_owner`. `GET /api/ix/access`, `PUT /api/ix/access/mode`, `PUT /api/ix/access/members/:memberId/projects/:projectId`; CLI `bb ix access show|mode|grant`.
 
+## Chat sharing
+
+Every chat has a share mode (`private`, `project`, `workspace`, stored in `ix_thread_share`) plus a list of specific people (`ix_thread_member (thread_id, user_id, added_by, added_at)`, kept on the root chat; sub-agent chats follow the root's people). Added people see the chat in their lists, open it by link, send, get its realtime events and can leave; a restricted member added to a chat in a project they were not granted gets that chat (and, for reads, that project's attachments) and nothing else in the project, which still appears in their sidebar only to hold the chat. Every visibility path honors it: the per-id lookups, thread list, count, running, search, mentions, queue, attention, prompt history (global and per project), project lists, attachment content and socket subscriptions/fan-out.
+
+The workspace policy lives in `ix_kv` (`thread_share:policy`): `defaultShare` for new chats, `allowedShares` (any of `private`, `project`, `workspace`, `people`; owners and admins are not limited; `people` also permits `private`), `whoCanChange` (`starter` | `starter_and_admins` | `participants` = anyone who can see the chat normally), `participantsCanAdd` (added people may add others) and `adminsSeeAll` (owners and admins can read any chat; writes return `403 ix_oversight_read_only`). `GET /api/ix/sharing-policy` (any member) / `PUT` (admins). Per chat: `GET|PUT /api/ix/threads/:id/share` (the view carries `people`, `canChange`, `canAdd`, `canRemove`, `canLeave`, `allowedShares` and a plain-language `reason`/`addReason`), `POST /api/ix/threads/:id/people { userIds }`, `DELETE /api/ix/threads/:id/people/:userId` (your own id leaves). `PUT /api/ix/access/thread-default` still works and writes `defaultShare`.
+
+The sender of each user turn is recorded in `ix_turn_sender (thread_id, sequence, user_id)` keyed by the `client/turn/requested` event sequence (the timeline row's `messageSeq`); turns dispatched later outside a request (queued messages, async first turns) take the chat's latest sender, else its owner. `GET /api/ix/threads/:id/senders` returns `{ multi, senders }`; the app shows the sender's initials and name above each user message once the chat has more than one person. Older messages have no record and show nothing.
+
+CLI: `bb ix sharing show|policy [--default] [--allow] [--who-can-change] [--participants-can-add on|off] [--admins-see-all on|off]`, `bb ix chat share <threadId> [mode]`, `bb ix chat add <threadId> <emails...>`, `bb ix chat remove <threadId> <email>`, `bb ix chat leave <threadId>`.
+
 ## Remote control plane calls
 
 A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own token in the `x-bb-plugin-token` header passes the ix gate as actor `plugin-token`; the route's own auth check still runs. This is how an ix control plane reaches a member server's ix-superadmin agent route through its tunnel. A wrong token, another plugin's token, a token in the query string, or any non-plugin path still needs a session.
@@ -81,6 +91,10 @@ A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own toke
 | `apps/server/src/routes/projects.ts` | `filterIxProjects` / `filterIxThreads` in the sidebar and project-list builders | project access: lists |
 | `apps/server/src/routes/threads/base.ts` | `ixScopedThreadIds`, `filterIxThreads`, `filterIxThreadsById`, `filterIxSearchGroup` in count, running, list, search, resolve-mentions | project access: lists |
 | `apps/server/src/routes/environments.ts`, `routes/queue.ts`, `routes/prompt-history.ts` | `filterIxByProjectId`, `filterIxByThreadId`, `ixRestricted()` | project access: lists |
+| `apps/server/src/services/prompt-history.ts` | `filterIxByThreadId(acceptedEntries)` in `listProjectPromptHistory` + import | chat sharing: prompt history |
+| `apps/server/src/routes/projects.ts` | `allowIxChatProjectRead` before `requirePublicProject` in attachment content | chat sharing: attachments for added people |
+| `apps/server/src/services/threads/thread-events.ts` | `noteIxTurnRequested(...)` after each `client/turn/requested` append + import | chat sharing: per-turn sender |
+| `apps/app/src/components/thread/timeline/ThreadTimelineRows.tsx` | fragment with `<IxMessageSender row={row} />` before the user `ConversationMessageContent` + import | chat sharing: sender above user messages |
 | `apps/server/src/ws/hub.ts` | `setSocketAccessFilter` and per-socket checks in subscribe, fan-out, thread-list, broadcasts and timeline signals | project access: realtime |
 | `packages/db/src/data/threads.ts` | `threadIds` filter on `countThreads` | restricted counts in SQL |
 | `apps/server/src/routes/system.ts` | attention dot over `ixScopedThreadIds(undefined)` | project access: attention |
@@ -100,7 +114,7 @@ A request to `/api/v1/plugins/<id>/http/...` that carries that plugin's own toke
 | `apps/app/src/components/settings/settings-nav.tsx` | `settingsSectionAllowed(section.id) &&` + import | role-gated settings |
 | `apps/app/src/components/onboarding/OnboardingViews.tsx` | import; `<BrandLogo alt={productName} …>` wrapped around the onboarding header logo `img` | brand logo in onboarding chrome |
 | `apps/app/src/components/settings/UpdatesSettingsSection.tsx` | import; `<BrandLogo className="size-4 -translate-y-px">` wrapped around the app row's `BbLogo` | brand logo on the About/Updates card |
-| `plugins/bb-guide/skills/bb-cli/references/command-index.md` | `bb ix brand asset`, `asset set`, `asset clear` lines | CLI coverage test lists every command |
+| `plugins/bb-guide/skills/bb-cli/references/command-index.md` | `bb ix brand asset`, `asset set`, `asset clear`, `ix sharing`, `ix chat` lines | CLI coverage test lists every command |
 
 Everything else lives in `apps/server/src/ix/*` (`auth-service`, `middleware`, `routes`, `context`, `config`, `kv`, `brand`, `brand-assets`, `sso`, `test-harness` and the `*.test.ts` files), `apps/app/src/components/ix/*` (`IxAuthGate`, `ix-auth`, `BrandLogo`, `SimpleSidebar`, `IxOrganizationView`, the `nexus/` shell and their tests), `apps/app/src/lib/ix/brand.ts`, `docs/ix/*`, `scripts/ix/*`.
 

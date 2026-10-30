@@ -31,6 +31,7 @@ check apps/server/src/services/threads/thread-events.ts 'noteIxTurnRequested(arg
 check apps/server/src/routes/projects.ts 'allowIxChatProjectRead(context.req.param("id"));'
 check apps/server/src/routes/prompt-history.ts 'entries: filterIxByThreadId(page.entries)'
 check apps/server/src/services/prompt-history.ts 'entries: filterIxByThreadId(acceptedEntries),'
+check apps/app/src/components/thread/timeline/ThreadTimelineRows.tsx '<IxMessageSender row={row} />'
 check apps/server/src/routes/projects.ts 'filterIxProjects(projectRows)'
 check apps/server/src/routes/threads/base.ts 'filterIxSearchGroup(args.active)'
 check apps/server/src/ws/hub.ts 'setSocketAccessFilter(socket: HubSocket'

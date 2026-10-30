@@ -433,6 +433,126 @@ export function registerIxCommands(program: Command, getUrl: () => string): void
       }),
     );
 
+  const shareModes = ["private", "project", "workspace"] as const;
+  const shareChoices = ["private", "project", "workspace", "people"] as const;
+  const whoCanChange = ["starter", "starter_and_admins", "participants"] as const;
+  const policySchema = z.object({
+    defaultShare: z.enum(shareModes),
+    allowedShares: z.array(z.enum(shareChoices)),
+    whoCanChange: z.enum(whoCanChange),
+    participantsCanAdd: z.boolean(),
+    adminsSeeAll: z.boolean(),
+  });
+  type SharingPolicy = z.infer<typeof policySchema>;
+  const printPolicy = (policy: SharingPolicy) => {
+    console.log(`Default for new chats: ${policy.defaultShare}`);
+    console.log(`Members may pick: ${policy.allowedShares.join(", ")}`);
+    console.log(`Who can change sharing: ${policy.whoCanChange}`);
+    console.log(`Added people can add others: ${policy.participantsCanAdd ? "on" : "off"}`);
+    console.log(`Owners and admins can read any chat: ${policy.adminsSeeAll ? "on" : "off"}`);
+  };
+  const onOff = (value: string | undefined, fallback: boolean) => {
+    if (value === undefined) return fallback;
+    if (value !== "on" && value !== "off") throw new CliUsageError({ code: "invalid_value", hint: null, message: "use on or off" });
+    return value === "on";
+  };
+  const pick = <T extends string>(values: readonly T[], value: string, what: string): T => {
+    const found = values.find((candidate) => candidate === value);
+    if (found !== undefined) return found;
+    throw new CliUsageError({ code: "invalid_value", hint: null, message: `Invalid ${what} '${value}'. Expected one of: ${values.join(", ")}.` });
+  };
+  const sharing = ix.command("sharing").description("Workspace chat-sharing policy: default for new chats, allowed choices, who can change them, admin oversight");
+  sharing.command("show", { isDefault: true })
+    .description("Show the chat-sharing policy")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const raw = await request()("GET", "/api/ix/sharing-policy");
+        if (outputJson(opts, raw)) return;
+        printPolicy(parseResponse(z.object({ policy: policySchema }), raw, "sharing-policy").policy);
+      }),
+    );
+  sharing.command("policy")
+    .description("Change the chat-sharing policy (owners and admins); omitted options keep their current value")
+    .option("--default <share>", `Sharing for new chats (${shareModes.join(", ")})`)
+    .option("--allow <choices>", `Comma-separated choices members may pick (${shareChoices.join(", ")})`)
+    .option("--who-can-change <who>", `Who can change a chat's sharing (${whoCanChange.join(", ")})`)
+    .option("--participants-can-add <state>", "on or off: people added to a chat can add others")
+    .option("--admins-see-all <state>", "on or off: owners and admins can read any chat")
+    .action(
+      action(async (opts: { default?: string; allow?: string; whoCanChange?: string; participantsCanAdd?: string; adminsSeeAll?: string }) => {
+        const current = parseResponse(z.object({ policy: policySchema }), await request()("GET", "/api/ix/sharing-policy"), "sharing-policy").policy;
+        const next: SharingPolicy = {
+          defaultShare: opts.default === undefined ? current.defaultShare : pick(shareModes, opts.default, "share"),
+          allowedShares: opts.allow === undefined ? current.allowedShares : opts.allow.split(",").map((value) => pick(shareChoices, value.trim(), "choice")),
+          whoCanChange: opts.whoCanChange === undefined ? current.whoCanChange : pick(whoCanChange, opts.whoCanChange, "who-can-change"),
+          participantsCanAdd: onOff(opts.participantsCanAdd, current.participantsCanAdd),
+          adminsSeeAll: onOff(opts.adminsSeeAll, current.adminsSeeAll),
+        };
+        const saved = parseResponse(z.object({ policy: policySchema }), await request()("PUT", "/api/ix/sharing-policy", next), "sharing-policy");
+        printPolicy(saved.policy);
+      }),
+    );
+
+  const personSchema = z.object({ id: z.string(), name: z.string(), email: z.string() });
+  const shareViewSchema = z.object({ share: z.enum(shareModes), owner: personSchema.nullable(), people: z.array(personSchema) }).loose();
+  const printShare = (view: z.infer<typeof shareViewSchema>) => {
+    console.log(`Shared with: ${view.share}`);
+    console.log(`Started by: ${view.owner === null ? "(unknown)" : `${view.owner.name} <${view.owner.email}>`}`);
+    console.log(`People: ${view.people.length === 0 ? "(none)" : view.people.map((person) => `${person.name} <${person.email}>`).join(", ")}`);
+  };
+  const memberIds = async (emails: string[]) => {
+    const members = z.object({ members: z.array(z.object({ userId: z.string(), email: z.string() }).loose()) }).parse(await request()("GET", "/api/ix/members")).members;
+    return emails.map((email) => {
+      const found = members.find((member) => member.email.toLowerCase() === email.toLowerCase());
+      if (found === undefined) throw new CliUsageError({ code: "invalid_value", hint: null, message: `No member with email ${email}` });
+      return found.userId;
+    });
+  };
+  const chat = ix.command("chat").description("Who can see a chat: its share mode and the specific people added to it");
+  const chatPath = (threadId: string) => `/api/ix/threads/${encodeURIComponent(threadId)}`;
+  chat.command("share <threadId> [mode]")
+    .description(`Show a chat's sharing, or set it (${shareModes.join(", ")})`)
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (threadId: string, mode: string | undefined, opts: JsonOutputOptions) => {
+        const raw = mode === undefined
+          ? await request()("GET", `${chatPath(threadId)}/share`)
+          : await request()("PUT", `${chatPath(threadId)}/share`, { share: pick(shareModes, mode, "share") });
+        if (outputJson(opts, raw)) return;
+        printShare(parseResponse(shareViewSchema, raw, "share"));
+      }),
+    );
+  chat.command("add <threadId> <emails...>")
+    .description("Add specific people (by email) to a chat")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (threadId: string, emails: string[], opts: JsonOutputOptions) => {
+        const raw = await request()("POST", `${chatPath(threadId)}/people`, { userIds: await memberIds(emails) });
+        if (outputJson(opts, raw)) return;
+        printShare(parseResponse(shareViewSchema, raw, "share"));
+      }),
+    );
+  chat.command("remove <threadId> <email>")
+    .description("Remove a person from a chat")
+    .action(
+      action(async (threadId: string, email: string) => {
+        const [userId] = await memberIds([email]);
+        await request()("DELETE", `${chatPath(threadId)}/people/${encodeURIComponent(userId ?? "")}`);
+        console.log(`Removed ${email}.`);
+      }),
+    );
+  chat.command("leave <threadId>")
+    .description("Leave a chat you were added to")
+    .action(
+      action(async (threadId: string) => {
+        const me = parseResponse(meSchema, await request()("GET", "/api/ix/me"), "me");
+        if (me.actor.kind !== "user") throw new CliUsageError({ code: "invalid_value", hint: null, message: "Only a signed-in person can leave a chat" });
+        await request()("DELETE", `${chatPath(threadId)}/people/${encodeURIComponent(me.actor.user.id)}`);
+        console.log("Left the chat.");
+      }),
+    );
+
   ix.command("invite <email>")
     .description("Invite a member by email and print the accept URL to share")
     .option("--role <role>", `Role to grant (${IX_ROLES.join(", ")})`, "member")

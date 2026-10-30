@@ -13,6 +13,7 @@ import {
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import { useComposedRefs } from "@radix-ui/react-compose-refs";
 import { TimelineImageGallery } from "./TimelineImageGallery";
+import { IxMessageSender } from "@/components/ix/IxMessageSender";
 import type { PromptInput, ThreadRuntimeDisplayStatus } from "@bb/domain";
 import type {
   TimelineParentChange,
@@ -977,6 +978,8 @@ const ConversationRowContent = memo(function ConversationRowContent({
         }
       : undefined;
     return (
+      <>
+      <IxMessageSender row={row} />
       <ConversationMessageContent
         attachments={row.attachments}
         initiator={row.initiator}
@@ -1007,6 +1010,7 @@ const ConversationRowContent = memo(function ConversationRowContent({
         turnRequest={row.turnRequest}
         workspaceRootPath={workspaceRootPath}
       />
+      </>
     );
   }
   const onFork =

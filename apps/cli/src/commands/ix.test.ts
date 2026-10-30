@@ -90,4 +90,29 @@ describe("bb ix command handlers", () => {
     expect(() => assetContentType("logo.gif")).toThrow("Cannot infer an image type");
     expect(assetContentType("x.JPEG")).toBe("image/jpeg");
   });
+
+  it("changes only the given sharing-policy fields and adds people to a chat by email", async () => {
+    const policy = { defaultShare: "private", allowedShares: ["private", "project", "workspace", "people"], whoCanChange: "starter", participantsCanAdd: false, adminsSeeAll: false };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/ix/sharing-policy") && init?.method === "PUT") return new Response(JSON.stringify({ ok: true, policy: JSON.parse(String(init.body)) }), { status: 200 });
+      if (url.endsWith("/api/ix/sharing-policy")) return new Response(JSON.stringify({ policy }), { status: 200 });
+      if (url.endsWith("/api/ix/members")) return new Response(JSON.stringify({ members: [{ id: "m1", userId: "u-ben", email: "ben@example.com", name: "Ben", role: "member", createdAt: "x" }] }), { status: 200 });
+      if (url.endsWith("/api/ix/threads/t1/people")) return new Response(JSON.stringify({ share: "private", owner: { id: "u-me", name: "Me", email: "me@example.com" }, people: [{ id: "u-ben", name: "Ben", email: "ben@example.com" }] }), { status: 200 });
+      throw new Error(`unexpected ${url}`);
+    });
+    const output = vi.spyOn(console, "log").mockImplementation(() => {});
+    const program = new Command();
+    registerIxCommands(program, () => "https://ix.example");
+
+    await program.parseAsync(["ix", "sharing", "policy", "--allow", "private,people", "--admins-see-all", "on"], { from: "user" });
+    const put = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT");
+    expect(JSON.parse(String(put?.[1]?.body))).toEqual({ ...policy, allowedShares: ["private", "people"], adminsSeeAll: true });
+    expect(output).toHaveBeenCalledWith("Owners and admins can read any chat: on");
+
+    await program.parseAsync(["ix", "chat", "add", "t1", "BEN@example.com"], { from: "user" });
+    const post = fetchMock.mock.calls.find(([input]) => String(input).endsWith("/threads/t1/people"));
+    expect(JSON.parse(String(post?.[1]?.body))).toEqual({ userIds: ["u-ben"] });
+    expect(output).toHaveBeenCalledWith("People: Ben <ben@example.com>");
+  });
 });

@@ -341,3 +341,58 @@ export function setIxDeskPolicy(policy: IxDeskPolicy): Promise<{ ok: boolean }> 
 export function resetIxDesk(): Promise<{ ok: boolean }> {
   return ixRequest<{ ok: boolean }>("/desk", { method: "DELETE" });
 }
+
+export type IxThreadShareLevel = "private" | "project" | "workspace";
+export type IxShareChoice = IxThreadShareLevel | "people";
+export type IxWhoCanChange = "starter" | "starter_and_admins" | "participants";
+export interface IxSharingPolicy {
+  defaultShare: IxThreadShareLevel;
+  allowedShares: IxShareChoice[];
+  whoCanChange: IxWhoCanChange;
+  participantsCanAdd: boolean;
+  adminsSeeAll: boolean;
+}
+export interface IxChatPerson { id: string; name: string; email: string }
+export interface IxThreadShareView {
+  share: IxThreadShareLevel;
+  owner: IxChatPerson | null;
+  mine: boolean;
+  member: boolean;
+  people: Array<IxChatPerson & { addedBy: string | null; addedAt: number }>;
+  canChange: boolean;
+  canAdd: boolean;
+  canRemove: boolean;
+  canLeave: boolean;
+  allowedShares: IxShareChoice[];
+  reason: string | null;
+  addReason: string | null;
+}
+export interface IxThreadSenders {
+  multi: boolean;
+  senders: Array<{ sequence: number; userId: string; name: string; email: string }>;
+}
+export function ixShareAllowed(allowed: readonly IxShareChoice[], share: IxThreadShareLevel): boolean {
+  return allowed.includes(share) || (share === "private" && allowed.includes("people"));
+}
+export function getIxSharingPolicy(): Promise<{ policy: IxSharingPolicy }> {
+  return ixRequest<{ policy: IxSharingPolicy }>("/sharing-policy");
+}
+export function setIxSharingPolicy(policy: IxSharingPolicy): Promise<{ ok: boolean; policy: IxSharingPolicy }> {
+  return ixRequest<{ ok: boolean; policy: IxSharingPolicy }>("/sharing-policy", { method: "PUT", body: policy });
+}
+const threadPath = (threadId: string) => `/threads/${encodeURIComponent(threadId)}`;
+export function getIxThreadShare(threadId: string): Promise<IxThreadShareView> {
+  return ixRequest<IxThreadShareView>(`${threadPath(threadId)}/share`);
+}
+export function setIxThreadShare(threadId: string, share: IxThreadShareLevel): Promise<IxThreadShareView> {
+  return ixRequest<IxThreadShareView>(`${threadPath(threadId)}/share`, { method: "PUT", body: { share } });
+}
+export function addIxThreadPeople(threadId: string, userIds: string[]): Promise<IxThreadShareView> {
+  return ixRequest<IxThreadShareView>(`${threadPath(threadId)}/people`, { method: "POST", body: { userIds } });
+}
+export function removeIxThreadPerson(threadId: string, userId: string): Promise<IxThreadShareView | { ok: true; left: true }> {
+  return ixRequest<IxThreadShareView | { ok: true; left: true }>(`${threadPath(threadId)}/people/${encodeURIComponent(userId)}`, { method: "DELETE" });
+}
+export function getIxThreadSenders(threadId: string): Promise<IxThreadSenders> {
+  return ixRequest<IxThreadSenders>(`${threadPath(threadId)}/senders`);
+}

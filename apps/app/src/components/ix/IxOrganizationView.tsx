@@ -9,7 +9,14 @@ import {
   cancelIxInvitation,
   getIxAccess,
   getIxDesk,
+  getIxSharingPolicy,
+  ixShareAllowed,
   setIxDeskPolicy,
+  setIxSharingPolicy,
+  type IxShareChoice,
+  type IxSharingPolicy,
+  type IxThreadShareLevel,
+  type IxWhoCanChange,
   type IxDeskPolicy,
   setIxAccessMode,
   setIxProjectAccess,
@@ -28,6 +35,18 @@ import {
 } from "./ix-auth";
 
 const ROLES: IxRole[] = ["owner", "admin", "member", "viewer"];
+const SHARE_CHOICES: Array<{ choice: IxShareChoice; label: string; hint: string }> = [
+  { choice: "private", label: "Private", hint: "Only the person who started it" },
+  { choice: "project", label: "Project", hint: "Everyone on the chat's project" },
+  { choice: "workspace", label: "Workspace", hint: "Everyone in the workspace" },
+  { choice: "people", label: "Specific people", hint: "Add named teammates to a chat" },
+];
+const SHARE_LEVELS: IxThreadShareLevel[] = ["private", "project", "workspace"];
+const WHO_CAN_CHANGE: Array<{ value: IxWhoCanChange; label: string }> = [
+  { value: "starter", label: "Only the person who started the chat" },
+  { value: "starter_and_admins", label: "The person who started it, plus owners and admins" },
+  { value: "participants", label: "Anyone who can see the chat" },
+];
 const errorText = (error: unknown) => (error instanceof IxHttpError ? error.message : error instanceof Error ? error.message : "Something went wrong");
 
 export function IxOrganizationView() {
@@ -50,13 +69,14 @@ export function IxOrganizationView() {
   const [openAccess, setOpenAccess] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, IxProjectAccessLevel | "none">>({});
   const [desk, setDesk] = useState<IxDeskPolicy | null>(null);
+  const [sharing, setSharing] = useState<IxSharingPolicy | null>(null);
 
   const reload = useCallback(async () => {
     try {
       const [m, i] = await Promise.all([listIxMembers(), isAdmin ? listIxInvitations() : Promise.resolve({ invitations: [] })]);
       setMembers(m.members);
       setInvitations(i.invitations.filter((x) => x.status === "pending"));
-      if (isAdmin) { setAccess(await getIxAccess()); setDesk((await getIxDesk()).policy); }
+      if (isAdmin) { setAccess(await getIxAccess()); setDesk((await getIxDesk()).policy); setSharing((await getIxSharingPolicy()).policy); }
     } catch (e) {
       setError(errorText(e));
     }
@@ -147,6 +167,50 @@ export function IxOrganizationView() {
             <div key={area} className="mt-3 flex items-center gap-3">
               <span className="min-w-0 flex-1 text-sm">{label}: {desk[area] ? "allowed" : "locked to the company default"}</span>
               <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => setIxDeskPolicy({ ...desk, [area]: !desk[area] }), `${label} ${desk[area] ? "locked" : "allowed"}.`)}>{desk[area] ? "Lock" : "Allow"}</Button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {isAdmin && sharing ? (
+        <div className="mt-4 rounded-xl border border-border bg-card p-4" data-testid="ix-chat-sharing">
+          <h2 className="text-sm font-semibold">Chat sharing</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Decide who sees new chats, what people may choose, and who may change it. Owners and admins are never limited by these choices.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <span className="min-w-0 flex-1 text-sm">New chats start as</span>
+            <select aria-label="Default sharing for new chats" value={sharing.defaultShare} disabled={busy} onChange={(e) => { const defaultShare = e.target.value as IxThreadShareLevel; void run(() => setIxSharingPolicy({ ...sharing, defaultShare }), "Chat sharing saved."); }} className="rounded-md border border-input bg-background px-2 py-1 text-sm">
+              {SHARE_LEVELS.filter((level) => level === sharing.defaultShare || ixShareAllowed(sharing.allowedShares, level)).map((level) => <option key={level} value={level}>{SHARE_CHOICES.find((c) => c.choice === level)?.label}</option>)}
+            </select>
+          </div>
+          <fieldset className="mt-3">
+            <legend className="text-sm">People may share chats with</legend>
+            <div className="mt-1 grid gap-1 sm:grid-cols-2">
+              {SHARE_CHOICES.map(({ choice, label, hint }) => {
+                const checked = sharing.allowedShares.includes(choice);
+                const next = checked ? sharing.allowedShares.filter((c) => c !== choice) : [...sharing.allowedShares, choice];
+                const blocked = checked && (next.length === 0 || !ixShareAllowed(next, sharing.defaultShare));
+                return (
+                  <label key={choice} className="flex items-start gap-2 rounded-md px-1 py-1 text-sm" title={blocked ? "Pick a different default first; at least one choice must stay on" : undefined}>
+                    <input type="checkbox" aria-label={`Allow ${label}`} checked={checked} disabled={busy || blocked} onChange={() => void run(() => setIxSharingPolicy({ ...sharing, allowedShares: next }), "Chat sharing saved.")} className="mt-0.5" />
+                    <span className="flex flex-col"><span>{label}</span><span className="text-xs text-muted-foreground">{hint}</span></span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <span className="min-w-0 flex-1 text-sm">Who can change who sees a chat</span>
+            <select aria-label="Who can change sharing" value={sharing.whoCanChange} disabled={busy} onChange={(e) => { const whoCanChange = e.target.value as IxWhoCanChange; void run(() => setIxSharingPolicy({ ...sharing, whoCanChange }), "Chat sharing saved."); }} className="rounded-md border border-input bg-background px-2 py-1 text-sm">
+              {WHO_CAN_CHANGE.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
+          {([
+            ["participantsCanAdd", "People added to a chat can add others", "When off, only whoever can change sharing adds people."],
+            ["adminsSeeAll", "Owners and admins can open any chat", "Read-only oversight: they can read every chat but cannot write in chats they were not shared."],
+          ] as const).map(([key, label, help]) => (
+            <div key={key} className="mt-3 flex items-center gap-3">
+              <span className="flex min-w-0 flex-1 flex-col"><span className="text-sm">{label}: {sharing[key] ? "on" : "off"}</span><span className="text-xs text-muted-foreground">{help}</span></span>
+              <Button type="button" size="sm" variant="outline" disabled={busy} aria-label={`${sharing[key] ? "Turn off" : "Turn on"}: ${label}`} onClick={() => void run(() => setIxSharingPolicy({ ...sharing, [key]: !sharing[key] }), "Chat sharing saved.")}>{sharing[key] ? "Turn off" : "Turn on"}</Button>
             </div>
           ))}
         </div>

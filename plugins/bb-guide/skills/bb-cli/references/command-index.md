@@ -355,5 +355,13 @@ This index lists every command path that the core CLI registers, including alias
 - `bb ix desk`
 - `bb ix desk show`
 - `bb ix desk policy`
+- `bb ix sharing`
+- `bb ix sharing show`
+- `bb ix sharing policy`
+- `bb ix chat`
+- `bb ix chat share`
+- `bb ix chat add`
+- `bb ix chat remove`
+- `bb ix chat leave`
 - `bb ix invite`
 - `bb ix me`
