@@ -55,7 +55,9 @@ async function world(loopback: "owner" | "deny" = "deny") {
   });
   app.route("/api/ix", createIxRoutes({ ixAuth, db }));
   const api = new Hono();
-  api.use("*", ixApiGate({ ixAuth }));
+  api.use("*", ixApiGate({ ixAuth, pluginRouteAuth: (id, _method, subPath) => (id === "hub" && subPath === "/v1/messages" ? "none" : id === "hub" ? "local" : undefined) }));
+  api.post("/plugins/hub/http/v1/messages", (context) => context.json({ actor: getIxActor(context) ?? null }));
+  api.post("/plugins/hub/http/v1/private", (context) => context.json({ reached: true }));
   api.get("/whoami", (context) => context.json({ actor: getIxActor(context) ?? null }));
   api.get("/threads/:id", (context) => {
     const thread = getThread(db, context.req.param("id"));
@@ -200,6 +202,16 @@ describe("ix agent tokens", () => {
     expect((await w.call(fileToken, "GET", "/api/v1/whoami", { "x-test-remote": "203.0.113.9" })).status).toBe(401);
     expect((await w.call(fileToken, "GET", "/api/v1/whoami", { "x-forwarded-for": "198.51.100.4" })).status).toBe(401);
     expect((await w.call(fileToken, "POST", "/api/v1/plugins", {}, {})).status).toBe(200);
+  });
+
+  it("with loopback deny, lets local processes reach a plugin's own-auth (auth none) routes and nothing else", async () => {
+    const w = await world("deny");
+    const hub = await w.call("ixp-thread.abc", "POST", "/api/v1/plugins/hub/http/v1/messages", {}, {});
+    expect(hub.status).toBe(200);
+    expect(await actorOf(hub)).toEqual({ kind: "plugin-public", pluginId: "hub" });
+    expect((await w.call(null, "POST", "/api/v1/plugins/hub/http/v1/private", {}, {})).status).toBe(401);
+    expect((await w.call(null, "POST", "/api/v1/plugins/hub/http/v1/messages", { "x-forwarded-for": "198.51.100.4" }, {})).status).toBe(401);
+    expect((await w.call(null, "POST", "/api/v1/plugins/hub/http/v1/messages", { "x-test-remote": "203.0.113.9" }, {})).status).toBe(401);
   });
 
   it("keeps loopback owner by default and still honors tokens there", async () => {
