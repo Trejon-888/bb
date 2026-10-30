@@ -1,6 +1,16 @@
 import { Hono } from "hono";
 import { getThread, listPublicProjects, type DbConnection } from "@bb/db";
-import { assertIxThreadAccess, ixAccessModeSchema, ixProjectAccessLevelSchema, ixThreadShareSchema } from "./access.js";
+import {
+  assertIxThreadAccess,
+  ixAccessModeSchema,
+  ixProjectAccessLevelSchema,
+  ixShareAllowed,
+  ixShareChoiceSchema,
+  ixSharingPolicySchema,
+  ixThreadOversightOnly,
+  ixThreadShareSchema,
+  type IxShareChoice,
+} from "./access.js";
 import { ixDeskPolicySchema } from "./desk.js";
 import { z } from "zod";
 import { ApiError } from "../errors.js";
@@ -309,13 +319,58 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService; db?: 
     assertIxThreadAccess(thread);
     return thread;
   };
-  const shareView = async (threadId: string, actor: IxActor | undefined) => {
-    const ownerId = ixAuth.access.threadOwner(threadId);
-    const share = ixAuth.access.threadShare(threadId);
-    const owner = ownerId === null ? null : (await ixAuth.listMembers()).find((m) => m.userId === ownerId) ?? null;
+  const sharePermissions = (threadId: string, actor: IxActor | undefined) => {
+    const access = ixAuth.access;
+    const policy = access.sharingPolicy();
+    const rootId = access.rootThreadId(threadId);
+    const ownerId = access.threadOwner(rootId) ?? access.threadOwner(threadId);
     const me = actor?.kind === "user" ? actor.user.id : null;
     const admin = actor === undefined || actor.kind !== "user" || roleAtLeast(actor.role, "admin");
-    return { share, owner: owner === null ? null : { id: owner.userId, name: owner.name, email: owner.email }, mine: ownerId !== null && ownerId === me, canChange: ownerId === null ? admin : ownerId === me || (admin && share !== "private") };
+    const mine = ownerId !== null && ownerId === me;
+    const member = me !== null && access.isThreadMember(threadId, me);
+    const oversightOnly = ixThreadOversightOnly(threadId);
+    const canChange =
+      me === null ? true
+        : ownerId === null ? admin
+          : policy.whoCanChange === "starter" ? mine
+            : policy.whoCanChange === "starter_and_admins" ? mine || admin
+              : mine || !oversightOnly;
+    const allowedShares: IxShareChoice[] = admin ? [...ixShareChoiceSchema.options] : policy.allowedShares;
+    const peopleAllowed = allowedShares.includes("people");
+    const canAdd = peopleAllowed && (canChange || (member && policy.participantsCanAdd));
+    const reason = canChange
+      ? null
+      : policy.whoCanChange === "starter"
+        ? "Only the person who started this chat can change who sees it."
+        : policy.whoCanChange === "starter_and_admins"
+          ? "Only the person who started this chat or an admin can change who sees it."
+          : "Only people in this chat can change who sees it.";
+    const addReason = canAdd ? null : !peopleAllowed ? "Adding specific people is turned off for this workspace." : member ? "Only the person who started this chat can add people." : reason;
+    return { policy, rootId, ownerId, me, admin, mine, member, canChange, canAdd, allowedShares, reason, addReason };
+  };
+  const shareView = async (threadId: string, actor: IxActor | undefined) => {
+    const perms = sharePermissions(threadId, actor);
+    const share = ixAuth.access.threadShare(threadId);
+    const members = await ixAuth.listMembers();
+    const person = (userId: string) => {
+      const row = members.find((m) => m.userId === userId);
+      return { id: userId, name: row?.name ?? "Former member", email: row?.email ?? "" };
+    };
+    const people = ixAuth.access.threadMembers(threadId).map((row) => ({ ...person(row.userId), addedBy: row.addedBy, addedAt: row.addedAt }));
+    return {
+      share,
+      owner: perms.ownerId === null ? null : person(perms.ownerId),
+      mine: perms.mine,
+      member: perms.member,
+      people,
+      canChange: perms.canChange,
+      canAdd: perms.canAdd,
+      canRemove: perms.canChange,
+      canLeave: perms.member,
+      allowedShares: perms.allowedShares,
+      reason: perms.reason,
+      addReason: perms.addReason,
+    };
   };
 
   authed.get("/threads/:id/share", async (context) => {
@@ -327,9 +382,67 @@ export function createIxRoutes(deps: IxGateDeps & { ixAuth: IxAuthService; db?: 
     const thread = threadForShare(context);
     const actor = getIxActor(context);
     const input = await parseBody(context, z.object({ share: ixThreadShareSchema }).strict());
-    if (!(await shareView(thread.id, actor)).canChange) throw new ApiError(403, "ix_share_forbidden", "Only the person who started this chat can change who sees it");
+    const perms = sharePermissions(thread.id, actor);
+    if (!perms.canChange) throw new ApiError(403, "ix_share_forbidden", perms.reason ?? "You cannot change who sees this chat");
+    if (!ixShareAllowed(perms.allowedShares, input.share)) throw new ApiError(403, "ix_share_not_allowed", "Your workspace does not allow this sharing choice");
     ixAuth.access.setThreadShare(thread.id, input.share);
     return context.json(await shareView(thread.id, actor));
+  });
+
+  authed.post("/threads/:id/people", async (context) => {
+    const thread = threadForShare(context);
+    const actor = getIxActor(context);
+    const input = await parseBody(context, z.object({ userIds: z.array(z.string().min(1)).min(1).max(100) }).strict());
+    const perms = sharePermissions(thread.id, actor);
+    if (!perms.canAdd) throw new ApiError(403, "ix_people_forbidden", perms.addReason ?? "You cannot add people to this chat");
+    const members = await ixAuth.listMembers();
+    for (const userId of input.userIds) {
+      if (!members.some((m) => m.userId === userId)) throw new ApiError(404, "ix_member_not_found", `No member with id ${userId}`);
+    }
+    for (const userId of new Set(input.userIds)) {
+      if (userId !== perms.ownerId) ixAuth.access.addThreadMember(perms.rootId, userId, perms.me);
+    }
+    return context.json(await shareView(thread.id, actor));
+  });
+
+  authed.delete("/threads/:id/people/:userId", async (context) => {
+    const thread = threadForShare(context);
+    const actor = getIxActor(context);
+    const userId = context.req.param("userId");
+    const perms = sharePermissions(thread.id, actor);
+    const leaving = perms.me !== null && userId === perms.me;
+    if (leaving ? !perms.member : !perms.canChange) throw new ApiError(403, "ix_people_forbidden", leaving ? "You were not added to this chat" : perms.reason ?? "You cannot remove people from this chat");
+    ixAuth.access.removeThreadMember(perms.rootId, userId);
+    if (leaving) return context.json({ ok: true, left: true });
+    return context.json(await shareView(thread.id, actor));
+  });
+
+  authed.get("/threads/:id/senders", async (context) => {
+    const thread = threadForShare(context);
+    const access = ixAuth.access;
+    const rows = access.messageSenders(thread.id);
+    const members = await ixAuth.listMembers();
+    const ownerId = access.threadOwner(access.rootThreadId(thread.id));
+    const multi = access.threadShare(thread.id) !== "private" || access.threadMembers(thread.id).length > 0 || new Set(rows.map((r) => r.userId).filter((id) => id !== ownerId)).size > 0;
+    return context.json({
+      multi,
+      senders: rows.map((row) => {
+        const member = members.find((m) => m.userId === row.userId);
+        return { sequence: row.sequence, userId: row.userId, name: member?.name ?? "Former member", email: member?.email ?? "" };
+      }),
+    });
+  });
+
+  authed.get("/sharing-policy", async (context) => {
+    requireRole(getIxActor(context), "viewer");
+    return context.json({ policy: ixAuth.access.sharingPolicy() });
+  });
+
+  authed.put("/sharing-policy", async (context) => {
+    requireRole(getIxActor(context), "admin");
+    const input = await parseBody(context, ixSharingPolicySchema);
+    ixAuth.access.setSharingPolicy(input);
+    return context.json({ ok: true, policy: ixAuth.access.sharingPolicy() });
   });
 
   authed.put("/access/mode", async (context) => {

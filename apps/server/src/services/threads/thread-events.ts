@@ -26,6 +26,7 @@ import {
   WORKSPACE_PROVISIONING_STEP_KEYS,
 } from "@bb/domain";
 import { randomBytes } from "node:crypto";
+import { noteIxTurnRequested } from "../../ix/access.js";
 import type {
   ClientTurnRequestId,
   ClientTurnLifecycleEventData,
@@ -273,6 +274,7 @@ function appendBuiltClientTurnRequestedEvent(
   args: PreparedClientTurnRequestedEventArgs,
 ): AppendedClientTurnRequest {
   const sequence = append(buildClientTurnRequestedEventArgs(args));
+  noteIxTurnRequested(args.threadId, sequence, args.initiator);
   return { requestId: args.requestId, sequence };
 }
 
@@ -543,6 +545,7 @@ export function appendPreparedClientTurnRequestedEventWithNotificationInTransact
     db,
     buildClientTurnRequestedEventArgs(args),
   );
+  noteIxTurnRequested(args.threadId, result.sequence, args.initiator);
   return {
     requestId: args.requestId,
     sequence: result.sequence,

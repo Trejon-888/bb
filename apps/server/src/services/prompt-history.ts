@@ -22,6 +22,7 @@ import {
   type TurnRequestTarget,
 } from "@bb/domain";
 import { z } from "zod";
+import { filterIxByThreadId } from "../ix/access.js";
 import { toThreadQueuedMessage } from "./threads/thread-queued-messages.js";
 import { threadTargetHostId } from "./threads/dispatch-attempt.js";
 import type { AppDeps } from "../types.js";
@@ -232,7 +233,7 @@ export function listProjectPromptHistory(
   });
 
   return takeVisiblePromptHistoryEntries({
-    entries: acceptedEntries,
+    entries: filterIxByThreadId(acceptedEntries),
     limit: args.limit,
   }).map((entry) =>
     toPromptHistoryEntry(entry, args.projectId, threadHostLookup(deps)),

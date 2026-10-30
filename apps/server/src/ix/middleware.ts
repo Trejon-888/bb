@@ -116,10 +116,12 @@ export function ixApiGate(deps: IxGateDeps): MiddlewareHandler {
       }
     }
     const apiPath = context.req.path.replace(/^\/api\/v1/, "");
-    const scope = restrictedScopeFor(actor, deps.ixAuth.access, context.req.method, VIEWER_WRITE_ALLOWLIST.some((pattern) => pattern.test(apiPath)));
+    const readOnlyPath = VIEWER_WRITE_ALLOWLIST.some((pattern) => pattern.test(apiPath));
+    const scope = restrictedScopeFor(actor, deps.ixAuth.access, context.req.method, readOnlyPath);
     if (actor.kind === "user" && !roleAtLeast(actor.role, "admin")) assertPluginAdminRoute(context.req.method, apiPath);
     if (scope !== null) assertRestrictedRoute(context.req.method, apiPath);
-    return runWithIxRequestAccess(actor, deps.ixAuth.access, scope, () => next());
+    const writing = !readOnlyPath && !["GET", "HEAD", "OPTIONS"].includes(context.req.method.toUpperCase());
+    return runWithIxRequestAccess(actor, deps.ixAuth.access, scope, () => next(), writing);
   };
 }
 

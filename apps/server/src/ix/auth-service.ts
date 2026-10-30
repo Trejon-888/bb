@@ -29,7 +29,7 @@ import {
 import { setIxThreadUserResolver, type IxActor } from "./context.js";
 import { IX_NOT_MEMBER_MESSAGE } from "./middleware.js";
 import { createIxKv, type IxKv } from "./kv.js";
-import { createIxAccessStore, type IxAccessStore } from "./access.js";
+import { createIxAccessStore, setIxFallbackAccessStore, type IxAccessStore } from "./access.js";
 import { createIxDeskStore, type IxDeskStore } from "./desk.js";
 import {
   createIxSsoReplayGuard,
@@ -209,6 +209,7 @@ export async function createIxAuthService(args: {
   const { config, logger } = args;
   const kv = createIxKv(args.db);
   const access = createIxAccessStore(args.db, kv);
+  setIxFallbackAccessStore(access);
   const desk = createIxDeskStore(args.db, kv);
   const replayGuard = createIxSsoReplayGuard(kv);
   const secret = await readOrCreateSecretFile({

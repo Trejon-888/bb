@@ -2,7 +2,7 @@ import {
   projectMachineEnvironmentView,
   replaceMachineEnvironment,
 } from "../services/machines/environment-settings.js";
-import { filterIxProjects, filterIxThreads } from "../ix/access.js";
+import { allowIxChatProjectRead, filterIxProjects, filterIxThreads } from "../ix/access.js";
 import {
   setMachineEnvironmentVariable,
   deleteMachineEnvironmentVariable,
@@ -984,6 +984,7 @@ export function registerProjectRoutes(app: Hono, deps: AppDeps): void {
   });
 
   get(routes.attachmentContent, async (context, query) => {
+    allowIxChatProjectRead(context.req.param("id"));
     requirePublicProject(deps.db, context.req.param("id"));
     return createAttachmentContentResponse({
       dataDir: deps.config.dataDir,
