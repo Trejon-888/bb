@@ -421,7 +421,7 @@ export function NexusSidebar({
                   onNavigate={onNavigate}
                 />
               ) : null}
-              {activeNav === "skills" && item.id === "skills" ? (
+              {activeNav === "skills" && item.id === "skills" && !targets.skills ? (
                 <SubRows
                   pages={SKILL_PAGES}
                   activeId={activePage}

@@ -314,7 +314,7 @@ export function nexusSetupSteps(
       title: `Teach ${agentName} how you work`,
       body: "Add skills that describe how your team handles recurring work.",
       cta: "Open skills",
-      to: "/skills",
+      to: targets.skills ?? NEXUS_SKILLS_FALLBACK_PATH,
       adminOnly: false,
     },
     {

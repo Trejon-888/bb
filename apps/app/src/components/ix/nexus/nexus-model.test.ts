@@ -350,5 +350,7 @@ describe("nexusAgentName", () => {
     expect(steps.find((step) => step.id === "skills")?.title).toBe("Teach ix how you work");
     expect(steps.find((step) => step.id === "integrations")?.body).toContain("so ix can work");
     expect(nexusSetupSteps({ ...(targets as object), organization: "/o" } as never).find((step) => step.id === "skills")?.title).toBe("Teach Nexus how you work");
+    expect(nexusSetupSteps({ ...(targets as object), organization: "/o" } as never).find((step) => step.id === "skills")?.to).toBe("/skills");
+    expect(nexusSetupSteps({ ...(targets as object), skills: "/plugins/ix-skills/skills", organization: "/o" } as never).find((step) => step.id === "skills")?.to).toBe("/plugins/ix-skills/skills");
   });
 });
