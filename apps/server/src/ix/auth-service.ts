@@ -708,16 +708,18 @@ export async function createIxAuthService(args: {
   async function mintAgentToken(target: { threadId: string } | { userId: string }): Promise<string | null> {
     if (config.mode !== "team") return null;
     if ("userId" in target) return mintIxAgentToken(agentTokenKey, { threadId: null, userId: target.userId, epoch: tokenEpoch() });
-    const userId = await threadTokenPerson(target.threadId);
-    if (userId === null) return null;
-    return mintIxAgentToken(agentTokenKey, { threadId: target.threadId, userId, epoch: tokenEpoch() });
+    if ((await threadTokenPerson(target.threadId)) === null) return null;
+    return mintIxAgentToken(agentTokenKey, { threadId: target.threadId, userId: null, epoch: tokenEpoch() });
   }
 
   async function resolveAgentToken(raw: string): Promise<IxActor | null> {
     if (config.mode !== "team") return null;
     const claims = verifyIxAgentToken(agentTokenKey, raw);
     if (claims === null || claims.epoch !== tokenEpoch()) return null;
-    const record = await memberRecord(claims.userId);
+    if (claims.threadId !== null && getThread(args.db, claims.threadId) === null) return null;
+    const person = claims.threadId === null ? claims.userId : await threadTokenPerson(claims.threadId);
+    if (person === null || (claims.userId !== null && claims.userId !== person)) return null;
+    const record = await memberRecord(person);
     if (record === null) return null;
     const actor: IxActor = {
       kind: "user",
@@ -728,8 +730,6 @@ export async function createIxAuthService(args: {
       via: { kind: "agent-token", threadId: claims.threadId },
     };
     if (claims.threadId === null) return actor;
-    if (getThread(args.db, claims.threadId) === null) return null;
-    if ((await threadTokenPerson(claims.threadId)) !== claims.userId) return null;
     if (ixSocketAccessFilter(args.db, access, actor)?.canSeeThread(claims.threadId) !== true) return null;
     return actor;
   }

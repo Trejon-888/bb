@@ -14,12 +14,11 @@ export const IX_RESERVED_AGENT_ENV = new Set([IX_AGENT_TOKEN_ENV, IX_OWNER_TOKEN
 const AGENT_PREFIX = "ixt1";
 const OWNER_PREFIX = "ixo1";
 const NO_THREAD = "-";
+const ACTING_PERSON = "-";
 
-export interface IxAgentTokenClaims {
-  threadId: string | null;
-  userId: string;
-  epoch: number;
-}
+export type IxAgentTokenClaims =
+  | { threadId: string; userId: string | null; epoch: number }
+  | { threadId: null; userId: string; epoch: number };
 
 function encode(value: string): string {
   return Buffer.from(value, "utf8").toString("base64url");
@@ -43,7 +42,7 @@ function macMatches(presented: string, expected: string): boolean {
 
 export function mintIxAgentToken(key: string, claims: IxAgentTokenClaims): string {
   const thread = claims.threadId === null ? NO_THREAD : encode(claims.threadId);
-  const user = encode(claims.userId);
+  const user = claims.userId === null ? ACTING_PERSON : encode(claims.userId);
   const body = `${AGENT_PREFIX}.${thread}.${user}.${claims.epoch}`;
   return `${body}.${mac(key, body)}`;
 }
@@ -54,10 +53,16 @@ export function verifyIxAgentToken(key: string, raw: string): IxAgentTokenClaims
   const [, thread = "", user = "", epochText = "", presented = ""] = parts;
   if (!/^\d{1,15}$/u.test(epochText)) return null;
   if (!macMatches(presented, mac(key, `${AGENT_PREFIX}.${thread}.${user}.${epochText}`))) return null;
-  const threadId = thread === NO_THREAD ? null : decode(thread);
+  const epoch = Number(epochText);
+  if (thread === NO_THREAD) {
+    const userId = user === ACTING_PERSON ? null : decode(user);
+    return userId === null || userId.length === 0 ? null : { threadId: null, userId, epoch };
+  }
+  const threadId = decode(thread);
+  if (threadId === null || threadId.length === 0) return null;
+  if (user === ACTING_PERSON) return { threadId, userId: null, epoch };
   const userId = decode(user);
-  if ((thread !== NO_THREAD && threadId === null) || userId === null || userId.length === 0) return null;
-  return { threadId, userId, epoch: Number(epochText) };
+  return userId === null || userId.length === 0 ? null : { threadId, userId, epoch };
 }
 
 export function mintIxOwnerToken(key: string, epoch: number): string {
@@ -101,7 +106,7 @@ export async function ixAgentTokenEnv(target: { threadId: string } | { userId: s
   if (issuer === null) return [];
   const token = await issuer(target);
   if (token === null) return [];
-  return [{ name: IX_AGENT_TOKEN_ENV, value: token, source: { core: "machine-environment" }, reason: "ix: server token scoped to this chat's acting person" }];
+  return [{ name: IX_AGENT_TOKEN_ENV, value: token, source: { core: "machine-environment" }, reason: "ix: server token scoped to this chat; it acts as the chat's current acting person" }];
 }
 
 export async function ixTerminalTokenEnv(entries: readonly HostDaemonContributedEnvEntry[]): Promise<HostDaemonContributedEnvEntry[]> {

@@ -14,7 +14,7 @@ check() {
 check apps/server/src/types.ts 'ixAuth: IxAuthService;'
 check apps/server/src/start-server.ts 'createIxAuthService('
 check apps/server/src/start-server.ts '      ixAuth,'
-check apps/server/src/server.ts 'publicApi.use("*", ixApiGate({ ...deps, pluginToken: (id) => pluginService.httpToken(id) }));'
+check apps/server/src/server.ts 'publicApi.use("*", ixApiGate({ ...deps, pluginToken: (id) => pluginService.httpToken(id), pluginRouteAuth: (id, method, subPath) =>'
 check apps/server/src/server.ts 'mountIxAuthHandler(app, deps);'
 check apps/server/src/server.ts 'app.route("/api/ix", createIxRoutes(deps));'
 check apps/server/src/server.ts 'await assertIxWebSocketAllowed(context, deps);'

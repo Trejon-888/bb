@@ -114,7 +114,7 @@ async function actorOf(response: Response) {
 }
 
 describe("ix agent tokens", () => {
-  it("mints a stable token per thread and acting person, and rotates it when the person changes", async () => {
+  it("mints one stable token per chat that acts as the chat's current acting person", async () => {
     const w = await world();
     const ana = await w.enroll("ana");
     const ben = await w.enroll("ben");
@@ -129,10 +129,14 @@ describe("ix agent tokens", () => {
 
     w.ixAuth.access.addThreadMember(t1.id, ben.userId, ana.userId);
     await w.send(ben, t1.id);
-    const second = await w.tokenFor(t1.id);
-    expect(second).not.toBe(first);
-    expect((await w.call(first, "GET", "/api/v1/whoami")).status).toBe(401);
-    expect(await actorOf(await w.call(second, "GET", "/api/v1/whoami"))).toMatchObject({ user: { id: ben.userId } });
+    expect(await w.tokenFor(t1.id)).toBe(first);
+    expect(await actorOf(await w.call(first, "GET", "/api/v1/whoami"))).toMatchObject({ user: { id: ben.userId }, via: { kind: "agent-token", threadId: t1.id } });
+
+    const key = (await readFile(join(w.dataDir, "ix-agent-token-key"), "utf8")).trim();
+    const anaBound = mintIxAgentToken(key, { threadId: t1.id, userId: ana.userId, epoch: 0 });
+    const benBound = mintIxAgentToken(key, { threadId: t1.id, userId: ben.userId, epoch: 0 });
+    expect((await w.call(anaBound, "GET", "/api/v1/whoami")).status).toBe(401);
+    expect(await actorOf(await w.call(benBound, "GET", "/api/v1/whoami"))).toMatchObject({ user: { id: ben.userId } });
   });
 
   it("gives a member's chat member power and an owner's chat owner power", async () => {
