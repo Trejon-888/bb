@@ -100,6 +100,19 @@ const FIRST_PARTY_PROVIDER_DECLARATIONS = [
   {
     builtinName: "provider-acp",
     pluginId: "provider-acp",
+    providerId: "acp-gemini",
+    displayName: "Gemini CLI",
+    supportsThreadArchive: false,
+    supportsThreadRename: false,
+    fork: "none",
+    supportsManualCompaction: false,
+    supportsUsage: false,
+    visibility: "installed",
+    hasLogo: true,
+  },
+  {
+    builtinName: "provider-acp",
+    pluginId: "provider-acp",
     providerId: "acp-hermes-agent",
     displayName: "Hermes Agent",
     supportsThreadArchive: false,
@@ -362,6 +375,7 @@ describe("first-party provider plugins", () => {
           "acp-opencode",
           "acp-omp",
           "acp-grok",
+          "acp-gemini",
           "acp-hermes-agent",
         ]);
         const remainingInfos = await listSystemProviderInfos(harness.deps, {});

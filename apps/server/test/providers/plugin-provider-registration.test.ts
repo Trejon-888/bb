@@ -345,6 +345,7 @@ describe("buildPluginProviderRegistration", () => {
       "acp-opencode": "collapse",
       "acp-omp": "collapse",
       "acp-grok": "collapse",
+      "acp-gemini": "collapse",
       "acp-hermes-agent": "collapse",
     });
   });
