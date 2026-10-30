@@ -29,6 +29,26 @@ export async function readHostAuthState(
   }
 }
 
+export async function takeHostAuthStateFile(
+  filePath: string,
+): Promise<HostAuthState> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    const errorCode =
+      error instanceof Error && "code" in error ? error.code : undefined;
+    if (errorCode === "ENOENT") {
+      throw new Error(
+        `BB_HOST_AUTH_FILE ${filePath} does not exist; it is read once and deleted, so it must be put back before every start`,
+      );
+    }
+    throw error;
+  }
+  await fs.rm(filePath, { force: true });
+  return hostAuthStateSchema.parse(JSON.parse(raw));
+}
+
 export async function writeHostAuthState(
   dataDir: string,
   authState: HostAuthState,

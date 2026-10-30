@@ -99,6 +99,13 @@ check packages/bb-app/src/launcher.ts 'const ixOwnerToken = await readIxOwnerTok
 check apps/cli/src/client.ts 'headers.set("authorization", `Bearer ${token}`);'
 check apps/cli/src/commands/terminal.ts 'createNodeWebsocketFactory({ headers: cliAuthHeaders() })'
 check packages/sdk/src/node-websocket.ts 'new NodeWsWebSocket(url, { headers })'
+check packages/config/src/env-vars.ts 'export const BB_HOST_AUTH_FILE_ENV'
+check packages/config/src/host-daemon-entrypoint.ts 'key: "BB_HOST_AUTH_FILE",'
+check apps/host-daemon/src/index.ts 'authFile: hostDaemonEntrypointConfig.BB_HOST_AUTH_FILE,'
+check apps/host-daemon/src/start-host-daemon.ts ': await takeHostAuthStateFile(options.authFile);'
+check apps/host-daemon/src/start-host-daemon.ts 'if (!persistedAuth && options.authFile === undefined) {'
+check apps/host-daemon/src/auth-state.ts 'export async function takeHostAuthStateFile('
+check packages/bb-app/src/launcher.ts '(authFile !== undefined && existsSync(authFile)),'
 for f in packages/config/src/product-name.ts packages/bb-app/src/ix-env-aliases.ts packages/bb-app/src/bin/ix.ts packages/bb-app/src/bin/ix-app.ts apps/app/src/lib/ix/brand.ts; do
   if [ -f "$f" ]; then echo "ok       $f"; else echo "MISSING  $f"; fail=1; fi
 done

@@ -8,6 +8,7 @@ import {
   BB_BRIDGE_DIR_ENV,
   BB_CLI_DIR_ENV,
   BB_CONNECT_MACHINE_CREDENTIAL_ENV,
+  BB_HOST_AUTH_FILE_ENV,
   BB_HOST_ENROLL_KEY_ENV,
   BB_HOST_DAEMON_AUTO_UPDATE_ENV,
   BB_HOST_DAEMON_SUPERVISED_ENV,
@@ -19,6 +20,7 @@ export interface HostDaemonEntrypointConfig {
   BB_BRIDGE_DIR?: string;
   BB_CLI_DIR?: string;
   BB_SERVER_HEADERS?: Record<string, string>;
+  BB_HOST_AUTH_FILE?: string;
   BB_HOST_ENROLL_KEY?: string;
   BB_HOST_DAEMON_AUTO_UPDATE?: boolean;
   BB_HOST_DAEMON_SUPERVISED?: boolean;
@@ -45,6 +47,11 @@ export function loadHostDaemonEntrypointConfig(
   const enrollKey = readOptionalEnvVar({
     context: loader.context,
     definition: BB_HOST_ENROLL_KEY_ENV,
+    env: loader.env,
+  });
+  const authFile = readOptionalEnvVar({
+    context: loader.context,
+    definition: BB_HOST_AUTH_FILE_ENV,
     env: loader.env,
   });
   const autoUpdate = readOptionalEnvVar({
@@ -106,6 +113,11 @@ export function loadHostDaemonEntrypointConfig(
     key: "BB_HOST_ENROLL_KEY",
     target: config,
     value: enrollKey,
+  });
+  assignIfDefined({
+    key: "BB_HOST_AUTH_FILE",
+    target: config,
+    value: authFile,
   });
   assignIfDefined({
     key: "BB_HOST_ID",

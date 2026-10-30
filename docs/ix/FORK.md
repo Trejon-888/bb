@@ -106,6 +106,12 @@ Per workspace, after deploying a build with scoped tokens:
 
 Rollback: remove the `Environment=` line and restart (loopback goes back to owner; tokens keep working).
 
+### Agents as a separate unix user (Stage B)
+
+On ix hosts the server (`bb-server`) and the host daemon (`bb-host-daemon`) run as two systemd units: the server as `<user>`, the daemon and every agent it spawns as `<user>-agent`. The daemon unit bind-mounts `/srv/<ws>/agent` over `/srv/<ws>/data`, so the daemon and agents see their own tree at the same absolute paths and never see `bb.db`, `ix-owner-token`, `ix-agent-token-key`, `ix-secrets.conf` or plugin data. The server keeps a copy of the daemon's `host-id` in its own data directory, which is how it still finds its local daemon. Runbook: `ix-canary/STAGE-B-RUNBOOK.md`.
+
+`BB_HOST_AUTH_FILE=<path>` (daemon, optional): the daemon reads its enrolled auth (`{ hostId, hostKey }`) from that file once at start, deletes it, and never writes `<data>/auth.json`. With it the host key is out of reach of agents that share the daemon's unix user: the unit copies a root-owned `/etc/ix/<ws>/host-auth.json` to a runtime directory in `ExecStartPre=+`, and the daemon removes it before any agent starts. The launcher counts the file as enrolled. A missing file is a startup error, never a re-enrollment.
+
 ## Upstream files touched (keep this list exact)
 
 | File | Insert | Why |
@@ -152,7 +158,9 @@ Rollback: remove the `Environment=` line and restart (loopback goes back to owne
 | `apps/server/src/start-server.ts` | set `BB_IX_OWNER_TOKEN_FILE` on the server process to `ixAuth.ownerTokenPath` in team mode | owner token for server subprocesses |
 | `packages/plugin-sdk/src/backend-contract.ts` | `experimental_user` on `PluginCliContext` | thread-bound plugin CLI |
 | `packages/config/src/runtime.ts` | `BB_IX_TOKEN`, `BB_IX_OWNER_TOKEN_FILE` in `THREAD_CONTEXT_ENV_KEYS` | never forwarded to server or daemon |
-| `packages/bb-app/src/launcher.ts`, `packages/scripts/src/commands/run-host-daemon.ts` | read `<dataDir>/ix-owner-token` and send it on the enroll-key request | enroll-key gate |
+| `packages/config/src/env-vars.ts`, `packages/config/src/host-daemon-entrypoint.ts` | `BB_HOST_AUTH_FILE_ENV` and its read into `HostDaemonEntrypointConfig.BB_HOST_AUTH_FILE` | Stage B: host key out of agents' reach |
+| `apps/host-daemon/src/index.ts`, `apps/host-daemon/src/start-host-daemon.ts`, `apps/host-daemon/src/auth-state.ts` | `authFile` option; `takeHostAuthStateFile` read-and-delete in place of `readHostAuthState`; no `auth.json` write when it is set | Stage B: host key out of agents' reach |
+| `packages/bb-app/src/launcher.ts`, `packages/scripts/src/commands/run-host-daemon.ts` | read `<dataDir>/ix-owner-token` and send it on the enroll-key request; the launcher also counts an existing `BB_HOST_AUTH_FILE` as enrolled | enroll-key gate; Stage B |
 | `apps/cli/src/client.ts`, `apps/cli/src/commands/terminal.ts` | bearer token on `cliFetch`, SDK websocket and terminal attach | CLI sends the token |
 | `packages/sdk/src/node-websocket.ts` | optional `headers` on `createNodeWebsocketFactory` | CLI websocket auth |
 

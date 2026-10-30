@@ -11,6 +11,7 @@ import { createLogger } from "@bb/logger";
 import { createHostDaemonApp } from "./app.js";
 import {
   readHostAuthState,
+  takeHostAuthStateFile,
   resolveServerUrl,
   writeHostAuthState,
 } from "./auth-state.js";
@@ -33,6 +34,7 @@ import {
 
 interface StartHostDaemonOptions {
   enrollKey?: string;
+  authFile?: string;
   hostId?: string;
   bbExecutableDirectory?: string;
   bridgeBundleDir?: string;
@@ -72,7 +74,10 @@ export async function startHostDaemon(
   let app: Awaited<ReturnType<typeof createHostDaemonApp>> | undefined;
   let machineAuthProxy: MachineAuthProxy | undefined;
   try {
-    const persistedAuth = await readHostAuthState(dataDir);
+    const persistedAuth =
+      options.authFile === undefined
+        ? await readHostAuthState(dataDir)
+        : await takeHostAuthStateFile(options.authFile);
     const identity = await loadHostIdentity({
       dataDir,
       providedHostId: options.hostId,
@@ -109,7 +114,7 @@ export async function startHostDaemon(
         })
       ).hostKey;
 
-    if (!persistedAuth) {
+    if (!persistedAuth && options.authFile === undefined) {
       await persistHostId({ dataDir, hostId: identity.hostId });
       await writeHostAuthState(dataDir, {
         hostId: identity.hostId,

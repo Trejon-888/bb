@@ -2672,8 +2672,11 @@ function resolveEnrollmentRequirements(
   args: ResolveEnrollmentRequirementsArgs,
 ): EnrollmentRequirements {
   const enrollKey = toOptionalString(args.env.BB_HOST_ENROLL_KEY);
+  const authFile = toOptionalString(args.env.BB_HOST_AUTH_FILE);
   return {
-    enrolled: existsSync(join(args.context.dataDir, HOST_AUTH_FILE_NAME)),
+    enrolled:
+      existsSync(join(args.context.dataDir, HOST_AUTH_FILE_NAME)) ||
+      (authFile !== undefined && existsSync(authFile)),
     ...(enrollKey !== undefined ? { enrollKey } : {}),
   };
 }

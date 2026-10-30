@@ -395,6 +395,13 @@ export const BB_HOST_ENROLL_KEY_ENV = defineEnvVar<string | undefined>({
   parse: parseOptionalTrimmedStringEnvValue,
 });
 
+export const BB_HOST_AUTH_FILE_ENV = defineEnvVar<string | undefined>({
+  description:
+    "Read the host daemon's enrolled auth (hostId and hostKey) from this file once at start, then delete it, instead of <data>/auth.json; for daemons whose unix user is shared with agents",
+  name: "BB_HOST_AUTH_FILE",
+  parse: parseOptionalTrimmedStringEnvValue,
+});
+
 export const BB_HOST_DAEMON_AUTO_UPDATE_ENV = defineEnvVar<boolean>({
   description:
     "Allow a remote host daemon to install the exact bb-app package served by its server on a newer protocol mismatch",

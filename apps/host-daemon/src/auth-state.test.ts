@@ -6,6 +6,7 @@ import { HOST_AUTH_FILE_NAME } from "@bb/host-daemon-contract";
 import {
   readHostAuthState,
   resolveServerUrl,
+  takeHostAuthStateFile,
   writeHostAuthState,
 } from "./auth-state.js";
 
@@ -56,6 +57,15 @@ describe("auth state", () => {
       const stats = await fs.stat(authStatePath);
       expect(stats.mode & 0o777).toBe(0o600);
     }
+  });
+
+  it("takes auth state from BB_HOST_AUTH_FILE once and deletes the file", async () => {
+    const dir = await makeTempDir("bb-auth-file-");
+    const file = path.join(dir, "host-auth.json");
+    await fs.writeFile(file, JSON.stringify({ hostId: "host_abc", hostKey: "hk_secret" }), { mode: 0o400 });
+    await expect(takeHostAuthStateFile(file)).resolves.toEqual({ hostId: "host_abc", hostKey: "hk_secret" });
+    await expect(fs.stat(file)).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(takeHostAuthStateFile(file)).rejects.toThrow(/BB_HOST_AUTH_FILE .* does not exist/);
   });
 
   it("reads legacy auth state that still contains server URL", async () => {
