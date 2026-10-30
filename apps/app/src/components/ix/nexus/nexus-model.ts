@@ -283,6 +283,10 @@ export const NEXUS_STARTERS: readonly NexusStarter[] = [
   },
 ];
 
+export function nexusAgentName(brand?: { appTitle?: string | null }): string {
+  return brand?.appTitle?.trim() || "Nexus";
+}
+
 export interface NexusSetupStep {
   id: string;
   title: string;
@@ -294,19 +298,20 @@ export interface NexusSetupStep {
 
 export function nexusSetupSteps(
   targets: NexusNavTargets & { organization: string },
+  agentName = "Nexus",
 ): NexusSetupStep[] {
   return [
     {
       id: "integrations",
       title: "Connect your tools",
-      body: "Connect the tools your team already uses so Nexus can work across them.",
+      body: `Connect the tools your team already uses so ${agentName} can work across them.`,
       cta: `Open ${targets.integrations.label.toLowerCase()}`,
       to: targets.integrations.to,
       adminOnly: true,
     },
     {
       id: "skills",
-      title: "Teach Nexus how you work",
+      title: `Teach ${agentName} how you work`,
       body: "Add skills that describe how your team handles recurring work.",
       cta: "Open skills",
       to: "/skills",

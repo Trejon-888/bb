@@ -21,6 +21,7 @@ import { NEXUS_PROVIDERS_PATH, NEXUS_CAPACITY_PATH,
   resolveNexusNavId,
   type NexusPaletteItem,
   nexusNavItems,
+  nexusAgentName,
   nexusSetupSteps,
   NEXUS_CONNECTORS_PATH,
   NEXUS_DEFAULT_INTEGRATIONS,
@@ -331,5 +332,23 @@ describe("workflows nav item", () => {
     const targets = { scheduled: NEXUS_WORKFLOWS, integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH, memory: null, browser: null };
     expect(nexusNavItems(targets).find((entry) => entry.id === "scheduled")).toMatchObject({ label: "Workflows", to: NEXUS_WORKFLOWS_PATH, icon: "Workflow" });
     expect(resolveNexusNavId(NEXUS_WORKFLOWS_PATH)).toBe("scheduled");
+  });
+});
+
+describe("nexusAgentName", () => {
+  it("uses the brand's app title and falls back to Nexus", () => {
+    expect(nexusAgentName({ appTitle: "ix" })).toBe("ix");
+    expect(nexusAgentName({ appTitle: "Nexus" })).toBe("Nexus");
+    expect(nexusAgentName({ appTitle: "  " })).toBe("Nexus");
+    expect(nexusAgentName({})).toBe("Nexus");
+    expect(nexusAgentName(undefined)).toBe("Nexus");
+  });
+
+  it("puts the agent name into the setup steps", () => {
+    const targets = { integrations: { label: "Connectors", to: "/c" }, scheduled: { label: "Workflows", to: "/w" } } as never;
+    const steps = nexusSetupSteps({ ...(targets as object), organization: "/o" } as never, "ix");
+    expect(steps.find((step) => step.id === "skills")?.title).toBe("Teach ix how you work");
+    expect(steps.find((step) => step.id === "integrations")?.body).toContain("so ix can work");
+    expect(nexusSetupSteps({ ...(targets as object), organization: "/o" } as never).find((step) => step.id === "skills")?.title).toBe("Teach Nexus how you work");
   });
 });

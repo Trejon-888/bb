@@ -7,7 +7,8 @@ import {
   getRootComposeRoutePath,
   getSettingsProjectRoutePath,
 } from "@/lib/route-paths";
-import { nexusChats } from "./nexus-model";
+import { useIxSession } from "../ix-auth";
+import { nexusAgentName, nexusChats } from "./nexus-model";
 
 export function NexusPage({
   title,
@@ -51,15 +52,16 @@ function PlaceholderCard({
 }
 
 export function NexusDocsPage() {
+  const agentName = nexusAgentName(useIxSession().status?.brand);
   return (
     <NexusPage
       title="Docs"
-      subtitle="Documents your team and Nexus write together."
+      subtitle={`Documents your team and ${agentName} write together.`}
     >
       <PlaceholderCard
         icon="FileText"
         title="Docs are coming soon"
-        body="Until then, ask in a chat and Nexus will write the document there."
+        body={`Until then, ask in a chat and ${agentName} will write the document there.`}
         action={
           <Link
             to="/"

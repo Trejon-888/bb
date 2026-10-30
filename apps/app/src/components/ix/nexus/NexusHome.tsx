@@ -12,6 +12,7 @@ import {
 } from "../ix-auth";
 import {
   NEXUS_STARTERS,
+  nexusAgentName,
   nexusChatIndicator,
   nexusChatTitle,
   nexusChats,
@@ -182,10 +183,12 @@ function RecentChats() {
 export function NexusSetupChecklist({
   steps,
   companyName,
+  agentName = "Nexus",
   onHide,
 }: {
   steps: readonly NexusSetupStep[];
   companyName: string;
+  agentName?: string;
   onHide: () => void;
 }) {
   const navigate = useNavigate();
@@ -197,10 +200,10 @@ export function NexusSetupChecklist({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold tracking-tight">
-            Get Nexus up to speed
+            Get {agentName} up to speed
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            A few setup steps so Nexus is ready for {companyName}.
+            A few setup steps so {agentName} is ready for {companyName}.
           </p>
         </div>
         <button
@@ -259,10 +262,11 @@ export function NexusHomeSections() {
   if (shell !== "nexus") return null;
   const actor = session.me?.actor;
   const isAdmin = actor?.kind !== "user" || roleAtLeast(actor.role, "admin");
-  const steps = nexusSetupSteps({
-    ...targets,
-    organization: IX_ORGANIZATION_PATH,
-  }).filter((step) => isAdmin || !step.adminOnly);
+  const agentName = nexusAgentName(session.status?.brand);
+  const steps = nexusSetupSteps(
+    { ...targets, organization: IX_ORGANIZATION_PATH },
+    agentName,
+  ).filter((step) => isAdmin || !step.adminOnly);
   const companyName =
     session.status?.brand.name ?? session.status?.orgName ?? "your workspace";
   return (
@@ -273,6 +277,7 @@ export function NexusHomeSections() {
         <NexusSetupChecklist
           steps={steps}
           companyName={companyName}
+          agentName={agentName}
           onHide={() => {
             writeChecklistHidden();
             setHidden(true);

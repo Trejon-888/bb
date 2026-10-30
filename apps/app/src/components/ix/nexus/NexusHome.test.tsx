@@ -137,6 +137,20 @@ it("lists recent chats and hides admin-only setup steps from members", () => {
   expect(view.queryByTestId("nexus-checklist")).toBeNull();
 });
 
+it("names the setup checklist after the brand's app title", () => {
+  const brand = session.value.status.brand;
+  session.value.status.brand = { ...brand, name: "ix", appTitle: "ix" };
+  window.localStorage.clear();
+  try {
+    const checklist = renderHome().getByTestId("nexus-checklist");
+    expect(checklist.textContent).toContain("Get ix up to speed");
+    expect(checklist.textContent).toContain("Teach ix how you work");
+    expect(checklist.textContent).not.toContain("Nexus");
+  } finally {
+    session.value.status.brand = brand;
+  }
+});
+
 it("renders nothing outside the nexus shell", () => {
   session.value.status.brand.shell = "full";
   const view = renderHome();
