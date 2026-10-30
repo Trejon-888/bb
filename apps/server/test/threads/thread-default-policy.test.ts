@@ -103,6 +103,7 @@ describe("resolveCreateThreadExecutionDefaults", () => {
         "acp-opencode",
         "acp-omp",
         "acp-grok",
+        "acp-gemini",
         "acp-hermes-agent",
       ],
     });
@@ -126,6 +127,7 @@ describe("resolveCreateThreadExecutionDefaults", () => {
       "acp-opencode",
       "acp-omp",
       "acp-grok",
+      "acp-gemini",
       "acp-hermes-agent",
     ]);
     expect(
@@ -169,6 +171,7 @@ describe("resolveCreateThreadExecutionDefaults", () => {
       "acp-opencode",
       "acp-omp",
       "acp-grok",
+      "acp-gemini",
       "acp-hermes-agent",
     ]);
   });
@@ -242,6 +245,7 @@ describe("resolveCreateThreadExecutionDefaults", () => {
         "acp-opencode",
         "acp-omp",
         "acp-grok",
+        "acp-gemini",
         "acp-hermes-agent",
       ],
     });
