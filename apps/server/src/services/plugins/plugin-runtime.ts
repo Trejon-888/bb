@@ -39,7 +39,8 @@ import {
   isMutableArtifactStale,
   isMutablePluginHostReusable,
 } from "./mutable-plugin-artifacts.js";
-import { createNodeBbSdk, type BbSdk } from "@bb/sdk";
+import { createNodeBbSdk, createRequestTimeoutFetch, DEFAULT_BB_REQUEST_TIMEOUT_MS, type BbSdk } from "@bb/sdk";
+import { createNodeWebsocketFactory } from "@bb/sdk/node-websocket";
 import {
   getInstalledPlugin,
   getPluginSafeMode,
@@ -2080,7 +2081,33 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
   }
 
   function bindSdk(args: { baseUrl: string }): void {
-    boundSdk = createNodeBbSdk({ baseUrl: args.baseUrl });
+    const ownerToken = (): string | undefined => {
+      const file = process.env.BB_IX_OWNER_TOKEN_FILE?.trim();
+      if (!file) return undefined;
+      try {
+        const value = readFileSync(file, "utf8").trim();
+        return value === "" ? undefined : value;
+      } catch {
+        return undefined;
+      }
+    };
+    const timed = createRequestTimeoutFetch({ timeoutMs: DEFAULT_BB_REQUEST_TIMEOUT_MS });
+    const token = ownerToken();
+    boundSdk = createNodeBbSdk({
+      baseUrl: args.baseUrl,
+      ...(token === undefined
+        ? {}
+        : {
+            fetch: ((input: RequestInfo | URL, init?: RequestInit) => {
+              const current = ownerToken();
+              if (current === undefined) return timed(input, init);
+              const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+              if (!headers.has("authorization")) headers.set("authorization", `Bearer ${current}`);
+              return timed(input, { ...init, headers });
+            }) as typeof fetch,
+            websocket: createNodeWebsocketFactory({ headers: { authorization: `Bearer ${token}` } }),
+          }),
+    });
     boundLoopbackBaseUrl = args.baseUrl;
   }
 
