@@ -22,7 +22,8 @@ export type NexusNavId =
   | "memory"
   | "browser"
   | "providers"
-  | "capacity";
+  | "capacity"
+  | "superadmin";
 
 export interface NexusNavItem {
   id: NexusNavId;
@@ -40,6 +41,7 @@ export interface NexusNavTargets {
   browser: string | null;
   providers?: string | null;
   capacity?: string | null;
+  superadmin?: string | null;
   /** ix-comms (the Inbox) when installed. */
   inbox?: string | null;
   /** ix-skills when installed, else bb's own skills page. */
@@ -48,11 +50,18 @@ export interface NexusNavTargets {
 
 export const NEXUS_CONNECTORS_PLUGIN_ID = "ix-connectors";
 export const NEXUS_CONNECTORS_PATH = "/plugins/ix-connectors/connectors";
-export const NEXUS_DEFAULT_INTEGRATIONS = { label: "Integrations", to: "/plugins" };
+export const NEXUS_DEFAULT_INTEGRATIONS = {
+  label: "Integrations",
+  to: "/plugins",
+};
 export const NEXUS_ASSETS_PLUGIN_ID = "ix-assets";
 export const NEXUS_WORKFLOWS_PLUGIN_ID = "ix-workflows";
 export const NEXUS_WORKFLOWS_PATH = "/plugins/ix-workflows/workflows";
-export const NEXUS_WORKFLOWS = { label: "Workflows", to: NEXUS_WORKFLOWS_PATH, icon: "Workflow" };
+export const NEXUS_WORKFLOWS = {
+  label: "Workflows",
+  to: NEXUS_WORKFLOWS_PATH,
+  icon: "Workflow",
+};
 export const NEXUS_SITES_PLUGIN_ID = "ix-sites";
 export const NEXUS_SITES_PATH = "/plugins/ix-sites/sites";
 export const NEXUS_ASSETS_PATH = "/plugins/ix-assets/assets";
@@ -62,6 +71,8 @@ export const NEXUS_BROWSER_PLUGIN_ID = "ix-browser";
 export const NEXUS_BROWSER_PATH = "/plugins/ix-browser/ix-browser";
 export const NEXUS_PROVIDERS_PLUGIN_ID = "ix-providers";
 export const NEXUS_PROVIDERS_PATH = "/plugins/ix-providers/providers";
+export const NEXUS_SUPERADMIN_PLUGIN_ID = "ix-superadmin";
+export const NEXUS_SUPERADMIN_PATH = "/plugins/ix-superadmin/superadmin";
 export const NEXUS_CAPACITY_PLUGIN_ID = "ix-capacity";
 export const NEXUS_CAPACITY_PATH = "/plugins/ix-capacity/capacity";
 export const NEXUS_INBOX_PLUGIN_ID = "ix-comms";
@@ -69,12 +80,25 @@ export const NEXUS_INBOX_PATH = "/plugins/ix-comms/inbox";
 export const NEXUS_SKILLS_PLUGIN_ID = "ix-skills";
 export const NEXUS_SKILLS_PATH = "/plugins/ix-skills/skills";
 export const NEXUS_SKILLS_FALLBACK_PATH = "/skills";
-export const NEXUS_DEFAULT_DOCS = { label: "Docs", to: NEXUS_DOCS_PATH, icon: "FileText" };
+export const NEXUS_DEFAULT_DOCS = {
+  label: "Docs",
+  to: NEXUS_DOCS_PATH,
+  icon: "FileText",
+};
 
 export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
   const items: NexusNavItem[] = [
     { id: "home", label: "Home", icon: "Home", to: "/" },
-    ...(targets.inbox ? [{ id: "inbox" as const, label: "Inbox", icon: "Mail", to: targets.inbox }] : []),
+    ...(targets.inbox
+      ? [
+          {
+            id: "inbox" as const,
+            label: "Inbox",
+            icon: "Mail",
+            to: targets.inbox,
+          },
+        ]
+      : []),
     {
       id: "integrations",
       label: targets.integrations.label,
@@ -87,31 +111,89 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
       icon: targets.scheduled.icon,
       to: targets.scheduled.to,
     },
-    { id: "skills", label: "Skills", icon: "Zap", to: targets.skills ?? NEXUS_SKILLS_FALLBACK_PATH },
+    {
+      id: "skills",
+      label: "Skills",
+      icon: "Zap",
+      to: targets.skills ?? NEXUS_SKILLS_FALLBACK_PATH,
+    },
     { id: "sites", label: "Sites", icon: "Layers", to: targets.sites },
-    { id: "docs", label: targets.docs.label, icon: targets.docs.icon, to: targets.docs.to },
+    {
+      id: "docs",
+      label: targets.docs.label,
+      icon: targets.docs.icon,
+      to: targets.docs.to,
+    },
   ];
   if (targets.memory !== null)
-    items.push({ id: "memory", label: "Memory", icon: "Brain", to: targets.memory });
+    items.push({
+      id: "memory",
+      label: "Memory",
+      icon: "Brain",
+      to: targets.memory,
+    });
   if (targets.browser !== null)
-    items.push({ id: "browser", label: "Agent Browser", icon: "Browser", to: targets.browser });
+    items.push({
+      id: "browser",
+      label: "Agent Browser",
+      icon: "Browser",
+      to: targets.browser,
+    });
   if (targets.providers)
-    items.push({ id: "providers", label: "Providers", icon: "AiBrain01", to: targets.providers });
+    items.push({
+      id: "providers",
+      label: "Providers",
+      icon: "AiBrain01",
+      to: targets.providers,
+    });
   if (targets.capacity)
-    items.push({ id: "capacity", label: "Capacity", icon: "ChartColumn", to: targets.capacity });
+    items.push({
+      id: "capacity",
+      label: "Capacity",
+      icon: "ChartColumn",
+      to: targets.capacity,
+    });
+  if (targets.superadmin)
+    items.push({
+      id: "superadmin",
+      label: "Superadmin",
+      icon: "ShieldCheck",
+      to: targets.superadmin,
+    });
   return items;
 }
 
 export function resolveNexusNavId(pathname: string): NexusNavId | null {
   if (pathname === "/") return "home";
-  if (pathname === NEXUS_INBOX_PATH || pathname.startsWith(`${NEXUS_INBOX_PATH}/`)) return "inbox";
-  if (pathname === NEXUS_MEMORY_PATH || pathname.startsWith(`${NEXUS_MEMORY_PATH}/`))
+  if (
+    pathname === NEXUS_SUPERADMIN_PATH ||
+    pathname.startsWith(`${NEXUS_SUPERADMIN_PATH}/`)
+  )
+    return "superadmin";
+  if (
+    pathname === NEXUS_INBOX_PATH ||
+    pathname.startsWith(`${NEXUS_INBOX_PATH}/`)
+  )
+    return "inbox";
+  if (
+    pathname === NEXUS_MEMORY_PATH ||
+    pathname.startsWith(`${NEXUS_MEMORY_PATH}/`)
+  )
     return "memory";
-  if (pathname === NEXUS_BROWSER_PATH || pathname.startsWith(`${NEXUS_BROWSER_PATH}/`))
+  if (
+    pathname === NEXUS_BROWSER_PATH ||
+    pathname.startsWith(`${NEXUS_BROWSER_PATH}/`)
+  )
     return "browser";
-  if (pathname === NEXUS_PROVIDERS_PATH || pathname.startsWith(`${NEXUS_PROVIDERS_PATH}/`))
+  if (
+    pathname === NEXUS_PROVIDERS_PATH ||
+    pathname.startsWith(`${NEXUS_PROVIDERS_PATH}/`)
+  )
     return "providers";
-  if (pathname === NEXUS_CAPACITY_PATH || pathname.startsWith(`${NEXUS_CAPACITY_PATH}/`))
+  if (
+    pathname === NEXUS_CAPACITY_PATH ||
+    pathname.startsWith(`${NEXUS_CAPACITY_PATH}/`)
+  )
     return "capacity";
   if (
     pathname === NEXUS_SITES_FALLBACK_PATH ||
@@ -365,6 +447,7 @@ const NAV_LABELS: Record<NexusNavId, string> = {
   browser: "Agent Browser",
   providers: "Providers",
   capacity: "Capacity",
+  superadmin: "Superadmin",
 };
 
 export function nexusBreadcrumbs(args: {

@@ -24,6 +24,8 @@ import {
   NEXUS_BROWSER_PLUGIN_ID,
   NEXUS_PROVIDERS_PATH,
   NEXUS_PROVIDERS_PLUGIN_ID,
+  NEXUS_SUPERADMIN_PATH,
+  NEXUS_SUPERADMIN_PLUGIN_ID,
   NEXUS_CAPACITY_PATH,
   NEXUS_CAPACITY_PLUGIN_ID,
   NEXUS_SKILLS_PATH,
@@ -60,9 +62,14 @@ export function useNexusNavTargets(): NexusNavTargets {
   const hasProviders = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_PROVIDERS_PLUGIN_ID,
   );
-  const hasCapacity = panels.some(
-    (entry) => entry.chrome.pluginId === NEXUS_CAPACITY_PLUGIN_ID,
-  ) && roleAtLeast(currentIxRole(), "admin");
+  const hasCapacity =
+    panels.some(
+      (entry) => entry.chrome.pluginId === NEXUS_CAPACITY_PLUGIN_ID,
+    ) && roleAtLeast(currentIxRole(), "admin");
+  const hasSuperadmin =
+    panels.some(
+      (entry) => entry.chrome.pluginId === NEXUS_SUPERADMIN_PLUGIN_ID,
+    ) && roleAtLeast(currentIxRole(), "admin");
   const hasInbox = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_INBOX_PLUGIN_ID,
   );
@@ -75,7 +82,9 @@ export function useNexusNavTargets(): NexusNavTargets {
         ? NEXUS_WORKFLOWS
         : {
             label: "Scheduled",
-            to: hasAutomations ? getAutomationsRoutePath() : NEXUS_SCHEDULED_PATH,
+            to: hasAutomations
+              ? getAutomationsRoutePath()
+              : NEXUS_SCHEDULED_PATH,
             icon: "TimeSchedule",
           },
       integrations: hasConnectors
@@ -89,9 +98,23 @@ export function useNexusNavTargets(): NexusNavTargets {
       browser: hasBrowser ? NEXUS_BROWSER_PATH : null,
       providers: hasProviders ? NEXUS_PROVIDERS_PATH : null,
       capacity: hasCapacity ? NEXUS_CAPACITY_PATH : null,
+      superadmin: hasSuperadmin ? NEXUS_SUPERADMIN_PATH : null,
       skills: hasSkills ? NEXUS_SKILLS_PATH : NEXUS_SKILLS_FALLBACK_PATH,
       inbox: hasInbox ? NEXUS_INBOX_PATH : null,
     }),
-    [hasAutomations, hasWorkflows, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser, hasProviders, hasCapacity, hasSkills, hasInbox],
+    [
+      hasAutomations,
+      hasWorkflows,
+      hasConnectors,
+      hasAssets,
+      hasSites,
+      hasMemory,
+      hasBrowser,
+      hasProviders,
+      hasCapacity,
+      hasSuperadmin,
+      hasSkills,
+      hasInbox,
+    ],
   );
 }
