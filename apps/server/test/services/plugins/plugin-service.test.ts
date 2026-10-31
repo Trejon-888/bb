@@ -1390,6 +1390,62 @@ describe("plugin service", () => {
     });
   });
 
+  it("adopts a local checkout over a marketplace git install and keeps its settings, secrets, and schedules", async () => {
+    const serverSource = (marker: string) => `
+      export default function plugin(bb) {
+        bb.settings.define({
+          floor: { type: "string", label: "Floor", default: "60" },
+          token: { type: "string", label: "Token", secret: true },
+        });
+        bb.background.schedule("sweep", "0 * * * *", async () => {});
+        globalThis.__adoptedCheckout = "${marker}";
+      }`;
+    const managed = await writePlugin(join(workDir, "managed"), {
+      name: "bb-plugin-adopted",
+      serverSource: serverSource("managed"),
+    });
+    const local = await writePlugin(join(workDir, "local"), {
+      name: "bb-plugin-adopted",
+      serverSource: serverSource("local"),
+    });
+    await service.installPath(managed);
+    await service.updateSettings("adopted", { floor: "1", token: "s3cret" });
+    const pathRow = getInstalledPlugin(db, "adopted");
+    upsertInstalledPlugin(db, {
+      id: "adopted",
+      source: "git:https://github.com/acme/adopted.git@semver:>=0.1.0 <1.0.0",
+      provenance: { kind: "catalog", marketplace: "acme", entryId: "adopted" },
+      sourceIntent: {
+        kind: "git",
+        url: "https://github.com/acme/adopted.git",
+        subdirectory: null,
+        selector: { kind: "range", range: ">=0.1.0 <1.0.0", tagPrefix: "", resolvedTag: "v0.1.0" },
+      },
+      exactResolution: { kind: "git", commit: "b".repeat(40) },
+      updateState: {
+        lastCheckAt: null,
+        availableCompatibleVersion: null,
+        newestIncompatibleVersion: null,
+        statusDetail: null,
+      },
+      activeArtifactId: null,
+      rootDir: managed,
+      version: pathRow?.version ?? "0.0.0",
+      enabled: true,
+      enabledFollowsDefault: false,
+    });
+
+    const adopted = await service.installPath(local);
+
+    expect(adopted).toMatchObject({ id: "adopted", status: "running", source: `path:${local}`, rootDir: local });
+    expect((globalThis as Record<string, unknown>).__adoptedCheckout).toBe("local");
+    expect(getInstalledPlugin(db, "adopted")).toMatchObject({ sourceKind: "path", sourcePath: local });
+    expect((await service.getSettings("adopted"))?.values).toEqual({ floor: "1", token: { set: true } });
+    expect(
+      db.$client.prepare("SELECT name FROM plugin_schedules WHERE plugin_id = ?").all("adopted"),
+    ).toEqual([{ name: "sweep" }]);
+  });
+
   it("keeps a moved path plugin disabled instead of starting it", async () => {
     const serverSource = (marker: string) => `
       export default function plugin() {

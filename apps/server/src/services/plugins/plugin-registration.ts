@@ -261,15 +261,24 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
   ): InstalledPluginRow | undefined {
     if (
       existing === undefined ||
-      existing.provenance !== "direct" ||
-      existing.sourceKind !== "path" ||
       identity.provenance.kind !== "direct" ||
-      identity.sourceIntent.kind !== "path" ||
-      existing.sourcePath === identity.sourceIntent.canonicalPath
+      identity.sourceIntent.kind !== "path"
     ) {
       return undefined;
     }
-    return existing;
+    if (existing.sourceKind === "path") {
+      if (
+        existing.provenance !== "direct" ||
+        existing.sourcePath === identity.sourceIntent.canonicalPath
+      ) {
+        return undefined;
+      }
+      return existing;
+    }
+    if (existing.sourceKind === "git" || existing.sourceKind === "npm") {
+      return existing;
+    }
+    return undefined;
   }
 
   function moveStartFailure(pluginId: string): string | null {
