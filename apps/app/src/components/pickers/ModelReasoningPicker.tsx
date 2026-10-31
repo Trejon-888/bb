@@ -1,4 +1,11 @@
 import {
+  IX_PICKER_PROVIDERS,
+  ixPickerOptions,
+  ixProviderConnected,
+  IxProviderConnect,
+  useIxProviderPicker,
+} from "./ix-provider-model";
+import {
   useCallback,
   useEffect,
   useId,
@@ -208,7 +215,7 @@ interface ModelReasoningPickerProps {
 }
 
 export function ModelReasoningPicker({
-  providerOptions,
+  providerOptions: suppliedProviderOptions,
   providerRouting,
   selectedProviderId,
   onSelectedProviderChange,
@@ -247,6 +254,14 @@ export function ModelReasoningPicker({
   const toggleShortcut = commandShortcutsEnabled
     ? registeredToggleShortcut
     : null;
+  const ixPicker = useIxProviderPicker(open);
+  const providerOptions = useMemo(
+    () =>
+      ixPicker.enabled
+        ? ixPickerOptions(suppliedProviderOptions)
+        : suppliedProviderOptions,
+    [ixPicker.enabled, suppliedProviderOptions],
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const listRef = useResetPickerScroll<HTMLDivElement>(searchQuery);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -285,6 +300,16 @@ export function ModelReasoningPicker({
   }
 
   const activeProviderId = previewProviderId ?? selectedProviderId;
+  const ixPoolProvider = IX_PICKER_PROVIDERS.find(
+    (p) => p.id === activeProviderId,
+  );
+  const ixNeedsConnection =
+    ixPicker.enabled &&
+    (!ixPicker.query.data ||
+      !ixProviderConnected(
+        ixPicker.query.data.accounts,
+        ixPoolProvider?.provider ?? "",
+      ));
 
   const selectedProvider = providerOptions.find(
     (p) => p.value === selectedProviderId,
@@ -304,7 +329,7 @@ export function ModelReasoningPicker({
   const selectedModelLoadFailed =
     modelLoadFailed || selectedModelLoadErrorMatches;
   const canSwitchProviders =
-    hasMultipleProviders &&
+    (ixPicker.enabled || hasMultipleProviders) &&
     onSelectedProviderChange !== undefined &&
     providerOptions.length > 1;
   const queryClient = useQueryClient();
@@ -462,7 +487,9 @@ export function ModelReasoningPicker({
   const showProviderTabs =
     (handoffMode || canSwitchProviders) &&
     providerOptions.length > 1 &&
-    (!isShowingModelError || activeModelErrorIsProviderSpecific);
+    (ixPicker.enabled ||
+      !isShowingModelError ||
+      activeModelErrorIsProviderSpecific);
 
   const activeBrandPrefix = activeProvider?.brandPrefix;
   const filteredModelOptions = useMemo(() => {
@@ -595,7 +622,7 @@ export function ModelReasoningPicker({
 
   const handleModelSelect = useCallback(
     (model: string) => {
-      if (previewSelectionBlocked) return;
+      if (previewSelectionBlocked || ixNeedsConnection) return;
       if (handoff !== undefined && handoffMode) {
         handoff.onSelect({
           providerId: activeProviderId,
@@ -620,6 +647,7 @@ export function ModelReasoningPicker({
       isPreviewing,
       onModelChange,
       previewSelection,
+      ixNeedsConnection,
       previewSelectionBlocked,
       reasoningValue,
     ],
@@ -642,6 +670,18 @@ export function ModelReasoningPicker({
   );
   const handleProviderSelect = useCallback(
     (providerId: string) => {
+      const pool = IX_PICKER_PROVIDERS.find((p) => p.id === providerId);
+      if (
+        ixPicker.enabled &&
+        pool &&
+        (!ixPicker.query.data ||
+          !ixProviderConnected(ixPicker.query.data.accounts, pool.provider))
+      ) {
+        setPreviewProviderId(providerId);
+        setSearchQuery("");
+        setActiveIndex(-1);
+        return;
+      }
       if (
         open &&
         handoff !== undefined &&
@@ -661,6 +701,8 @@ export function ModelReasoningPicker({
       handoff,
       handoffMode,
       handleHandoffProviderSelect,
+      ixPicker.enabled,
+      ixPicker.query.data,
       onSelectedProviderChange,
       open,
       selectedProviderId,
@@ -1127,47 +1169,74 @@ export function ModelReasoningPicker({
           />
         ) : null}
 
-        <ModelReasoningMenu
-          listRef={listRef}
-          providerId={activeProviderId}
-          provider={activeProvider}
-          providerLabel={activeProviderLabel}
-          listboxId={showSearchInput ? listboxId : undefined}
-          optionId={optionDomId}
-          modelIsLoading={activeModelIsLoading}
-          isShowingModelError={isShowingModelError}
-          hasModelOptions={hasActiveModelOptions}
-          modelLoadError={
-            activeModelLoadErrorMatches ? activeModelLoadError : null
-          }
-          modelLoadFailed={activeModelLoadFailed}
-          navRows={navRows}
-          highlightedIndex={highlightedIndex}
-          isSearching={isSearching}
-          showMoreModels={showMoreModels}
-          onToggleMoreModels={toggleShowMoreModels}
-          moreModelOptions={filteredMoreModelOptions}
-          moreModelsOpen={moreModelsOpen}
-          onMoreModelsOpenChange={setMoreModelsOpen}
-          isPreviewing={isPreviewing}
-          modelValue={modelValue}
-          selectionBlocked={previewSelectionBlocked}
-          onModelSelect={handleModelSelect}
-          showReasoningSection={showReasoningSection}
-          reasoningValue={activeReasoningValue}
-          reasoningOptions={activeReasoningOptions}
-          onReasoningSelect={handleReasoningSelect}
-          serviceTierOptions={activeServiceTierOptions}
-          serviceTierValue={serviceTierValue}
-          onServiceTierChange={onServiceTierChange}
-          agentSections={isPreviewing ? NO_AGENT_SECTIONS : agentSections}
-          onAgentOptionChange={onAgentOptionChange}
-          onStartHandoff={
-            handoff !== undefined && !handoffMode && providerOptions.length > 0
-              ? startHandoffMode
-              : null
-          }
-        />
+        {ixNeedsConnection ? (
+          ixPicker.query.isError ? (
+            <div className="p-3 text-sm">
+              <p role="alert">Could not check provider connections.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void ixPicker.query.refetch()}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : ixPicker.query.data ? (
+            <IxProviderConnect
+              key={activeProviderId}
+              providerId={activeProviderId}
+              viewer={ixPicker.query.data.viewer}
+            />
+          ) : (
+            <div className="p-3 text-sm text-muted-foreground">
+              Checking connection…
+            </div>
+          )
+        ) : (
+          <ModelReasoningMenu
+            listRef={listRef}
+            providerId={activeProviderId}
+            provider={activeProvider}
+            providerLabel={activeProviderLabel}
+            listboxId={showSearchInput ? listboxId : undefined}
+            optionId={optionDomId}
+            modelIsLoading={activeModelIsLoading}
+            isShowingModelError={isShowingModelError}
+            hasModelOptions={hasActiveModelOptions}
+            modelLoadError={
+              activeModelLoadErrorMatches ? activeModelLoadError : null
+            }
+            modelLoadFailed={activeModelLoadFailed}
+            navRows={navRows}
+            highlightedIndex={highlightedIndex}
+            isSearching={isSearching}
+            showMoreModels={showMoreModels}
+            onToggleMoreModels={toggleShowMoreModels}
+            moreModelOptions={filteredMoreModelOptions}
+            moreModelsOpen={moreModelsOpen}
+            onMoreModelsOpenChange={setMoreModelsOpen}
+            isPreviewing={isPreviewing}
+            modelValue={modelValue}
+            selectionBlocked={previewSelectionBlocked}
+            onModelSelect={handleModelSelect}
+            showReasoningSection={showReasoningSection}
+            reasoningValue={activeReasoningValue}
+            reasoningOptions={activeReasoningOptions}
+            onReasoningSelect={handleReasoningSelect}
+            serviceTierOptions={activeServiceTierOptions}
+            serviceTierValue={serviceTierValue}
+            onServiceTierChange={onServiceTierChange}
+            agentSections={isPreviewing ? NO_AGENT_SECTIONS : agentSections}
+            onAgentOptionChange={onAgentOptionChange}
+            onStartHandoff={
+              handoff !== undefined &&
+              !handoffMode &&
+              providerOptions.length > 0
+                ? startHandoffMode
+                : null
+            }
+          />
+        )}
       </PopoverContent>
     </Popover>
   );
