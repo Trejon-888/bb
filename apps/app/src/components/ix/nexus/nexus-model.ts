@@ -22,7 +22,8 @@ export type NexusNavId =
   | "memory"
   | "browser"
   | "providers"
-  | "capacity";
+  | "capacity"
+  | "superadmin";
 
 export interface NexusNavItem {
   id: NexusNavId;
@@ -40,6 +41,7 @@ export interface NexusNavTargets {
   browser: string | null;
   providers?: string | null;
   capacity?: string | null;
+  superadmin?: string | null;
   /** ix-comms (the Inbox) when installed. */
   inbox?: string | null;
   /** ix-skills when installed, else bb's own skills page. */
@@ -62,6 +64,8 @@ export const NEXUS_BROWSER_PLUGIN_ID = "ix-browser";
 export const NEXUS_BROWSER_PATH = "/plugins/ix-browser/ix-browser";
 export const NEXUS_PROVIDERS_PLUGIN_ID = "ix-providers";
 export const NEXUS_PROVIDERS_PATH = "/plugins/ix-providers/providers";
+export const NEXUS_SUPERADMIN_PLUGIN_ID = "ix-superadmin";
+export const NEXUS_SUPERADMIN_PATH = "/plugins/ix-superadmin/superadmin";
 export const NEXUS_CAPACITY_PLUGIN_ID = "ix-capacity";
 export const NEXUS_CAPACITY_PATH = "/plugins/ix-capacity/capacity";
 export const NEXUS_INBOX_PLUGIN_ID = "ix-comms";
@@ -99,11 +103,14 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
     items.push({ id: "providers", label: "Providers", icon: "AiBrain01", to: targets.providers });
   if (targets.capacity)
     items.push({ id: "capacity", label: "Capacity", icon: "ChartColumn", to: targets.capacity });
+  if (targets.superadmin)
+    items.push({ id: "superadmin", label: "Superadmin", icon: "ShieldCheck", to: targets.superadmin });
   return items;
 }
 
 export function resolveNexusNavId(pathname: string): NexusNavId | null {
   if (pathname === "/") return "home";
+  if (pathname === NEXUS_SUPERADMIN_PATH || pathname.startsWith(`${NEXUS_SUPERADMIN_PATH}/`)) return "superadmin";
   if (pathname === NEXUS_INBOX_PATH || pathname.startsWith(`${NEXUS_INBOX_PATH}/`)) return "inbox";
   if (pathname === NEXUS_MEMORY_PATH || pathname.startsWith(`${NEXUS_MEMORY_PATH}/`))
     return "memory";
