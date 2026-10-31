@@ -26,7 +26,7 @@ import {
   type IxRole,
   type IxSocialProvider,
 } from "./config.js";
-import { setIxThreadUserResolver, type IxActor } from "./context.js";
+import { setIxPersonThreadVisibility, setIxThreadUserResolver, type IxActor } from "./context.js";
 import { IX_NOT_MEMBER_MESSAGE } from "./middleware.js";
 import { createIxKv, type IxKv } from "./kv.js";
 import { createIxAccessStore, ixSocketAccessFilter, setIxFallbackAccessStore, type IxAccessStore } from "./access.js";
@@ -750,6 +750,12 @@ export async function createIxAuthService(args: {
     if (member === undefined) return undefined;
     const restricted = access.mode() === "restricted" && !roleAtLeast(member.role, "admin");
     return { id: member.userId, email: member.email, name: member.name, role: member.role, ...(restricted ? { projectIds: Object.keys(access.grantsFor(member.userId)), projectAccess: access.grantsFor(member.userId) } : {}) };
+  });
+  setIxPersonThreadVisibility(async (userId, threadId) => {
+    const member = (await listMembers()).find((row) => row.userId === userId);
+    if (member === undefined) return false;
+    const actor: IxActor = { kind: "user", user: { id: member.userId, email: member.email, name: member.name }, organizationId: "", memberId: "", role: member.role };
+    return ixSocketAccessFilter(args.db, access, actor)?.canSeeThread(threadId) === true;
   });
   setIxAgentTokenIssuer(config.mode === "team" ? mintAgentToken : null);
 

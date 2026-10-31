@@ -4,6 +4,8 @@ import {
   cliCommand,
   defineCli,
   type BbPluginApi,
+  type ExperimentalPluginRpcCaller,
+  type PluginCliContext,
 } from "@get-bb/plugin-sdk";
 import { z } from "zod";
 import {
@@ -246,11 +248,31 @@ export function createPushNotificationsPlugin(
 
     bb.rpc.register(pushNotificationsRpcContract, {
       "notifications.test": ({ channel }) => sendTest(channel),
-      "pushSubscriptions.list": async () => ({
-        subscriptions: await subscriptions.listSummaries(),
-      }),
-      "pushSubscriptions.add": (input) => subscriptions.add(input),
-      "pushSubscriptions.remove": async ({ id }) => {
+      "pushSubscriptions.list": async (_input, context) => {
+        const person = limitedPerson(context.experimental_caller);
+        const rows = await subscriptions.listSummaries();
+        return {
+          subscriptions:
+            person === null
+              ? rows
+              : rows.filter((row) => row.userId === person),
+        };
+      },
+      "pushSubscriptions.add": (input, context) => {
+        const user =
+          context.experimental_caller.kind === "client"
+            ? context.experimental_caller.experimental_user
+            : undefined;
+        return subscriptions.add(input, user?.id);
+      },
+      "pushSubscriptions.remove": async ({ id }, context) => {
+        const person = limitedPerson(context.experimental_caller);
+        if (person !== null) {
+          const rows = await subscriptions.listSummaries();
+          if (!rows.some((row) => row.id === id && row.userId === person)) {
+            throw new Error(`Push subscription not found: ${id}`);
+          }
+        }
         if (!(await subscriptions.remove(id))) {
           throw new Error(`Push subscription not found: ${id}`);
         }
@@ -322,8 +344,11 @@ export function createPushNotificationsPlugin(
           list: cliCommand({
             summary: "List registered push devices",
             options: { json: JSON_OPTION },
-            async run(input) {
-              const rows = await subscriptions.listSummaries();
+            async run(input, ctx) {
+              const person = cliPerson(ctx);
+              const rows = (await subscriptions.listSummaries()).filter(
+                (row) => person === null || row.userId === person,
+              );
               return {
                 exitCode: 0,
                 stdout: input.options.json
@@ -358,7 +383,7 @@ export function createPushNotificationsPlugin(
               },
               json: JSON_OPTION,
             },
-            async run(input) {
+            async run(input, ctx) {
               const parsed = addPushSubscriptionInputSchema.safeParse({
                 expoPushToken: input.options.token,
                 platform: input.options.platform,
@@ -370,7 +395,10 @@ export function createPushNotificationsPlugin(
                   { code: "invalid_device" },
                 );
               }
-              const result = await subscriptions.add(parsed.data);
+              const result = await subscriptions.add(
+                parsed.data,
+                ctx.experimental_user?.id,
+              );
               return {
                 exitCode: 0,
                 stdout: input.options.json
@@ -390,8 +418,19 @@ export function createPushNotificationsPlugin(
               },
             ],
             options: { json: JSON_OPTION },
-            async run(input) {
+            async run(input, ctx) {
               const id = input.positionals.id;
+              const person = cliPerson(ctx);
+              if (
+                person !== null &&
+                !(await subscriptions.listSummaries()).some(
+                  (row) => row.id === id && row.userId === person,
+                )
+              ) {
+                throw new PluginCliError(`Push subscription not found: ${id}`, {
+                  code: "subscription_not_found",
+                });
+              }
               if (!(await subscriptions.remove(id))) {
                 throw new PluginCliError(`Push subscription not found: ${id}`, {
                   code: "subscription_not_found",
@@ -491,6 +530,23 @@ export function createPushNotificationsPlugin(
       },
     });
   };
+}
+
+function cliPerson(ctx: PluginCliContext): string | null {
+  const user = ctx.experimental_user;
+  if (user === undefined || user.role === "owner" || user.role === "admin") {
+    return null;
+  }
+  return user.id;
+}
+
+function limitedPerson(caller: ExperimentalPluginRpcCaller): string | null {
+  if (caller.kind !== "client") return null;
+  const user = caller.experimental_user;
+  if (user === undefined || user.role === "owner" || user.role === "admin") {
+    return null;
+  }
+  return user.id;
 }
 
 export default createPushNotificationsPlugin();

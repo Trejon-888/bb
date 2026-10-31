@@ -139,6 +139,7 @@ import {
   readPluginSettingsValues,
   writePluginSettingsUpdate,
 } from "./plugin-settings.js";
+import { ixPersonCanSeeThread } from "../../ix/context.js";
 
 export type {
   BbPluginApi,
@@ -1050,6 +1051,10 @@ export function createPluginApi(options: {
   };
 
   const server: PluginServerApi = {
+    experimental_personCanSeeThread(userId, threadId) {
+      assertLive();
+      return ixPersonCanSeeThread(userId, threadId);
+    },
     get experimental_appUrl(): string | null {
       assertLive();
       return getAppUrl();

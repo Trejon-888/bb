@@ -6,6 +6,7 @@ import {
   type BbSdk,
 } from "@bb/sdk";
 import type { ExperimentalPluginRpcCaller } from "@get-bb/plugin-sdk";
+import { withIxOnBehalfHeader } from "../../ix/on-behalf.js";
 
 export const PLUGIN_RPC_CALLER_HEADER = "x-bb-plugin-caller";
 
@@ -61,7 +62,7 @@ export function createPluginRpcCallerSdk(args: {
   return createNodeBbSdk({
     baseUrl: args.baseUrl,
     fetch: (input, init) => {
-      const headers = new Headers(init?.headers);
+      const headers = withIxOnBehalfHeader(new Headers(init?.headers));
       headers.set(PLUGIN_RPC_CALLER_HEADER, args.token);
       return timeoutFetch(input, { ...init, headers });
     },

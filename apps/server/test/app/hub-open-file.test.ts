@@ -62,3 +62,28 @@ describe("NotificationHub.notifyThreadOpen", () => {
     }
   });
 });
+
+describe("NotificationHub.notifyPluginSignal", () => {
+  it("sends a signal about a thread only to clients that may see that thread", () => {
+    const hub = new NotificationHub();
+    const allowed = createMockHubSocket();
+    const blocked = createMockHubSocket();
+    const unfiltered = createMockHubSocket();
+    for (const socket of [allowed, blocked, unfiltered]) hub.registerClient(socket);
+    const filter = (visible: boolean) => ({
+      canSeeThread: () => visible,
+      canSeeProject: () => true,
+      canSeeEnvironment: () => true,
+    });
+    hub.setSocketAccessFilter(allowed, filter(true));
+    hub.setSocketAccessFilter(blocked, filter(false));
+
+    expect(hub.notifyPluginSignal("push-notifications", "notify", { threadId: "thr_1", title: "Private" })).toBe(2);
+    expect(blocked.messages).toHaveLength(0);
+    expect(allowed.messages).toHaveLength(1);
+    expect(unfiltered.messages).toHaveLength(1);
+
+    expect(hub.notifyPluginSignal("push-notifications", "notify", { threadId: null, title: "Test" })).toBe(3);
+    expect(blocked.messages).toHaveLength(1);
+  });
+});

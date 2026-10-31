@@ -62,6 +62,17 @@ export function setIxThreadUserResolver(resolver: ((threadId: string) => Promise
   threadUserResolver = resolver;
 }
 
+let personThreadVisibility: ((userId: string, threadId: string) => Promise<boolean>) | null = null;
+
+export function setIxPersonThreadVisibility(resolver: ((userId: string, threadId: string) => Promise<boolean>) | null): void {
+  personThreadVisibility = resolver;
+}
+
+export async function ixPersonCanSeeThread(userId: string, threadId: string): Promise<boolean> {
+  if (personThreadVisibility === null) return true;
+  return personThreadVisibility(userId, threadId).catch(() => false);
+}
+
 export async function ixThreadUserField(threadId: string): Promise<{ experimental_user?: IxThreadUser }> {
   if (threadUserResolver === null) return {};
   const user = await threadUserResolver(threadId).catch(() => undefined);

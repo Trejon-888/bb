@@ -7,6 +7,7 @@ import { roleAtLeast } from "./config.js";
 import { setIxActor, type IxActor } from "./context.js";
 import { restrictedScopeFor, runWithIxRequestAccess } from "./access.js";
 import { ixTokenKind } from "./agent-token.js";
+import { IX_ON_BEHALF_HEADER, resolveIxOnBehalf } from "./on-behalf.js";
 
 const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 const VIEWER_WRITE_ALLOWLIST = [
@@ -15,6 +16,8 @@ const VIEWER_WRITE_ALLOWLIST = [
   /^\/system\/ui-preferences/,
   /^\/plugins\/[^/]+\/rpc\//,
 ];
+
+const ON_BEHALF_READ_PATHS = [/^\/files\/(read|list|paths|previews)$/];
 
 export const IX_NOT_MEMBER_MESSAGE = "This account has no access to this workspace. Ask an admin for an invitation.";
 
@@ -124,6 +127,13 @@ function pluginCallerActor(context: Context, deps: IxGateDeps): IxActor | null {
   return pluginId === undefined ? null : { kind: "plugin-caller", pluginId };
 }
 
+function onBehalfActor(context: Context): IxActor | null {
+  const token = context.req.header(IX_ON_BEHALF_HEADER);
+  if (token === undefined || token === "" || !isLoopbackWithoutOrigin(context)) return null;
+  if (context.req.path.startsWith("/api/v1/plugins/")) return null;
+  return resolveIxOnBehalf(token) ?? null;
+}
+
 function localPublicPluginRouteActor(context: Context, deps: IxGateDeps): IxActor | null {
   if (deps.pluginRouteAuth === undefined || !isLoopbackWithoutOrigin(context)) return null;
   const match = PLUGIN_HTTP_PATH.exec(context.req.path);
@@ -150,11 +160,13 @@ export function ixApiGate(deps: IxGateDeps): MiddlewareHandler {
       setIxActor(context, publicActor);
       return next();
     }
-    const actor = await resolveIxActor(context, deps);
+    const behalf = onBehalfActor(context);
+    const actor = behalf ?? (await resolveIxActor(context, deps));
     if (actor === null) {
       throw new ApiError(401, "ix_unauthenticated", "Sign in to use this server");
     }
     setIxActor(context, actor);
+    const behalfRead = behalf !== null && ON_BEHALF_READ_PATHS.some((pattern) => pattern.test(context.req.path.replace(/^\/api\/v1/, "")));
     if (actor.kind === "user" && !roleAtLeast(actor.role, "member")) {
       const method = context.req.method.toUpperCase();
       const path = context.req.path.replace(/^\/api\/v1/, "");
@@ -162,13 +174,14 @@ export function ixApiGate(deps: IxGateDeps): MiddlewareHandler {
         method === "GET" ||
         method === "HEAD" ||
         method === "OPTIONS" ||
+        behalfRead ||
         VIEWER_WRITE_ALLOWLIST.some((pattern) => pattern.test(path));
       if (!allowed) {
         throw new ApiError(403, "ix_forbidden", "Viewers cannot change this server");
       }
     }
     const apiPath = context.req.path.replace(/^\/api\/v1/, "");
-    const readOnlyPath = VIEWER_WRITE_ALLOWLIST.some((pattern) => pattern.test(apiPath));
+    const readOnlyPath = behalfRead || VIEWER_WRITE_ALLOWLIST.some((pattern) => pattern.test(apiPath));
     const scope = restrictedScopeFor(actor, deps.ixAuth.access, context.req.method, readOnlyPath);
     if (actor.kind === "user" && !roleAtLeast(actor.role, "admin")) assertPluginAdminRoute(context.req.method, apiPath);
     if (scope !== null) assertRestrictedRoute(context.req.method, apiPath);

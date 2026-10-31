@@ -1909,6 +1909,17 @@ export interface PluginEvents {
 
 export interface PluginServerApi {
   /**
+   * Whether this workspace person may see a chat, by the same rule the
+   * server uses for live updates (project access, chat sharing, chat people).
+   * Always true on a server without workspace people. For plugins that deliver
+   * a chat's content outside a request, such as push notifications.
+   */
+  experimental_personCanSeeThread(
+    userId: string,
+    threadId: string,
+  ): Promise<boolean>;
+
+  /**
    * The operator-configured public app URL from `BB_APP_URL`, or `null` when
    * the operator has not configured one. This value is not bind-gated.
    */

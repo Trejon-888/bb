@@ -369,7 +369,19 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
       } satisfies ClientNotification);
     }
     if (!config.mobileEnabled) return;
-    const rows = await subscriptions.list();
+    const rows = (
+      await Promise.all(
+        (await subscriptions.list()).map(async (row) =>
+          row.userId === undefined ||
+          (await bb.server.experimental_personCanSeeThread(
+            row.userId,
+            thread.id,
+          ))
+            ? [row]
+            : [],
+        ),
+      )
+    ).flat();
     if (rows.length === 0) return;
     const serverUrl = bb.server.experimental_appUrl;
     const deliveries: Delivery[] = rows.map((subscription) => ({

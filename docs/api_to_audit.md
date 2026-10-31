@@ -1514,6 +1514,22 @@ Stabilize when: viewer access is decided per method by more than one plugin
 family outside ix, the flag name survives that review, and core's own read
 routes for viewers are expressed with the same rule.
 
+## `PluginServerApi.experimental_personCanSeeThread`
+
+`bb.server.experimental_personCanSeeThread(userId, threadId)` answers whether
+an ix workspace person may see a chat, by the same rule the live socket uses
+(`ixSocketAccessFilter(...).canSeeThread`: project grants, chat share mode,
+chat people, admin oversight). Unknown people get `false`; servers without ix
+people always get `true`. For plugins that deliver chat content outside a
+request.
+
+Callers: push-notifications sends a phone a chat's notification only when the
+person who registered that phone can see the chat (rows registered before r44
+carry no person and still get every notification).
+
+Stabilize when: a second plugin needs per-person delivery and core settles on
+how plugins learn workspace people in general.
+
 ## `PluginRpcMethodContract.experimental_retryable` (host contracts)
 
 A host contract method can declare `experimental_retryable: true`. When the

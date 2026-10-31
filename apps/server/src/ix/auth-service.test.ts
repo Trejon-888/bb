@@ -10,6 +10,8 @@ import { readIxAuthConfig } from "./config.js";
 import { ixApiGate } from "./middleware.js";
 import { createIxRoutes } from "./routes.js";
 import { TRUSTED_REMOTE_ADDRESS_CONTEXT_KEY } from "../request-context.js";
+import { ixOnBehalfToken, runIxOnBehalfOf } from "./on-behalf.js";
+import type { IxActor } from "./context.js";
 
 const BASE = "http://localhost";
 const noopLogger = { debug() {}, error() {}, info() {}, warn() {} };
@@ -277,6 +279,29 @@ describe("ix auth: team mode", () => {
     expect((await rpc(loopback, "/api/v1/plugins/p1/rpc/m", { "x-bb-plugin-caller": "caller-p2", "cf-connecting-ip": "203.0.113.7" })).status, "proxied").toBe(401);
     expect((await rpc(remote, "/api/v1/plugins/p1/rpc/m", { "x-bb-plugin-caller": "caller-p2" })).status, "not loopback").toBe(401);
     expect((await rpc(loopback, "/api/v1/projects", { "x-bb-plugin-caller": "caller-p2" })).status, "not a plugin RPC path").toBe(401);
+  });
+
+  it("runs a plugin's SDK request as the person whose call the plugin is handling", async () => {
+    const denied = await makeService({ ...env, BB_IX_AUTH_LOOPBACK: "deny" });
+    const loopback = makeApp(denied, "127.0.0.1");
+    const remote = makeApp(denied, "203.0.113.9");
+    const person = (role: "member" | "viewer" | "admin"): IxActor => ({ kind: "user", user: { id: `u-${role}`, email: `${role}@example.test`, name: role }, organizationId: "o1", memberId: `m-${role}`, role });
+    const me = (app: Hono, token: string | undefined) => app.request("/api/ix/me", { headers: token === undefined ? {} : { "x-bb-ix-on-behalf": token } });
+    await runIxOnBehalfOf(person("member"), async () => {
+      const token = ixOnBehalfToken();
+      expect(token).toBeDefined();
+      expect((await json(await me(loopback, token))).actor).toMatchObject({ kind: "user", user: { id: "u-member" }, role: "member" });
+      expect((await me(remote, token)).status, "not loopback").toBe(401);
+      expect((await loopback.request("/api/v1/plugins/p1/rpc/m", { method: "POST", headers: { "x-bb-ix-on-behalf": token ?? "" } })).status, "plugin paths are not on-behalf").toBe(401);
+    });
+    await runIxOnBehalfOf(person("viewer"), async () => {
+      const token = ixOnBehalfToken() ?? "";
+      expect((await loopback.request("/api/v1/projects", { method: "POST", headers: { "x-bb-ix-on-behalf": token } })).status, "viewer write").toBe(403);
+    });
+    await runIxOnBehalfOf(person("admin"), async () => {
+      expect(ixOnBehalfToken(), "admins keep the plugin's own access").toBeUndefined();
+    });
+    expect((await me(loopback, "stale")).status, "unknown token").toBe(401);
   });
 
   it("lets a plugin's own HTTP route through with that plugin's token in the header, and nothing else", async () => {

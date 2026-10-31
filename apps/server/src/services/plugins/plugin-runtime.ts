@@ -106,6 +106,7 @@ import { runEventLoopWork } from "../system/event-loop-work.js";
 import { abortPluginToolCallsForPlugin } from "./plugin-tool-calls.js";
 import { buildCachedPluginServer } from "./plugin-server-cache.js";
 import { createPluginRpcCallerRegistry } from "./plugin-rpc-caller.js";
+import { withIxOnBehalfHeader } from "../../ix/on-behalf.js";
 
 const serverRuntimeDir = dirname(fileURLToPath(import.meta.url));
 const pluginSdkRuntimePath = join(serverRuntimeDir, "plugin-sdk-runtime.js");
@@ -2095,18 +2096,13 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
     const token = ownerToken();
     boundSdk = createNodeBbSdk({
       baseUrl: args.baseUrl,
-      ...(token === undefined
-        ? {}
-        : {
-            fetch: ((input: RequestInfo | URL, init?: RequestInit) => {
-              const current = ownerToken();
-              if (current === undefined) return timed(input, init);
-              const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
-              if (!headers.has("authorization")) headers.set("authorization", `Bearer ${current}`);
-              return timed(input, { ...init, headers });
-            }) as typeof fetch,
-            websocket: createNodeWebsocketFactory({ headers: { authorization: `Bearer ${token}` } }),
-          }),
+      fetch: ((input: RequestInfo | URL, init?: RequestInit) => {
+        const current = ownerToken();
+        const headers = withIxOnBehalfHeader(new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined)));
+        if (current !== undefined && !headers.has("authorization")) headers.set("authorization", `Bearer ${current}`);
+        return timed(input, { ...init, headers });
+      }) as typeof fetch,
+      ...(token === undefined ? {} : { websocket: createNodeWebsocketFactory({ headers: { authorization: `Bearer ${token}` } }) }),
     });
     boundLoopbackBaseUrl = args.baseUrl;
   }

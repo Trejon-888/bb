@@ -10,7 +10,10 @@ import {
 const SUBSCRIPTION_KEY_PREFIX = "subscription:";
 
 export interface PushSubscriptionStore {
-  add(input: AddPushSubscriptionInput): Promise<{ id: string; created: boolean }>;
+  add(
+    input: AddPushSubscriptionInput,
+    userId?: string,
+  ): Promise<{ id: string; created: boolean }>;
   list(): Promise<PushSubscription[]>;
   listSummaries(): Promise<PushSubscriptionSummary[]>;
   remove(id: string): Promise<boolean>;
@@ -55,7 +58,7 @@ export function createPushSubscriptionStore(
   }
 
   return {
-    add(input) {
+    add(input, userId) {
       return mutate(async () => {
         const subscriptions = await readAll();
         const existing = subscriptions.find(
@@ -69,6 +72,7 @@ export function createPushSubscriptionStore(
             deviceLabel: input.deviceLabel,
             platform: input.platform,
             lastSeenAt: Math.max(timestamp, existing.lastSeenAt),
+            ...(userId === undefined ? {} : { userId }),
           };
           await bb.storage.kv.set(
             `${SUBSCRIPTION_KEY_PREFIX}${existing.id}`,
@@ -84,6 +88,7 @@ export function createPushSubscriptionStore(
           deviceLabel: input.deviceLabel,
           createdAt: timestamp,
           lastSeenAt: timestamp,
+          ...(userId === undefined ? {} : { userId }),
         };
         await bb.storage.kv.set(`${SUBSCRIPTION_KEY_PREFIX}${id}`, created);
         return { id, created: true };

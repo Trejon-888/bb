@@ -545,6 +545,8 @@ export interface CreateFakePluginHostOptions {
   machineResource?: (hostId: string) => Promise<JsonValue | null>;
   /** Defaults to "test-plugin". */
   pluginId?: string;
+  /** Answer for `bb.server.experimental_personCanSeeThread`. Defaults to always true. */
+  personCanSeeThread?: (userId: string, threadId: string) => boolean | Promise<boolean>;
   /**
    * Value served by `bb.server.experimental_appUrl`. Defaults to `null`.
    */
@@ -1164,7 +1166,12 @@ function createFakePluginHostInternal(
   const appUrl = options.appUrl ?? null;
   const loopbackBaseUrl = options.loopbackBaseUrl ?? "http://127.0.0.1:38886";
   const dataDir = options.dataDir ?? "/tmp/bb-fake-data-dir";
+  const personCanSeeThread = options.personCanSeeThread ?? (() => true);
   const server: PluginServerApi = {
+    async experimental_personCanSeeThread(userId, threadId) {
+      assertLive();
+      return personCanSeeThread(userId, threadId);
+    },
     get experimental_appUrl(): string | null {
       assertLive();
       return appUrl;

@@ -19,6 +19,7 @@ export const pushSubscriptionSchema = z
     deviceLabel: z.string().min(1).max(DEVICE_LABEL_MAX_LENGTH),
     createdAt: z.number().int().nonnegative(),
     lastSeenAt: z.number().int().nonnegative(),
+    userId: z.string().min(1).optional(),
   })
   .strict();
 

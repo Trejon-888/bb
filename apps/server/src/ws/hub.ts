@@ -1162,8 +1162,15 @@ export class NotificationHub implements DbNotifier {
     channel: string,
     payload: unknown,
   ): number {
+    const threadId =
+      typeof payload === "object" &&
+      payload !== null &&
+      "threadId" in payload &&
+      typeof payload.threadId === "string"
+        ? payload.threadId
+        : null;
     return this.broadcastToAllClients(
-      null,
+      threadId,
       JSON.stringify(
         pluginSignalSchema.parse({
           type: "plugin-signal",

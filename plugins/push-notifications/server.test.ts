@@ -91,6 +91,7 @@ function pendingQuestion(threadId: string, prompt: string): PendingInteraction {
 }
 
 interface SetupOptions {
+  personCanSeeThread?: (userId: string, threadId: string) => boolean;
   appUrl?: string | null;
   expo?: FakeExpo;
   fetch?: PushSenderFetch;
@@ -120,6 +121,9 @@ async function setup(options: SetupOptions = {}) {
   const fake = createFakePluginHost({
     pluginId: "push-notifications",
     ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
+    ...(options.personCanSeeThread === undefined
+      ? {}
+      : { personCanSeeThread: options.personCanSeeThread }),
     settings: { expoPushUrl: EXPO_URL },
     sdk: {
       threads: {
@@ -325,6 +329,61 @@ describe("push subscription RPC and CLI", () => {
           id: "subscription-1",
         }),
       ).resolves.toEqual({ ok: true });
+    } finally {
+      await host.cleanup();
+    }
+  });
+
+  it("keeps each person's devices to themselves and pushes a chat only to people who can see it", async () => {
+    const host = await setup({
+      personCanSeeThread: (userId) => userId === "u-alice",
+    });
+    const person = (id: string, role: "member" | "admin" = "member") => ({
+      experimental_caller: {
+        kind: "client" as const,
+        experimental_user: { id, email: `${id}@example.test`, name: id, role },
+      },
+    });
+    const add = (token: string, as: ReturnType<typeof person>) =>
+      host.harness.behavior.callRpc(
+        "pushSubscriptions.add",
+        { expoPushToken: token, platform: "ios", deviceLabel: token },
+        as,
+      );
+    try {
+      await add("ExponentPushToken[alice]", person("u-alice"));
+      await add("ExponentPushToken[bob]", person("u-bob"));
+      await host.addSubscription("ExponentPushToken[owner]", "Owner");
+
+      const ids = async (as?: ReturnType<typeof person>) =>
+        (
+          (await host.harness.behavior.callRpc(
+            "pushSubscriptions.list",
+            {},
+            as,
+          )) as { subscriptions: Array<{ deviceLabel: string }> }
+        ).subscriptions.map((row) => row.deviceLabel);
+      expect(await ids(person("u-bob"))).toEqual(["ExponentPushToken[bob]"]);
+      expect(await ids(person("u-root", "admin"))).toHaveLength(3);
+      expect(await ids()).toHaveLength(3);
+      await expect(
+        host.harness.behavior.callRpc(
+          "pushSubscriptions.remove",
+          { id: "subscription-1" },
+          person("u-bob"),
+        ),
+      ).rejects.toThrow("Push subscription not found");
+
+      const thread = host.setThread();
+      await host.harness.behavior.emitThreadEvent("thread.idle", {
+        thread,
+        lastAssistantText: "Private result.",
+      });
+      await vi.waitFor(() => expect(host.expo.requests).toHaveLength(1));
+      expect(host.expo.requests[0]?.map((message) => message.to)).toEqual([
+        "ExponentPushToken[alice]",
+        "ExponentPushToken[owner]",
+      ]);
     } finally {
       await host.cleanup();
     }
