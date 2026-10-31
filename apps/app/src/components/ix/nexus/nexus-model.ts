@@ -40,9 +40,7 @@ export interface NexusNavTargets {
   browser: string | null;
   providers?: string | null;
   capacity?: string | null;
-  /** ix-comms (the Inbox) when installed. */
   inbox?: string | null;
-  /** ix-skills when installed, else bb's own skills page. */
   skills?: string;
 }
 

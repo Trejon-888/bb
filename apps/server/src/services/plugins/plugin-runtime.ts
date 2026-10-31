@@ -36,8 +36,8 @@ import { PluginHostArtifactRegistry } from "./plugin-host-artifact-registry.js";
 import { getPluginBuildToolchain } from "./build-toolchain.js";
 import {
   buildMutablePluginHost,
-  isMutableArtifactStale,
   isMutablePluginHostReusable,
+  mutableAppBundleRebuildReason,
 } from "./mutable-plugin-artifacts.js";
 import { createNodeBbSdk, createRequestTimeoutFetch, DEFAULT_BB_REQUEST_TIMEOUT_MS, type BbSdk } from "@bb/sdk";
 import { createNodeWebsocketFactory } from "@bb/sdk/node-websocket";
@@ -55,7 +55,6 @@ import {
   loadPluginAppBundle,
   loadPluginBrandingAssets,
   parsePluginAppBundleMeta,
-  readPluginAppBundleMeta,
   validatePluginArtifactMeta,
   type PluginAppBundleSnapshot,
   type PluginBrandingAssetSet,
@@ -1218,14 +1217,8 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
         artifact: "app",
       })
     ) {
-      const meta = await readPluginAppBundleMeta(row.rootDir);
-      const sdkChanged = meta?.sdkVersion !== PLUGIN_SDK_VERSION;
-      const sourceChanged =
-        !sdkChanged && (await isMutableArtifactStale(row.rootDir, "app"));
-      if (sdkChanged || sourceChanged) {
-        const reason = sdkChanged
-          ? `built with SDK ${meta?.sdkVersion ?? "unknown"}, running SDK is ${PLUGIN_SDK_VERSION}`
-          : "plugin source is newer than dist/app.js";
+      const reason = await mutableAppBundleRebuildReason(row.rootDir);
+      if (reason !== null) {
         logger.info(`plugin ${row.id}: rebuilding frontend bundle (${reason})`);
         try {
           const app = await buildPluginApp(

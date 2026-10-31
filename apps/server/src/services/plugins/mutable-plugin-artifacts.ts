@@ -15,7 +15,10 @@ import {
   isIgnoredPluginDevPath,
   type PluginBuildToolchain,
 } from "@bb/plugin-build";
-import { validatePluginArtifactMeta } from "./app-bundle.js";
+import {
+  readPluginAppBundleMeta,
+  validatePluginArtifactMeta,
+} from "./app-bundle.js";
 
 const hostBuildRecordSchema = z.object({
   rootDir: z.string(),
@@ -27,6 +30,19 @@ const hostBuildRecordSchema = z.object({
 function hostBuildRecordPath(dataDir: string, pluginId: string): string {
   const pluginKey = createHash("sha256").update(pluginId).digest("hex");
   return join(dataDir, "plugins", "runtime", "host", pluginKey, "build.json");
+}
+
+export async function mutableAppBundleRebuildReason(
+  rootDir: string,
+): Promise<string | null> {
+  const meta = await readPluginAppBundleMeta(rootDir);
+  if (meta?.sdkVersion !== PLUGIN_SDK_VERSION) {
+    return `built with SDK ${meta?.sdkVersion ?? "unknown"}, running SDK is ${PLUGIN_SDK_VERSION}`;
+  }
+  if (await isMutableArtifactStale(rootDir, "app")) {
+    return "plugin source is newer than dist/app.js";
+  }
+  return null;
 }
 
 export async function isMutableArtifactStale(

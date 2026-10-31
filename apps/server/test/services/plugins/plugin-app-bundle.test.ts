@@ -1,7 +1,14 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  readFile,
+  stat,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -299,6 +306,44 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
     ).rejects.toThrowError(/frontend bundle build for "bad" failed/);
     expect(harness.pluginService.list()).toHaveLength(0);
   }, 60_000);
+
+  it("installs a path plugin from a read-only folder when its built bundle is current", async () => {
+    const rootDir = join(harness.config.dataDir, "fixtures", "bb-plugin-sealed");
+    await writeAppPluginFixture(rootDir, { name: "bb-plugin-sealed" });
+    await harness.pluginService.installPath(rootDir);
+    await harness.pluginService.remove("sealed");
+    const builtJs = await readFile(join(rootDir, "dist", "app.js"), "utf8");
+
+    await chmod(join(rootDir, "dist"), 0o555);
+    try {
+      const entry = await harness.pluginService.installPath(rootDir);
+      expect(entry.status).toBe("running");
+      expect(entry.app.bundle?.sdkVersion).toBe(PLUGIN_SDK_VERSION);
+      expect(await readFile(join(rootDir, "dist", "app.js"), "utf8")).toBe(
+        builtJs,
+      );
+    } finally {
+      await chmod(join(rootDir, "dist"), 0o755);
+    }
+  }, 120_000);
+
+  it("rebuilds a path install whose source changed after the last build", async () => {
+    const rootDir = join(harness.config.dataDir, "fixtures", "bb-plugin-edited");
+    await writeAppPluginFixture(rootDir, { name: "bb-plugin-edited" });
+    await harness.pluginService.installPath(rootDir);
+    await harness.pluginService.remove("edited");
+    const later = new Date(Date.now() + 5_000);
+    await writeFile(
+      join(rootDir, "app.tsx"),
+      APP_SOURCE.replace("hi", "edited"),
+    );
+    await utimes(join(rootDir, "app.tsx"), later, later);
+
+    await harness.pluginService.installPath(rootDir);
+    expect(await readFile(join(rootDir, "dist", "app.js"), "utf8")).toContain(
+      "edited",
+    );
+  }, 120_000);
 
   it("rebuilds a path plugin at load when the recorded SDK version is stale", async () => {
     const rootDir = join(harness.config.dataDir, "fixtures", "bb-plugin-aged");

@@ -31,6 +31,7 @@ import {
 import { installGitDependencies } from "./git-plugin-dependencies.js";
 import { getPluginBuildToolchain } from "./build-toolchain.js";
 import { validatePluginArtifactMeta } from "./app-bundle.js";
+import { mutableAppBundleRebuildReason } from "./mutable-plugin-artifacts.js";
 import type {
   InstalledPlugin,
   PluginSourceSelection,
@@ -285,7 +286,9 @@ export function createManagedPluginArtifacts(
           manifest,
           rootDir: args.rootDir,
           artifact: "app",
-        })
+        }) &&
+        (kind !== "path" ||
+          (await mutableAppBundleRebuildReason(args.rootDir)) !== null)
       ) {
         let app: Awaited<ReturnType<typeof buildPluginApp>>;
         try {
