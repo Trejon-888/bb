@@ -20,15 +20,22 @@ import { notificationsThreadAction } from "./notificationsAction.js";
 function NotificationDelivery() {
   const navigate = useBbNavigate();
   const { values } = useSettings();
+  const rpc = useRpc<typeof pushNotificationsRpcContract>();
   const delivery = useRef<ReturnType<typeof createClientDelivery> | null>(null);
   useEffect(() => {
-    const next = createClientDelivery((id) => navigate.toThread(id));
+    const next = createClientDelivery(
+      (id) => navigate.toThread(id),
+      async ({ threadId, kind }) =>
+        threadId === null ||
+        kind === null ||
+        (await rpc.call("notifications.allows", { threadId, kind })).allowed,
+    );
     delivery.current = next;
     return () => {
       delivery.current = null;
       next.dispose();
     };
-  }, [navigate]);
+  }, [navigate, rpc]);
   useRealtime(CLIENT_NOTIFICATION_CHANNEL, (payload) => {
     const channel = clientChannel();
     const enabled = channel !== null && values?.[`${channel}Enabled`] === true;

@@ -26,6 +26,7 @@ import {
   notificationLevelSchema,
   ownNotificationLevelSchema,
   type ThreadNotifications,
+  NOTIFICATION_KINDS_BY_LEVEL,
 } from "./preferences.js";
 import {
   createPushSender,
@@ -198,7 +199,10 @@ export function createPushNotificationsPlugin(
       subscriptions,
       getDeliverySettings: () => settings.get(),
       getExpoPushUrl: async () => (await settings.get()).expoPushUrl,
-      getNotificationLevel: (thread) => preferences.effectiveLevel(thread),
+      getNotificationLevel: (thread, userId) =>
+        preferences.effectiveLevel(thread, userId),
+      getPeopleWithSettings: (threadId) =>
+        preferences.peopleWithSettings(threadId),
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
       ...(options.coalesceMs === undefined
         ? {}
@@ -241,6 +245,7 @@ export function createPushNotificationsPlugin(
         title: "bb notifications are working",
         body: "You’ll be notified when a thread needs your attention.",
         threadId: null,
+        kind: null,
         channels: [channel],
       } satisfies ClientNotification);
       return { ok: true as const };
@@ -248,6 +253,14 @@ export function createPushNotificationsPlugin(
 
     bb.rpc.register(pushNotificationsRpcContract, {
       "notifications.test": ({ channel }) => sendTest(channel),
+      "notifications.allows": async ({ threadId, kind }, context) => {
+        const thread = await bb.sdk.threads.get({ threadId });
+        const level = await preferences.effectiveLevel(
+          thread,
+          personOf(context),
+        );
+        return { allowed: NOTIFICATION_KINDS_BY_LEVEL[level].has(kind) };
+      },
       "pushSubscriptions.list": async (_input, context) => {
         const person = limitedPerson(context.experimental_caller);
         const rows = await subscriptions.listSummaries();
@@ -278,8 +291,8 @@ export function createPushNotificationsPlugin(
         }
         return { ok: true as const };
       },
-      "threadNotifications.keyed": async ({ keys }) => {
-        const rows = await preferences.list(keys);
+      "threadNotifications.keyed": async ({ keys }, context) => {
+        const rows = await preferences.list(keys, personOf(context));
         return Object.fromEntries(
           keys.map((key) => [
             key,
@@ -287,11 +300,11 @@ export function createPushNotificationsPlugin(
           ]),
         );
       },
-      "threadNotifications.list": async ({ threadIds }) => ({
-        threads: await preferences.list(threadIds),
+      "threadNotifications.list": async ({ threadIds }, context) => ({
+        threads: await preferences.list(threadIds, personOf(context)),
       }),
-      "threadNotifications.set": ({ threadId, level }) =>
-        preferences.set(threadId, level),
+      "threadNotifications.set": ({ threadId, level }, context) =>
+        preferences.set(threadId, level, personOf(context)),
     });
 
     bb.cli.register(
@@ -465,14 +478,18 @@ export function createPushNotificationsPlugin(
               },
               json: JSON_OPTION,
             },
-            async run(input) {
+            async run(input, ctx) {
               const threadId = input.positionals.thread;
               let row: ThreadNotifications;
               try {
                 if (input.options.level !== undefined) {
-                  await preferences.set(threadId, input.options.level);
+                  await preferences.set(
+                    threadId,
+                    input.options.level,
+                    ctx.experimental_user?.id,
+                  );
                 }
-                row = await preferences.get(threadId);
+                row = await preferences.get(threadId, ctx.experimental_user?.id);
               } catch (error) {
                 throw new PluginCliError(
                   error instanceof Error ? error.message : String(error),
@@ -530,6 +547,14 @@ export function createPushNotificationsPlugin(
       },
     });
   };
+}
+
+function personOf(context: {
+  experimental_caller: ExperimentalPluginRpcCaller;
+}): string | undefined {
+  return context.experimental_caller.kind === "client"
+    ? context.experimental_caller.experimental_user?.id
+    : undefined;
 }
 
 function cliPerson(ctx: PluginCliContext): string | null {

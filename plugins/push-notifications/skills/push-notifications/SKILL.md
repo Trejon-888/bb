@@ -34,7 +34,8 @@ bb plugin config push-notifications set expoPushUrl <url>
   fails when the channel is disabled. Success confirms the broadcast, not that
   the OS showed a banner; system notification settings can still suppress it.
 - `thread` prints a thread's resolved notification level and its source;
-  `--level` sets the thread's own level. A thread uses its own level, else
+  `--level` sets the thread's own level (for the signed-in person when there
+  is one; otherwise the shared level people fall back to). A thread uses its own level, else
   `childLevel` if it has a parent (default `input-only`; `inherit` follows
   `defaultLevel`), else `defaultLevel` (default `all`). Every ancestor's own
   level also caps its child threads. `all` notifies on finished turns too,

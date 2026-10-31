@@ -42,12 +42,18 @@ export const removePushSubscriptionInputSchema = z
 
 export const clientChannelSchema = z.enum(["web", "desktop"]);
 export const CLIENT_NOTIFICATION_CHANNEL = "notification";
+export const pushNotificationKindSchema = z.enum([
+  "pending-interaction",
+  "turn-finished",
+  "thread-error",
+]);
 export const clientNotificationSchema = z
   .object({
     id: z.string().min(1),
     title: z.string(),
     body: z.string(),
     threadId: z.string().nullable(),
+    kind: pushNotificationKindSchema.nullable(),
     channels: z.array(clientChannelSchema),
   })
   .strict();
@@ -64,6 +70,13 @@ export const pushNotificationsRpcContract = defineRpcContract({
   "notifications.test": {
     input: z.object({ channel: clientChannelSchema }).strict(),
     output: z.object({ ok: z.literal(true) }).strict(),
+  },
+  "notifications.allows": {
+    experimental_viewer: true,
+    input: z
+      .object({ threadId: z.string().min(1), kind: pushNotificationKindSchema })
+      .strict(),
+    output: z.object({ allowed: z.boolean() }).strict(),
   },
   "pushSubscriptions.list": {
     input: emptyInputSchema,

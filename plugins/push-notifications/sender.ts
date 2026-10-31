@@ -140,10 +140,14 @@ export interface CreatePushSenderArgs {
   bb: BbPluginApi;
   subscriptions: PushSubscriptionStore;
   getExpoPushUrl(): Promise<string>;
-  getNotificationLevel(thread: {
-    id: string;
-    parentThreadId: string | null;
-  }): Promise<NotificationLevel>;
+  getNotificationLevel(
+    thread: {
+      id: string;
+      parentThreadId: string | null;
+    },
+    userId?: string,
+  ): Promise<NotificationLevel>;
+  getPeopleWithSettings(threadId: string): Promise<string[]>;
   getDeliverySettings(): Promise<{
     mobileEnabled: boolean;
     webEnabled: boolean;
@@ -339,13 +343,16 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
     if (lastReadAt >= thread.latestAttentionAt && lastReadAt >= entry.eventAt) {
       return;
     }
-    const level = await args.getNotificationLevel(thread);
     const resolved = await resolvePush(
       thread,
       entry,
-      NOTIFICATION_KINDS_BY_LEVEL[level],
+      NOTIFICATION_KINDS_BY_LEVEL.all,
     );
     if (resolved === null) return;
+    const wants = async (userId: string | undefined) =>
+      NOTIFICATION_KINDS_BY_LEVEL[
+        await args.getNotificationLevel(thread, userId)
+      ].has(resolved.kind);
     const preview = await notificationPreviewText(
       resolved.body,
       referencedThreadTitle,
@@ -359,12 +366,22 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
     const channels: ClientNotification["channels"] = [];
     if (config.webEnabled) channels.push("web");
     if (config.desktopEnabled) channels.push("desktop");
-    if (channels.length > 0) {
+    const browserWanted =
+      channels.length > 0 &&
+      (
+        await Promise.all(
+          [undefined, ...(await args.getPeopleWithSettings(thread.id))].map(
+            wants,
+          ),
+        )
+      ).some(Boolean);
+    if (browserWanted) {
       bb.realtime.publish(CLIENT_NOTIFICATION_CHANNEL, {
         id: randomUUID(),
         title,
         body,
         threadId: thread.id,
+        kind: resolved.kind,
         channels,
       } satisfies ClientNotification);
     }
@@ -372,11 +389,12 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
     const rows = (
       await Promise.all(
         (await subscriptions.list()).map(async (row) =>
-          row.userId === undefined ||
-          (await bb.server.experimental_personCanSeeThread(
-            row.userId,
-            thread.id,
-          ))
+          (row.userId === undefined ||
+            (await bb.server.experimental_personCanSeeThread(
+              row.userId,
+              thread.id,
+            ))) &&
+          (await wants(row.userId))
             ? [row]
             : [],
         ),

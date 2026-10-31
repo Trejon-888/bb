@@ -25,7 +25,10 @@ export function notificationPermission():
     : Notification.permission;
 }
 
-export function createClientDelivery(navigate: (threadId: string) => void) {
+export function createClientDelivery(
+  navigate: (threadId: string) => void,
+  allows: (message: ClientNotification) => Promise<boolean>,
+) {
   const active = new Set<Notification>();
   let disposed = false;
 
@@ -79,6 +82,7 @@ export function createClientDelivery(navigate: (threadId: string) => void) {
     )
       return;
     const message = parsed.data;
+    if (!(await allows(message)) || disposed) return;
     const claim = () => {
       if (disposed) return;
       const key = `bb.push-notifications.seen.${channel}`;

@@ -20,6 +20,7 @@ const message = {
   title: "Finished",
   body: "Ready",
   threadId: "thread-1",
+  kind: "turn-finished",
   channels: ["web"],
 };
 
@@ -45,7 +46,7 @@ describe("client system notifications", () => {
     "uses the appropriate notification icon on $platform",
     async ({ platform, icon }) => {
       if (platform !== "web") vi.stubGlobal("bbDesktop", { platform });
-      const delivery = createClientDelivery(vi.fn());
+      const delivery = createClientDelivery(vi.fn(), async () => true);
       await delivery.deliver(
         { ...message, channels: [platform === "web" ? "web" : "desktop"] },
         true,
@@ -74,7 +75,7 @@ describe("client system notifications", () => {
         );
       }
       const navigate = vi.fn();
-      const delivery = createClientDelivery(navigate);
+      const delivery = createClientDelivery(navigate, async () => true);
       await delivery.deliver(
         {
           ...message,
@@ -93,10 +94,19 @@ describe("client system notifications", () => {
     },
   );
 
+  it("shows nothing when the signed-in person's settings exclude it", async () => {
+    const allows = vi.fn(async () => false);
+    const delivery = createClientDelivery(vi.fn(), allows);
+    await delivery.deliver(message, true);
+    expect(allows).toHaveBeenCalledWith(message);
+    expect(TestNotification.instances).toHaveLength(0);
+    delivery.dispose();
+  });
+
   it("deduplicates windows, navigates on click, and cleans up on disposal", async () => {
     const navigate = vi.fn();
-    const first = createClientDelivery(navigate);
-    const second = createClientDelivery(navigate);
+    const first = createClientDelivery(navigate, async () => true);
+    const second = createClientDelivery(navigate, async () => true);
     await first.deliver(message, true);
     await second.deliver(message, true);
     expect(TestNotification.instances).toHaveLength(1);
@@ -114,7 +124,7 @@ describe("client system notifications", () => {
   });
 
   it("respects channel, permission, disabled state, and malformed input", async () => {
-    const delivery = createClientDelivery(vi.fn());
+    const delivery = createClientDelivery(vi.fn(), async () => true);
     await delivery.deliver(message, false);
     await delivery.deliver({ ...message, channels: ["desktop"] }, true);
     await delivery.deliver({ ...message, threadId: 3 }, true);
@@ -130,7 +140,7 @@ describe("client system notifications", () => {
   });
 
   it("does not deliver in the mobile WebView and survives unavailable storage", async () => {
-    const delivery = createClientDelivery(vi.fn());
+    const delivery = createClientDelivery(vi.fn(), async () => true);
     vi.stubGlobal("bb", { native: {} });
     await delivery.deliver(message, true);
     expect(TestNotification.instances).toHaveLength(0);

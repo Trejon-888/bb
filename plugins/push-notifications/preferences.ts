@@ -137,9 +137,23 @@ const storedNotificationsMetadataSchema = z.object({
     .strict(),
 });
 
+const PEOPLE_METADATA_KEY = "notifications-people";
+
+const storedPeopleMetadataSchema = z.object({
+  [PEOPLE_METADATA_KEY]: z.record(z.string(), notificationLevelSchema),
+});
+
 export function parseStoredNotificationLevel(
   metadata: unknown,
+  userId?: string,
 ): NotificationLevel | null {
+  if (userId !== undefined) {
+    const people = storedPeopleMetadataSchema.safeParse(metadata);
+    const personal = people.success
+      ? people.data[PEOPLE_METADATA_KEY][userId]
+      : undefined;
+    if (personal !== undefined) return personal;
+  }
   const parsed = storedNotificationsMetadataSchema.safeParse(metadata);
   return parsed.success ? parsed.data[NOTIFICATIONS_METADATA_KEY].own : null;
 }
@@ -152,17 +166,23 @@ interface ResolvedThreadInputs {
 export interface NotificationPreferences {
   list(
     threadIds: readonly string[],
+    userId?: string,
   ): Promise<Record<string, ThreadNotificationInputs>>;
-  get(threadId: string): Promise<ThreadNotifications>;
+  get(threadId: string, userId?: string): Promise<ThreadNotifications>;
   set(
     threadId: string,
     level: OwnNotificationLevel,
+    userId?: string,
   ): Promise<ThreadNotificationInputs>;
-  effectiveLevel(thread: {
-    id: string;
-    parentThreadId: string | null;
-  }): Promise<NotificationLevel>;
+  effectiveLevel(
+    thread: {
+      id: string;
+      parentThreadId: string | null;
+    },
+    userId?: string,
+  ): Promise<NotificationLevel>;
   publishSubtree(threadId: string): Promise<void>;
+  peopleWithSettings(threadId: string): Promise<string[]>;
 }
 
 export function createNotificationPreferences(args: {
@@ -174,6 +194,7 @@ export function createNotificationPreferences(args: {
 
   async function readOwnLevels(
     threadIds: readonly string[],
+    userId: string | undefined,
   ): Promise<Map<string, NotificationLevel>> {
     const levels = new Map<string, NotificationLevel>();
     for (const batch of chunk(threadIds)) {
@@ -181,7 +202,7 @@ export function createNotificationPreferences(args: {
         threadIds: batch,
       });
       for (const { threadId, metadata } of threads) {
-        const level = parseStoredNotificationLevel(metadata);
+        const level = parseStoredNotificationLevel(metadata, userId);
         if (level !== null) levels.set(threadId, level);
       }
     }
@@ -190,6 +211,7 @@ export function createNotificationPreferences(args: {
 
   async function resolveInputs(
     threadIds: readonly string[],
+    userId: string | undefined,
   ): Promise<Map<string, ResolvedThreadInputs>> {
     const ancestry: { threadId: string; ancestorIds: string[] }[] = [];
     for (const batch of chunk(threadIds)) {
@@ -198,14 +220,17 @@ export function createNotificationPreferences(args: {
       });
       ancestry.push(...threads);
     }
-    const levels = await readOwnLevels([
-      ...new Set(
-        ancestry.flatMap(({ threadId, ancestorIds }) => [
-          threadId,
-          ...ancestorIds,
-        ]),
-      ),
-    ]);
+    const levels = await readOwnLevels(
+      [
+        ...new Set(
+          ancestry.flatMap(({ threadId, ancestorIds }) => [
+            threadId,
+            ...ancestorIds,
+          ]),
+        ),
+      ],
+      userId,
+    );
     const resolved = new Map<string, ResolvedThreadInputs>();
     for (const { threadId, ancestorIds } of ancestry) {
       let ancestorCap: ThreadNotificationInputs["ancestorCap"] = null;
@@ -228,8 +253,9 @@ export function createNotificationPreferences(args: {
 
   async function requireInputs(
     threadId: string,
+    userId: string | undefined,
   ): Promise<ResolvedThreadInputs> {
-    const resolved = (await resolveInputs([threadId])).get(threadId);
+    const resolved = (await resolveInputs([threadId], userId)).get(threadId);
     if (resolved === undefined) throw new Error("Thread not found");
     return resolved;
   }
@@ -242,33 +268,55 @@ export function createNotificationPreferences(args: {
   }
 
   return {
-    async list(threadIds) {
+    async list(threadIds, userId) {
       const result: Record<string, ThreadNotificationInputs> = {};
-      for (const [threadId, { inputs }] of await resolveInputs(threadIds)) {
+      for (const [threadId, { inputs }] of await resolveInputs(
+        threadIds,
+        userId,
+      )) {
         if (!isUnset(inputs)) result[threadId] = inputs;
       }
       return result;
     },
-    async get(threadId) {
+    async get(threadId, userId) {
       const [{ inputs, parentThreadId }, defaults] = await Promise.all([
-        requireInputs(threadId),
+        requireInputs(threadId, userId),
         getDefaults(),
       ]);
       return resolveThreadNotifications(inputs, { parentThreadId }, defaults);
     },
-    async set(threadId, level) {
-      await requireInputs(threadId);
-      await bb.sdk.threads.updatePluginMetadata(
-        level === "inherit"
-          ? { threadId, remove: [NOTIFICATIONS_METADATA_KEY] }
-          : { threadId, set: { [NOTIFICATIONS_METADATA_KEY]: { own: level } } },
-      );
+    async set(threadId, level, userId) {
+      await requireInputs(threadId, userId);
+      if (userId === undefined) {
+        await bb.sdk.threads.updatePluginMetadata(
+          level === "inherit"
+            ? { threadId, remove: [NOTIFICATIONS_METADATA_KEY] }
+            : {
+                threadId,
+                set: { [NOTIFICATIONS_METADATA_KEY]: { own: level } },
+              },
+        );
+      } else {
+        const stored = storedPeopleMetadataSchema.safeParse(
+          await bb.sdk.threads.getPluginMetadata({ threadId }),
+        );
+        const people = {
+          ...(stored.success ? stored.data[PEOPLE_METADATA_KEY] : {}),
+        };
+        if (level === "inherit") delete people[userId];
+        else people[userId] = level;
+        await bb.sdk.threads.updatePluginMetadata(
+          Object.keys(people).length === 0
+            ? { threadId, remove: [PEOPLE_METADATA_KEY] }
+            : { threadId, set: { [PEOPLE_METADATA_KEY]: people } },
+        );
+      }
       await publishSubtree(threadId);
-      return (await requireInputs(threadId)).inputs;
+      return (await requireInputs(threadId, userId)).inputs;
     },
-    async effectiveLevel(thread) {
+    async effectiveLevel(thread, userId) {
       const [resolved, defaults] = await Promise.all([
-        resolveInputs([thread.id]),
+        resolveInputs([thread.id], userId),
         getDefaults(),
       ]);
       return resolveThreadNotifications(
@@ -279,6 +327,26 @@ export function createNotificationPreferences(args: {
     },
     async publishSubtree(threadId) {
       await publishSubtree(threadId);
+    },
+    async peopleWithSettings(threadId) {
+      const { threads } = await bb.sdk.threads.experimental_listAncestors({
+        threadIds: [threadId],
+      });
+      const ids = [threadId, ...(threads[0]?.ancestorIds ?? [])];
+      const people = new Set<string>();
+      for (const batch of chunk(ids)) {
+        const listed = await bb.sdk.threads.experimental_listPluginMetadata({
+          threadIds: batch,
+        });
+        for (const { metadata } of listed.threads) {
+          const parsed = storedPeopleMetadataSchema.safeParse(metadata);
+          if (!parsed.success) continue;
+          for (const userId of Object.keys(parsed.data[PEOPLE_METADATA_KEY])) {
+            people.add(userId);
+          }
+        }
+      }
+      return [...people];
     },
   };
 }

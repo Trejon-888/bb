@@ -389,6 +389,69 @@ describe("push subscription RPC and CLI", () => {
     }
   });
 
+  it("keeps each person's chat notification level to themselves", async () => {
+    const host = await setup();
+    const person = (id: string) => ({
+      experimental_caller: {
+        kind: "client" as const,
+        experimental_user: {
+          id,
+          email: `${id}@example.test`,
+          name: id,
+          role: "member" as const,
+        },
+      },
+    });
+    try {
+      await host.harness.behavior.callRpc(
+        "pushSubscriptions.add",
+        { expoPushToken: "ExponentPushToken[alice]", platform: "ios", deviceLabel: "A" },
+        person("u-alice"),
+      );
+      await host.harness.behavior.callRpc(
+        "pushSubscriptions.add",
+        { expoPushToken: "ExponentPushToken[bob]", platform: "ios", deviceLabel: "B" },
+        person("u-bob"),
+      );
+      const thread = host.setThread();
+      await host.harness.behavior.callRpc(
+        "threadNotifications.set",
+        { threadId: thread.id, level: "muted" },
+        person("u-alice"),
+      );
+      const own = async (as?: ReturnType<typeof person>) =>
+        (
+          (await host.harness.behavior.callRpc(
+            "threadNotifications.list",
+            { threadIds: [thread.id] },
+            as,
+          )) as { threads: Record<string, { own: string }> }
+        ).threads[thread.id]?.own ?? "inherit";
+      expect(await own(person("u-alice"))).toBe("muted");
+      expect(await own(person("u-bob"))).toBe("inherit");
+      expect(await own()).toBe("inherit");
+      const allows = (as: ReturnType<typeof person>) =>
+        host.harness.behavior.callRpc(
+          "notifications.allows",
+          { threadId: thread.id, kind: "turn-finished" },
+          as,
+        );
+      expect(await allows(person("u-alice"))).toEqual({ allowed: false });
+      expect(await allows(person("u-bob"))).toEqual({ allowed: true });
+
+      await host.harness.behavior.emitThreadEvent("thread.idle", {
+        thread,
+        lastAssistantText: "Done.",
+      });
+      await vi.waitFor(() => expect(host.expo.requests).toHaveLength(1));
+      expect(host.expo.requests[0]?.map((message) => message.to)).toEqual([
+        "ExponentPushToken[bob]",
+      ]);
+    } finally {
+      await host.cleanup();
+    }
+  });
+
   it("provides list, add, remove, and status commands", async () => {
     const host = await setup();
     try {
