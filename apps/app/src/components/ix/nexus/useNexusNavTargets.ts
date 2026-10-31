@@ -28,6 +28,8 @@ import {
   NEXUS_CAPACITY_PLUGIN_ID,
   NEXUS_SKILLS_PATH,
   NEXUS_SKILLS_PLUGIN_ID,
+  NEXUS_INBOX_PATH,
+  NEXUS_INBOX_PLUGIN_ID,
   NEXUS_SKILLS_FALLBACK_PATH,
   type NexusNavTargets,
 } from "./nexus-model";
@@ -61,6 +63,9 @@ export function useNexusNavTargets(): NexusNavTargets {
   const hasCapacity = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_CAPACITY_PLUGIN_ID,
   ) && roleAtLeast(currentIxRole(), "admin");
+  const hasInbox = panels.some(
+    (entry) => entry.chrome.pluginId === NEXUS_INBOX_PLUGIN_ID,
+  );
   const hasSkills = panels.some(
     (entry) => entry.chrome.pluginId === NEXUS_SKILLS_PLUGIN_ID,
   );
@@ -85,7 +90,8 @@ export function useNexusNavTargets(): NexusNavTargets {
       providers: hasProviders ? NEXUS_PROVIDERS_PATH : null,
       capacity: hasCapacity ? NEXUS_CAPACITY_PATH : null,
       skills: hasSkills ? NEXUS_SKILLS_PATH : NEXUS_SKILLS_FALLBACK_PATH,
+      inbox: hasInbox ? NEXUS_INBOX_PATH : null,
     }),
-    [hasAutomations, hasWorkflows, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser, hasProviders, hasCapacity, hasSkills],
+    [hasAutomations, hasWorkflows, hasConnectors, hasAssets, hasSites, hasMemory, hasBrowser, hasProviders, hasCapacity, hasSkills, hasInbox],
   );
 }

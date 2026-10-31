@@ -28,6 +28,7 @@ import { NEXUS_PROVIDERS_PATH, NEXUS_CAPACITY_PATH,
   NEXUS_ASSETS_PATH,
   NEXUS_DEFAULT_DOCS,
   NEXUS_SITES_PATH,
+  NEXUS_INBOX_PATH,
 } from "./nexus-model";
 
 function thread(overrides: Partial<ThreadListEntry>): ThreadListEntry {
@@ -299,6 +300,14 @@ describe("sites nav item", () => {
 
 describe("memory and agent browser nav items", () => {
   const base = { scheduled: { label: "Scheduled", to: "/s", icon: "TimeSchedule" }, integrations: NEXUS_DEFAULT_INTEGRATIONS, docs: NEXUS_DEFAULT_DOCS, sites: NEXUS_SITES_FALLBACK_PATH, memory: null, browser: null };
+  it("puts Inbox right after Home when ix-comms is installed, and only then", () => {
+    expect(nexusNavItems(base).some((entry) => entry.id === "inbox")).toBe(false);
+    const items = nexusNavItems({ ...base, inbox: NEXUS_INBOX_PATH });
+    expect(items.slice(0, 2).map((entry) => entry.id)).toEqual(["home", "inbox"]);
+    expect(items[1]).toMatchObject({ label: "Inbox", icon: "Mail", to: NEXUS_INBOX_PATH });
+    expect(resolveNexusNavId(`${NEXUS_INBOX_PATH}/gmail/all`)).toBe("inbox");
+  });
+
   it("adds Providers and Capacity when ix-providers and ix-capacity are installed", () => {
     const items = nexusNavItems({ ...base, providers: NEXUS_PROVIDERS_PATH, capacity: NEXUS_CAPACITY_PATH });
     expect(items.find((entry) => entry.id === "providers")).toMatchObject({ label: "Providers", to: NEXUS_PROVIDERS_PATH });

@@ -13,6 +13,7 @@ export const NEXUS_SCHEDULED_PATH = "/ix/scheduled";
 
 export type NexusNavId =
   | "home"
+  | "inbox"
   | "integrations"
   | "scheduled"
   | "skills"
@@ -39,6 +40,8 @@ export interface NexusNavTargets {
   browser: string | null;
   providers?: string | null;
   capacity?: string | null;
+  /** ix-comms (the Inbox) when installed. */
+  inbox?: string | null;
   /** ix-skills when installed, else bb's own skills page. */
   skills?: string;
 }
@@ -61,6 +64,8 @@ export const NEXUS_PROVIDERS_PLUGIN_ID = "ix-providers";
 export const NEXUS_PROVIDERS_PATH = "/plugins/ix-providers/providers";
 export const NEXUS_CAPACITY_PLUGIN_ID = "ix-capacity";
 export const NEXUS_CAPACITY_PATH = "/plugins/ix-capacity/capacity";
+export const NEXUS_INBOX_PLUGIN_ID = "ix-comms";
+export const NEXUS_INBOX_PATH = "/plugins/ix-comms/inbox";
 export const NEXUS_SKILLS_PLUGIN_ID = "ix-skills";
 export const NEXUS_SKILLS_PATH = "/plugins/ix-skills/skills";
 export const NEXUS_SKILLS_FALLBACK_PATH = "/skills";
@@ -69,6 +74,7 @@ export const NEXUS_DEFAULT_DOCS = { label: "Docs", to: NEXUS_DOCS_PATH, icon: "F
 export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
   const items: NexusNavItem[] = [
     { id: "home", label: "Home", icon: "Home", to: "/" },
+    ...(targets.inbox ? [{ id: "inbox" as const, label: "Inbox", icon: "Mail", to: targets.inbox }] : []),
     {
       id: "integrations",
       label: targets.integrations.label,
@@ -98,6 +104,7 @@ export function nexusNavItems(targets: NexusNavTargets): NexusNavItem[] {
 
 export function resolveNexusNavId(pathname: string): NexusNavId | null {
   if (pathname === "/") return "home";
+  if (pathname === NEXUS_INBOX_PATH || pathname.startsWith(`${NEXUS_INBOX_PATH}/`)) return "inbox";
   if (pathname === NEXUS_MEMORY_PATH || pathname.startsWith(`${NEXUS_MEMORY_PATH}/`))
     return "memory";
   if (pathname === NEXUS_BROWSER_PATH || pathname.startsWith(`${NEXUS_BROWSER_PATH}/`))
@@ -348,6 +355,7 @@ export type NexusPageTitle = {
 
 const NAV_LABELS: Record<NexusNavId, string> = {
   home: "Home",
+  inbox: "Inbox",
   integrations: "Integrations",
   scheduled: "Scheduled",
   skills: "Skills",
