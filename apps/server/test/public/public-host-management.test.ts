@@ -859,6 +859,7 @@ describe("public host management", () => {
       const revokeRecord = {
         publication: null,
         declarations: {},
+        viewer: false,
         inputSchema: z.object({ machineId: z.string() }),
         outputSchema: z.object({ ok: z.literal(true) }),
         handler: revokeHandler,

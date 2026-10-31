@@ -195,6 +195,12 @@ export interface PluginRpcMethodContract<
    * Declare it only for reads that are safe to run twice.
    */
   readonly experimental_retryable?: boolean;
+  /**
+   * When true, a person with the read-only `viewer` role may call this method.
+   * Every other method refuses viewers with `forbidden`. Declare it only on
+   * methods that change nothing and reveal only what a viewer may already see.
+   */
+  readonly experimental_viewer?: boolean;
   readonly input: InputSchema;
   readonly output: OutputSchema;
 }

@@ -904,7 +904,7 @@ export function createApp(
     }
     return next();
   });
-  publicApi.use("*", ixApiGate({ ...deps, pluginToken: (id) => pluginService.httpToken(id), pluginRouteAuth: (id, method, subPath) => { const lookup = pluginService.getHttpRoute(id, method, subPath); return lookup.outcome === "found" ? lookup.value.auth : undefined; } }));
+  publicApi.use("*", ixApiGate({ ...deps, pluginToken: (id) => pluginService.httpToken(id), pluginCaller: (token) => { const resolved = pluginService.resolveRpcCaller(token); return resolved.ok && resolved.caller.kind === "plugin" ? resolved.caller.pluginId : undefined; }, pluginRouteAuth: (id, method, subPath) => { const lookup = pluginService.getHttpRoute(id, method, subPath); return lookup.outcome === "found" ? lookup.value.auth : undefined; } }));
   const pluginCatalogService = createPluginCatalogService({
     db: deps.db,
     appVersion: deps.config.appVersion,

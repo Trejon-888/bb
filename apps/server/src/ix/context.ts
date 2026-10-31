@@ -15,6 +15,7 @@ export type IxActor =
     }
   | { kind: "loopback-owner"; via?: "owner-token" }
   | { kind: "plugin-token"; pluginId: string }
+  | { kind: "plugin-caller"; pluginId: string }
   | { kind: "plugin-public"; pluginId: string }
   | { kind: "off" };
 

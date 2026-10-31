@@ -23,9 +23,11 @@ export interface IxGateDeps {
   /** The plugin's HTTP token (`bb plugin token <id>`), for remote calls to its token-auth routes. */
   pluginToken?: (pluginId: string) => Promise<string | undefined>;
   pluginRouteAuth?: (pluginId: string, method: string, subPath: string) => "local" | "token" | "none" | undefined;
+  pluginCaller?: (token: string) => string | undefined;
 }
 
 const PLUGIN_HTTP_PATH = /^\/api\/v1\/plugins\/([^/]+)\/http(?:\/|$)/u;
+const PLUGIN_RPC_PATH = /^\/api\/v1\/plugins\/[^/]+\/rpc\//u;
 
 /**
  * A request to a plugin's own HTTP routes that presents that plugin's token in the
@@ -114,6 +116,14 @@ export async function resolveIxActor(
   return null;
 }
 
+function pluginCallerActor(context: Context, deps: IxGateDeps): IxActor | null {
+  if (deps.pluginCaller === undefined || !PLUGIN_RPC_PATH.test(context.req.path) || !isLoopbackWithoutOrigin(context)) return null;
+  const presented = context.req.header("x-bb-plugin-caller");
+  if (presented === undefined || presented === "") return null;
+  const pluginId = deps.pluginCaller(presented);
+  return pluginId === undefined ? null : { kind: "plugin-caller", pluginId };
+}
+
 function localPublicPluginRouteActor(context: Context, deps: IxGateDeps): IxActor | null {
   if (deps.pluginRouteAuth === undefined || !isLoopbackWithoutOrigin(context)) return null;
   const match = PLUGIN_HTTP_PATH.exec(context.req.path);
@@ -128,6 +138,11 @@ export function ixApiGate(deps: IxGateDeps): MiddlewareHandler {
     const tokenActor = await pluginTokenActor(context, deps);
     if (tokenActor !== null) {
       setIxActor(context, tokenActor);
+      return next();
+    }
+    const callerActor = pluginCallerActor(context, deps);
+    if (callerActor !== null) {
+      setIxActor(context, callerActor);
       return next();
     }
     const publicActor = localPublicPluginRouteActor(context, deps);

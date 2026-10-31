@@ -31,7 +31,7 @@ async function makeService(env: NodeJS.ProcessEnv): Promise<IxAuthService> {
   return service;
 }
 
-function makeApp(ixAuth: IxAuthService, remoteAddress = "203.0.113.9", pluginToken?: (id: string) => Promise<string | undefined>): Hono {
+function makeApp(ixAuth: IxAuthService, remoteAddress = "203.0.113.9", pluginToken?: (id: string) => Promise<string | undefined>, pluginCaller?: (token: string) => string | undefined): Hono {
   const app = new Hono();
   app.use("*", async (context, next) => {
     context.set(TRUSTED_REMOTE_ADDRESS_CONTEXT_KEY, remoteAddress);
@@ -44,7 +44,7 @@ function makeApp(ixAuth: IxAuthService, remoteAddress = "203.0.113.9", pluginTok
   app.on(["GET", "POST"], "/api/auth/*", (context) => ixAuth.handler(context.req.raw));
   app.route("/api/ix", createIxRoutes({ ixAuth }));
   const publicApi = new Hono();
-  publicApi.use("*", ixApiGate({ ixAuth, pluginToken }));
+  publicApi.use("*", ixApiGate({ ixAuth, pluginToken, pluginCaller }));
   publicApi.post("/plugins/p1/http/agent/bb", (context) => context.json({ agent: true }));
   publicApi.get("/system/config", (context) => context.json({ ok: true }));
   publicApi.post("/projects", (context) => context.json({ created: true }));
@@ -262,6 +262,21 @@ describe("ix auth: team mode", () => {
     const out = await app.request("/api/ix/sign-out", { method: "POST", headers: { cookie } });
     expect(out.status).toBe(200);
     expect((await app.request("/api/ix/me", { headers: { cookie } })).status).toBe(401);
+  });
+
+  it("lets plugin-to-plugin RPC through on loopback with a verified caller token, even when loopback is denied", async () => {
+    const denied = await makeService({ ...env, BB_IX_AUTH_LOOPBACK: "deny" });
+    const caller = (token: string) => (token === "caller-p2" ? "p2" : undefined);
+    const loopback = makeApp(denied, "127.0.0.1", undefined, caller);
+    const remote = makeApp(denied, "203.0.113.9", undefined, caller);
+    const rpc = (app: Hono, path: string, headers: Record<string, string>) => app.request(path, { method: "POST", headers });
+    expect((await rpc(loopback, "/api/v1/plugins/p1/rpc/m", { "x-bb-plugin-caller": "caller-p2" })).status).toBe(200);
+    expect((await rpc(loopback, "/api/v1/plugins/p1/rpc/m", { "x-bb-plugin-caller": "forged" })).status, "unknown caller token").toBe(401);
+    expect((await rpc(loopback, "/api/v1/plugins/p1/rpc/m", {})).status, "no caller token").toBe(401);
+    expect((await rpc(loopback, "/api/v1/plugins/p1/rpc/m", { "x-bb-plugin-caller": "caller-p2", origin: BASE })).status, "browser origin").toBe(401);
+    expect((await rpc(loopback, "/api/v1/plugins/p1/rpc/m", { "x-bb-plugin-caller": "caller-p2", "cf-connecting-ip": "203.0.113.7" })).status, "proxied").toBe(401);
+    expect((await rpc(remote, "/api/v1/plugins/p1/rpc/m", { "x-bb-plugin-caller": "caller-p2" })).status, "not loopback").toBe(401);
+    expect((await rpc(loopback, "/api/v1/projects", { "x-bb-plugin-caller": "caller-p2" })).status, "not a plugin RPC path").toBe(401);
   });
 
   it("lets a plugin's own HTTP route through with that plugin's token in the header, and nothing else", async () => {

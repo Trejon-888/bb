@@ -1493,6 +1493,27 @@ Docs: `backend-foundation.md`, `testing.md`.
     size limits without pretending to model process startup, crashes, native
     watcher recovery, or reconnect behavior.
 
+## `PluginRpcMethodContract.experimental_viewer`
+
+A client RPC method can declare `experimental_viewer: true`. When an ix workspace
+person with the read-only `viewer` role calls a plugin method (the caller is
+`{ kind: "client", experimental_user: { role: "viewer" } }`), the server runs it
+only if the method declares the flag; every other method answers `forbidden`
+(403, "Viewers can't call <plugin> <method>") before input validation or the
+handler. Members, owners, plain clients without a person and plugin callers are
+unaffected. The check is in `invokeRpcHandler`, the path every RPC route uses;
+the contract reader rejects a non-boolean value.
+
+Callers: built-in reads viewers need to browse — thread-list `listPreferences`,
+inline-vis `preparePreview`, docs `listNotes`/`readDocument`/`readNote`/
+`readProposal`/`preparePreview`, github-pr-status `pullRequests`/`view`/
+`upstream`, workflows `workflowActiveRuns`/`workflowRunView`, automations
+`automations_list`/`automations_get`/`automations_overview`/`automations_runs`.
+
+Stabilize when: viewer access is decided per method by more than one plugin
+family outside ix, the flag name survives that review, and core's own read
+routes for viewers are expressed with the same rule.
+
 ## `PluginRpcMethodContract.experimental_retryable` (host contracts)
 
 A host contract method can declare `experimental_retryable: true`. When the

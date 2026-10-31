@@ -114,6 +114,7 @@ const previewTargetSchema = z.discriminatedUnion("kind", [
 
 export const inlineVisRpcContract = defineRpcContract({
   preparePreview: {
+    experimental_viewer: true,
     input: z
       .object({
         threadId: z.string().trim().min(1),

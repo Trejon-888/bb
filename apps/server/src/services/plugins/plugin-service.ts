@@ -2163,6 +2163,19 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     },
 
     async invokeRpcHandler(id, method, handler, input, caller) {
+      if (
+        caller.kind === "client" &&
+        caller.experimental_user?.role === "viewer" &&
+        !handler.viewer
+      ) {
+        return {
+          ok: false,
+          error: {
+            code: "forbidden",
+            message: `Viewers can't call ${id} ${method}`,
+          },
+        };
+      }
       const outcome = await invokeWrapped(id, `rpc ${method}`, async () => {
         const parsedInput = await validateRpcValue(
           handler.inputSchema,

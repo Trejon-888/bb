@@ -36,6 +36,7 @@ const preferenceValuesSchema = z.object(
 
 export const threadListRpcContract = defineRpcContract({
   listPreferences: {
+    experimental_viewer: true,
     input: z.null(),
     output: z.object({ preferences: preferenceValuesSchema }).strict(),
   },

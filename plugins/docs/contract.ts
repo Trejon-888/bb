@@ -191,6 +191,7 @@ export type OpenerSource = z.infer<typeof openerSourceSchema>;
 
 export const docsRpcContract = defineRpcContract({
   readProposal: {
+    experimental_viewer: true,
     input: z.object({ vaultId: vaultIdSchema, path: vaultPathSchema }).strict(),
     output: proposalSchema.nullable(),
   },
@@ -275,6 +276,7 @@ export const docsRpcContract = defineRpcContract({
       .strict(),
   },
   listNotes: {
+    experimental_viewer: true,
     input: z.object({ vaultId: vaultIdSchema }).strict(),
     output: z
       .object({
@@ -311,10 +313,12 @@ export const docsRpcContract = defineRpcContract({
     ],
   },
   readNote: {
+    experimental_viewer: true,
     input: z.object({ vaultId: vaultIdSchema, path: vaultPathSchema }).strict(),
     output: fileReadSchema,
   },
   readDocument: {
+    experimental_viewer: true,
     input: z
       .object({ vaultId: z.string().min(1), path: vaultPathSchema })
       .strict(),
@@ -430,6 +434,7 @@ export const docsRpcContract = defineRpcContract({
       .strict(),
   },
   preparePreview: {
+    experimental_viewer: true,
     input: z.object({ vaultId: vaultIdSchema, path: vaultPathSchema }).strict(),
     output: previewSchema,
     tags: (input) =>

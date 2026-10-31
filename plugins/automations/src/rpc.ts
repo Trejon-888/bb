@@ -19,14 +19,17 @@ import type { AutomationService } from "./service.js";
 
 export const automationRpcContract = defineRpcContract({
   automations_overview: {
+    experimental_viewer: true,
     input: z.null(),
     output: automationsOverviewResponseSchema,
   },
   automations_list: {
+    experimental_viewer: true,
     input: listAutomationsInputSchema,
     output: automationListResponseSchema,
   },
   automations_get: {
+    experimental_viewer: true,
     input: projectAutomationInputSchema,
     output: automationDetailReadResultSchema,
   },
@@ -55,6 +58,7 @@ export const automationRpcContract = defineRpcContract({
     output: automationRunRpcResponseSchema,
   },
   automations_runs: {
+    experimental_viewer: true,
     input: automationRunsInputSchema,
     output: automationRunListResponseSchema,
   },

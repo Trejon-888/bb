@@ -1731,11 +1731,16 @@ function readRpcMethodContract(
       Reflect.set(declarations, name, declaration);
     }
   }
+  const viewer = Reflect.get(value, "experimental_viewer");
+  if (viewer !== undefined && typeof viewer !== "boolean") {
+    throw new Error(`rpc ${method} experimental_viewer must be a boolean`);
+  }
   return {
     input,
     output,
     ...declarations,
     ...(description === null ? {} : { experimental_description: description }),
+    ...(viewer === true ? { experimental_viewer: true } : {}),
   };
 }
 
@@ -2935,6 +2940,7 @@ export function normalizeWebSocketRouteRegistration(
 
 type RpcRegistrationRecord = {
   declarations: ContractTagDeclarations<unknown, unknown>;
+  viewer: boolean;
   publication: ReturnType<typeof publishRpcMethod>;
   inputSchema: StandardSchemaV1;
   outputSchema: StandardSchemaV1;
@@ -2994,6 +3000,7 @@ export function normalizeRpcRegistration(
       {
         publication: publishRpcMethod(name, methodContract, publicationOptions),
         declarations: methodContract,
+        viewer: methodContract.experimental_viewer === true,
         inputSchema: methodContract.input,
         outputSchema: methodContract.output,
         handler,

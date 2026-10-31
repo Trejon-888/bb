@@ -198,6 +198,7 @@ export interface PluginWebSocketRouteRecord {
 export interface PluginRpcHandler {
   whileWatched?: boolean;
   declarations: ContractTagDeclarations<unknown, unknown>;
+  viewer: boolean;
   publication: ReturnType<typeof publishRpcMethod>;
   inputSchema: StandardSchemaV1;
   outputSchema: StandardSchemaV1;

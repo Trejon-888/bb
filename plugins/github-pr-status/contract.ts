@@ -213,6 +213,7 @@ const actionOutputSchema = z.object({ message: z.string() }).strict();
 
 export const githubPrStatusRpcContract = defineRpcContract({
   pullRequests: {
+    experimental_viewer: true,
     experimental_description:
       "The GitHub pull request for each environment's current branch, keyed by environment id.",
     input: z
@@ -287,6 +288,7 @@ const hostPullRequestActionResultSchema = z.discriminatedUnion("ok", [
 
 export const githubPrStatusHostContract = defineRpcContract({
   view: {
+    experimental_viewer: true,
     experimental_retryable: true,
     input: z
       .object({
@@ -298,6 +300,7 @@ export const githubPrStatusHostContract = defineRpcContract({
     output: hostPullRequestLookupSchema,
   },
   upstream: {
+    experimental_viewer: true,
     input: z.object({ path: z.string().min(1) }).strict(),
     output: z
       .object({ oid: z.string().nullable(), branchName: z.string().nullable() })

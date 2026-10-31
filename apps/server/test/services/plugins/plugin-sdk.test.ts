@@ -1072,6 +1072,57 @@ describe("plugin bb.sdk against a running server", () => {
     }
   });
 
+  it("refuses viewers on rpc methods that do not declare experimental_viewer", async () => {
+    const server = await startTestServer();
+    const workDir = await mkdtemp(join(tmpdir(), "bb-plugin-rpc-viewer-"));
+    try {
+      server.pluginService.bindSdk({ baseUrl: server.baseUrl });
+      const rootDir = await writePlugin(workDir, {
+        name: "bb-plugin-guarded",
+        serverSource: `export default function plugin() {}`,
+      });
+      expect((await server.pluginService.installPath(rootDir)).status).toBe(
+        "running",
+      );
+      const list = vi.fn(() => ({ items: 1 }));
+      const remove = vi.fn(() => ({ removed: true }));
+      requireApi(server.pluginService, "guarded").rpc.register(
+        defineRpcContract({
+          list: {
+            experimental_viewer: true,
+            input: z.null(),
+            output: z.object({ items: z.number() }),
+          },
+          remove: { input: z.null(), output: z.object({ removed: z.boolean() }) },
+        }),
+        { list, remove },
+      );
+      const person = (role: "owner" | "admin" | "member" | "viewer") => ({
+        kind: "client" as const,
+        experimental_user: { id: "u1", email: "u1@example.test", name: "U One", role },
+      });
+      const invoke = async (method: string, caller: Parameters<typeof server.pluginService.invokeRpcHandler>[4]) => {
+        const lookup = server.pluginService.getRpcHandler("guarded", method);
+        if (lookup.outcome !== "found") throw new Error(`no handler for ${method}`);
+        return server.pluginService.invokeRpcHandler("guarded", method, lookup.value, null, caller);
+      };
+
+      expect(await invoke("list", person("viewer"))).toEqual({ ok: true, result: { items: 1 } });
+      expect(await invoke("remove", person("viewer"))).toEqual({
+        ok: false,
+        error: { code: "forbidden", message: "Viewers can't call guarded remove" },
+      });
+      expect(remove).not.toHaveBeenCalled();
+      expect(await invoke("remove", person("member"))).toEqual({ ok: true, result: { removed: true } });
+      expect(await invoke("remove", { kind: "client" })).toEqual({ ok: true, result: { removed: true } });
+      expect(await invoke("remove", { kind: "plugin", pluginId: "other" })).toEqual({ ok: true, result: { removed: true } });
+    } finally {
+      await server.pluginService.stop();
+      await rm(workDir, { recursive: true, force: true });
+      await server.close();
+    }
+  });
+
   it("tells rpc handlers which plugin called them and treats every other caller as a client", async () => {
     const server = await startTestServer();
     const workDir = await mkdtemp(join(tmpdir(), "bb-plugin-rpc-caller-"));
