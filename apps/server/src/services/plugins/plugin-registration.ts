@@ -259,8 +259,16 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
     existing: InstalledPluginRow | undefined,
     identity: InstallRegistrationIdentity,
   ): InstalledPluginRow | undefined {
+    if (existing === undefined) return undefined;
     if (
-      existing === undefined ||
+      existing.sourceKind === "path" &&
+      existing.provenance === "direct" &&
+      (identity.sourceIntent.kind === "git" ||
+        identity.sourceIntent.kind === "npm")
+    ) {
+      return existing;
+    }
+    if (
       identity.provenance.kind !== "direct" ||
       identity.sourceIntent.kind !== "path"
     ) {
@@ -321,9 +329,10 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
       );
     }
     if (
-      identity.provenance.kind === "catalog" ||
-      identity.sourceIntent.kind === "npm" ||
-      identity.sourceIntent.kind === "git"
+      pathSourceMoveFrom(existing, identity) === undefined &&
+      (identity.provenance.kind === "catalog" ||
+        identity.sourceIntent.kind === "npm" ||
+        identity.sourceIntent.kind === "git")
     ) {
       throw new Error(
         `plugin "${pluginId}" is already installed; use \`bb plugin update ${pluginId}\` or remove it before reinstalling`,
