@@ -174,6 +174,52 @@ export const BB_LOG_LEVEL_ENV = defineEnvVar<string>({
   parse: parseLogLevelValue,
 });
 
+export const BB_LOG_ROTATED_FILES_MIN = 1;
+export const BB_LOG_ROTATED_FILES_MAX = 200;
+export const BB_LOG_ROTATED_FILES_DEFAULT = 5;
+export const BB_LOG_ROTATE_SIZE_DEFAULT = "10m";
+
+function parseLogRotatedFilesEnvValue(args: EnvVarParseArgs): number {
+  const trimmed = args.value.trim();
+  if (!/^\d+$/u.test(trimmed)) {
+    throw new Error(`${args.name} must be an integer`);
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  if (parsed < BB_LOG_ROTATED_FILES_MIN || parsed > BB_LOG_ROTATED_FILES_MAX) {
+    throw new Error(
+      `${args.name} must be between ${BB_LOG_ROTATED_FILES_MIN} and ${BB_LOG_ROTATED_FILES_MAX}`,
+    );
+  }
+  return parsed;
+}
+
+const LOG_ROTATE_SIZE_PATTERN = /^\d+(?:\.\d+)?\s*[bkmg]?$/iu;
+
+function parseLogRotateSizeEnvValue(args: EnvVarParseArgs): string {
+  const trimmed = args.value.trim().toLowerCase();
+  if (
+    !LOG_ROTATE_SIZE_PATTERN.test(trimmed) ||
+    Number.parseFloat(trimmed) <= 0
+  ) {
+    throw new Error(
+      `${args.name} must be a positive size such as 10m, 512k or 1g`,
+    );
+  }
+  return trimmed;
+}
+
+export const BB_LOG_ROTATED_FILES_ENV = defineEnvVar<number>({
+  description: `How many rotated log files to keep per component (${BB_LOG_ROTATED_FILES_MIN}-${BB_LOG_ROTATED_FILES_MAX}, default ${BB_LOG_ROTATED_FILES_DEFAULT})`,
+  name: "BB_LOG_ROTATED_FILES",
+  parse: parseLogRotatedFilesEnvValue,
+});
+
+export const BB_LOG_ROTATE_SIZE_ENV = defineEnvVar<string>({
+  description: `Rotate a log file once it reaches this size, e.g. 10m, 512k, 1g (default ${BB_LOG_ROTATE_SIZE_DEFAULT})`,
+  name: "BB_LOG_ROTATE_SIZE",
+  parse: parseLogRotateSizeEnvValue,
+});
+
 export const BB_SERVER_PORT_ENV = defineEnvVar<number>({
   description: "HTTP port for the server",
   name: "BB_SERVER_PORT",

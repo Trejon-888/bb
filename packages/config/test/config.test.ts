@@ -143,6 +143,68 @@ describe("common config", () => {
     ).toThrow("BB_DATA_DIR must not be empty");
   });
 
+  it("defaults log rotation to five files of 10m", () => {
+    const config = loadLoggerConfig({
+      env: { BB_DATA_DIR: "/tmp/bb-data", NODE_ENV: "production" },
+    });
+    expect(config.BB_LOG_ROTATED_FILES).toBe(5);
+    expect(config.BB_LOG_ROTATE_SIZE).toBe("10m");
+  });
+
+  it("reads BB_LOG_ROTATED_FILES and BB_LOG_ROTATE_SIZE", () => {
+    const config = loadLoggerConfig({
+      dataDir: "/tmp/bb-data",
+      env: {
+        BB_LOG_ROTATED_FILES: " 60 ",
+        BB_LOG_ROTATE_SIZE: "50M",
+        NODE_ENV: "production",
+      },
+    });
+    expect(config.BB_LOG_ROTATED_FILES).toBe(60);
+    expect(config.BB_LOG_ROTATE_SIZE).toBe("50m");
+  });
+
+  it("bounds BB_LOG_ROTATED_FILES to 1..200 integers", () => {
+    for (const value of ["0", "201", "-1", "5.5", "many", ""]) {
+      expect(
+        () =>
+          loadLoggerConfig({
+            env: { BB_LOG_ROTATED_FILES: value, NODE_ENV: "production" },
+          }),
+        value,
+      ).toThrow(/BB_LOG_ROTATED_FILES/u);
+    }
+    expect(
+      loadLoggerConfig({
+        env: { BB_LOG_ROTATED_FILES: "1", NODE_ENV: "production" },
+      }).BB_LOG_ROTATED_FILES,
+    ).toBe(1);
+    expect(
+      loadLoggerConfig({
+        env: { BB_LOG_ROTATED_FILES: "200", NODE_ENV: "production" },
+      }).BB_LOG_ROTATED_FILES,
+    ).toBe(200);
+  });
+
+  it("rejects malformed BB_LOG_ROTATE_SIZE values", () => {
+    for (const value of ["0", "10mb", "big", "-1m", "", "1t"]) {
+      expect(
+        () =>
+          loadLoggerConfig({
+            env: { BB_LOG_ROTATE_SIZE: value, NODE_ENV: "production" },
+          }),
+        value,
+      ).toThrow(/BB_LOG_ROTATE_SIZE/u);
+    }
+    for (const value of ["512k", "1g", "10m", "1048576", "0.5g"]) {
+      expect(
+        loadLoggerConfig({
+          env: { BB_LOG_ROTATE_SIZE: value, NODE_ENV: "production" },
+        }).BB_LOG_ROTATE_SIZE,
+      ).toBe(value);
+    }
+  });
+
   it("rejects unsupported BB_LOG_LEVEL overrides", () => {
     expect(() =>
       loadCommonConfig({

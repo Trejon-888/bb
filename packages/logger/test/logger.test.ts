@@ -323,3 +323,48 @@ describe("createLogger", () => {
     });
   });
 });
+
+describe("createLogger rotation settings", () => {
+  it("keeps only BB_LOG_ROTATED_FILES rotated files and rotates at BB_LOG_ROTATE_SIZE", async () => {
+    const dataDir = createTempDir();
+    const logDir = path.join(dataDir, "logs");
+    fs.mkdirSync(logDir, { recursive: true });
+    for (let i = 1; i <= 6; i++) {
+      const filePath = path.join(logDir, `server.${i}.log`);
+      fs.writeFileSync(filePath, "");
+      const mtime = new Date(Date.now() - i * 60 * 60 * 1000);
+      fs.utimesSync(filePath, mtime, mtime);
+    }
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("BB_DATA_DIR", dataDir);
+    vi.stubEnv("BB_LOG_ROTATED_FILES", "2");
+    vi.stubEnv("BB_LOG_ROTATE_SIZE", "1m");
+
+    const { createLogger } = await importFreshLogger();
+    const logger = createLogger({ component: "server" });
+    expect(getComponentLogFiles(logDir, "server")).toEqual([
+      "server.1.log",
+      "server.2.log",
+    ]);
+
+    const payload = "x".repeat(1.5 * 1024 * 1024);
+    logger.info({ payload }, "rotate");
+    logger.info({ payload }, "rotate again");
+    await waitFor(
+      () => getComponentLogFiles(logDir, "server").length > 2,
+      10_000,
+    );
+    expect(getComponentLogFiles(logDir, "server").length).toBeGreaterThan(2);
+  });
+
+  it("refuses an out-of-range BB_LOG_ROTATED_FILES", async () => {
+    const dataDir = createTempDir();
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("BB_DATA_DIR", dataDir);
+    vi.stubEnv("BB_LOG_ROTATED_FILES", "500");
+    const { createLogger } = await importFreshLogger();
+    expect(() => createLogger({ component: "server" })).toThrow(
+      /BB_LOG_ROTATED_FILES must be between 1 and 200/u,
+    );
+  });
+});

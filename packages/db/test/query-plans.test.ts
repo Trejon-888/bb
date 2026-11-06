@@ -1,3 +1,4 @@
+import type Database from "better-sqlite3";
 import { advanceThreadPruning } from "../src/data/thread-pruning.js";
 import {
   findEnvironmentPathClaim,
@@ -202,6 +203,8 @@ function captureStatements(
   run: () => void,
 ): CapturedStatement[] {
   const captured: CapturedStatement[] = [];
+  const patched: Array<() => void> = [];
+  const patchedStatements = new WeakSet<Database.Statement>();
   const raw = db.$client;
   const originalPrepare = raw.prepare.bind(raw);
   Object.defineProperty(raw, "prepare", {
@@ -209,8 +212,15 @@ function captureStatements(
     writable: true,
     value: (source: string) => {
       const statement = originalPrepare(source);
+      if (patchedStatements.has(statement)) return statement;
+      patchedStatements.add(statement);
       const originalAll = statement.all.bind(statement);
       const originalGet = statement.get.bind(statement);
+      const { all: previousAll, get: previousGet } = statement;
+      patched.push(() => {
+        statement.all = previousAll;
+        statement.get = previousGet;
+      });
       statement.all = (...params: unknown[]) => {
         captured.push({ params: params as SqliteParameter[], sql: source });
         return originalAll(...params);
@@ -225,6 +235,7 @@ function captureStatements(
   try {
     run();
   } finally {
+    for (const restore of patched) restore();
     Object.defineProperty(raw, "prepare", {
       configurable: true,
       writable: true,

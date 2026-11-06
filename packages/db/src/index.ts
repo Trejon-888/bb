@@ -1,4 +1,10 @@
-export { afterCommit, createConnection } from "./connection.js";
+export {
+  afterCommit,
+  createConnection,
+  DEFAULT_STATEMENT_CACHE_SIZE,
+  getStatementCacheStats,
+  isCacheableStatementSql,
+} from "./connection.js";
 export type {
   DbConnection,
   DbQueryConnection,
