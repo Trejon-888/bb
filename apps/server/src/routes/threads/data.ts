@@ -1,3 +1,4 @@
+import { createChatSuggestionGenerator } from "../../services/threads/chat-suggestions.js";
 import { extractThreadContextWindowUsage } from "@bb/thread-view";
 import {
   getAppSettings,
@@ -147,10 +148,17 @@ function parseThreadTimelinePage(
 }
 
 export function registerThreadDataRoutes(app: Hono, deps: AppDeps): void {
-  const { get, patch } = typedRoutes<PublicApiSchema>(app, {
+  const { get, patch, post } = typedRoutes<PublicApiSchema>(app, {
     onValidationError: (msg) => new ApiError(400, "invalid_request", msg),
   });
   const routes = publicApiRoutes.threads;
+  const chatSuggestions = createChatSuggestionGenerator(deps);
+  post(routes.chatSuggestions, async (context) => {
+    const thread = requirePublicThread(deps.db, context.req.param("id"));
+    const result = await chatSuggestions(thread.id, context.req.raw.signal);
+    requirePublicThread(deps.db, thread.id);
+    return context.json(result);
+  });
   const timelineWindows = createThreadTimelineWindows(deps);
   const conversationOutlineCache = new Map<
     string,

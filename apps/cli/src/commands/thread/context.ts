@@ -8,6 +8,26 @@ export function registerContextCommand(
   getUrl: () => string,
 ): void {
   parent
+    .command("suggestions [id]")
+    .description("Generate conversation-aware next messages")
+    .option("--self", "Use the current thread")
+    .option("--json", "Print JSON")
+    .action(
+      action(
+        async (
+          id: string | undefined,
+          opts: { self?: boolean; json?: boolean },
+        ) => {
+          const result = await createCliBbSdk(getUrl()).threads.chatSuggestions(
+            { threadId: requireThreadIdOrSelf(id, opts) },
+          );
+          if (outputJson(opts, result)) return;
+          for (const suggestion of result.suggestions)
+            console.log(`${suggestion.label}: ${suggestion.prompt}`);
+        },
+      ),
+    );
+  parent
     .command("context [id]")
     .description(
       "Show the latest recorded context window usage and available breakdown",

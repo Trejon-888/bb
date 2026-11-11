@@ -1,3 +1,4 @@
+import type { ThreadChatSuggestionsResponse } from "./api/threads.js";
 import {
   uiPreferencesRoute,
   updateUiPreferenceRoute,
@@ -1561,6 +1562,12 @@ export const publicApiRoutes = {
         setQueuedMessageGroupBoundaryRequestSchema,
       ),
       response: jsonResponse<ThreadQueuedMessageListResponse>(),
+    }),
+    chatSuggestions: defineRoute({
+      path: "/threads/:id/chat-suggestions",
+      method: "post",
+      request: noRequest<PathId>(),
+      response: jsonResponse<ThreadChatSuggestionsResponse>(),
     }),
     promptHistory: defineRoute({
       path: "/threads/:id/prompt-history",

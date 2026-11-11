@@ -367,3 +367,5 @@ This index lists every command path that the core CLI registers, including alias
 - `bb ix chat leave`
 - `bb ix invite`
 - `bb ix me`
+
+`bb thread suggestions [id] [--self] [--json]` generates conversation-aware next messages using the Chat suggestions AI service. Empty suggestions mean no result is available. It never sends a message.

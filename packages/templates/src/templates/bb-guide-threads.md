@@ -199,3 +199,5 @@ Lifecycle ownership:
   dependents; deleting it deletes them. Unarchive the owner before explicitly
   restoring a dependent. Stop does not cascade. Sidebar parents and ordinary
   forks keep their own policies.
+
+`bb thread suggestions [id] [--self] [--json]` generates conversation-aware next messages using the Chat suggestions AI service. Empty suggestions mean no result is available. It never sends a message.
