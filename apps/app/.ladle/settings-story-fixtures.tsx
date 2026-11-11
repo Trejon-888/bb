@@ -72,6 +72,7 @@ const STORY_AI_SERVICES: SystemAiServicesResponse = {
   selections: {
     "thread-title": { mode: "automatic" },
     "commit-message": { mode: "automatic" },
+    "chat-suggestions": { mode: "automatic" },
     voice: { mode: "automatic" },
   },
   services: [
