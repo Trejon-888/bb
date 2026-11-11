@@ -154,7 +154,7 @@ function printAiServices(view: SystemAiServicesResponse): void {
           ? " (nothing ready)"
           : ` (using ${automatic.displayName})`;
     console.log(
-      `${task.padEnd(16)}${describeAiSelection(view, selection)}${using}`,
+      `${task.padEnd(18)}${describeAiSelection(view, selection)}${using}`,
     );
   }
   console.log("");

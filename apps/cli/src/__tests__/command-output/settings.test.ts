@@ -510,6 +510,7 @@ describe("bb settings commands", () => {
           pluginId: "my-openrouter",
           serviceId: "helper",
         },
+        "chat-suggestions": { mode: "off" },
         voice: { mode: "off" },
       },
       services: [
@@ -571,9 +572,10 @@ describe("bb settings commands", () => {
       await runCommand(["settings", "ai-services"], register);
 
       const lines = collectLogLines(vi.mocked(console.log));
-      expect(lines[0]).toBe("thread-title    Automatic (nothing ready)");
-      expect(lines[1]).toBe("commit-message  OpenRouter");
-      expect(lines[2]).toBe("voice           Off");
+      expect(lines[0]).toBe("thread-title      Automatic (nothing ready)");
+      expect(lines[1]).toBe("commit-message    OpenRouter");
+      expect(lines[2]).toBe("chat-suggestions  Off");
+      expect(lines[3]).toBe("voice             Off");
       expect(lines).toContain(
         "  codex  Codex  plugin provider-codex  [thread-title, commit-message, voice]  Automatic #1  not ready: Run `codex login`",
       );
@@ -658,7 +660,7 @@ describe("bb settings commands", () => {
       ).rejects.toThrow("process.exit:1");
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(
-          "Unknown task 'subtitles'. Tasks: thread-title, commit-message, voice",
+          "Unknown task 'subtitles'. Tasks: thread-title, commit-message, chat-suggestions, voice",
         ),
       );
       expect(put).not.toHaveBeenCalled();
