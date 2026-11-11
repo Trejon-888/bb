@@ -115,6 +115,22 @@ function PromptBoxWithScrollAnchor({
   );
 }
 
+const FOLLOW_UP_SUGGESTIONS = [
+  {
+    label: "Summarize",
+    prompt: "Summarize this thread, including decisions and open questions.",
+  },
+  {
+    label: "Next steps",
+    prompt: "What are the next steps based on this thread?",
+  },
+  {
+    label: "Check work",
+    prompt:
+      "Review the work in this thread. What has been verified, and what still needs checking?",
+  },
+];
+
 const FOLLOW_UP_PROMPT_BOX_DEFAULT_MIN_HEIGHT = 68;
 const FOLLOW_UP_PROMPT_BOX_ELASTIC_TARGET_HEIGHT =
   FOLLOW_UP_PROMPT_BOX_DEFAULT_MIN_HEIGHT +
@@ -717,6 +733,51 @@ function FollowUpPromptBoxWithComposer({
       onFocusCapture={handleComposerFocus}
       onPointerDownCapture={handleComposerPointerDown}
     >
+      {canSubmit &&
+      !composer.isFollowUpSubmitting &&
+      !isStopping &&
+      !(steerOnPrimarySubmit && !composer.canModifierSubmit) &&
+      composer.message.length === 0 &&
+      composer.mentionRanges.length === 0 &&
+      attachmentCount === 0 &&
+      !attachments.isAttaching ? (
+        <div
+          className="mb-2 flex flex-wrap gap-1.5"
+          role="group"
+          aria-label="Chat suggestions"
+        >
+          {FOLLOW_UP_SUGGESTIONS.map((suggestion) => (
+            <Button
+              key={suggestion.label}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-auto rounded-full px-3 py-1.5 text-xs"
+              onClick={() => {
+                if (
+                  composer.message.length > 0 ||
+                  composer.mentionRanges.length > 0 ||
+                  attachmentCount > 0 ||
+                  attachments.isAttaching ||
+                  composer.isFollowUpSubmitting ||
+                  !canSubmit ||
+                  isStopping ||
+                  (steerOnPrimarySubmit && !composer.canModifierSubmit)
+                )
+                  return;
+                flushSync(() =>
+                  composer.onChangeMessage(suggestion.prompt, []),
+                );
+                setWidePromptBoxCollapsedFor(null);
+                setInteractionExpanded(true);
+                promptBoxRef.current?.focusEnd();
+              }}
+            >
+              {suggestion.label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
       <PromptBoxWithScrollAnchor
         id={id}
         promptBoxRef={promptBoxRef}

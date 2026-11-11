@@ -354,6 +354,138 @@ beforeEach(() => {
 });
 
 describe("FollowUpPromptBox", () => {
+  it("hides suggestions for whitespace, attachments, mentions, and pending interactions", () => {
+    const props = createFollowUpPromptBoxProps({ kind: "ready" });
+    if (!props.composer) throw new Error("Missing composer");
+    const composer = { ...props.composer, message: "" };
+    const { rerender } = render(
+      <FollowUpPromptBox {...props} composer={{ ...composer, message: " " }} />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Chat suggestions" }),
+    ).toBeNull();
+    rerender(
+      <FollowUpPromptBox
+        {...props}
+        composer={composer}
+        attachments={{
+          ...props.attachments,
+          items: [
+            {
+              type: "localFile",
+              path: "test.txt",
+              name: "test.txt",
+              sizeBytes: 1,
+            },
+          ],
+        }}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Chat suggestions" }),
+    ).toBeNull();
+    rerender(
+      <FollowUpPromptBox
+        {...props}
+        composer={{
+          ...composer,
+          mentionRanges: [
+            {
+              start: 0,
+              end: 1,
+              resource: {
+                kind: "attachment",
+                path: "test.txt",
+                label: "test.txt",
+              },
+            },
+          ],
+        }}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Chat suggestions" }),
+    ).toBeNull();
+    rerender(
+      <FollowUpPromptBox
+        {...props}
+        composer={composer}
+        pendingInteraction={<div>Approval needed</div>}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Chat suggestions" }),
+    ).toBeNull();
+  });
+
+  it.each<FollowUpSubmitMode>([
+    { kind: "ready" },
+    { kind: "queue", onStop: vi.fn() },
+  ])(
+    "prepares a suggestion as an editable draft without sending in $kind mode",
+    (mode) => {
+      const props = createFollowUpPromptBoxProps(mode);
+      if (!props.composer) throw new Error("Missing composer");
+      props.composer.message = "";
+      render(<FollowUpPromptBox {...props} />);
+      fireEvent.click(screen.getByRole("button", { name: "Summarize" }));
+      expect(props.composer.onChangeMessage).toHaveBeenCalledWith(
+        "Summarize this thread, including decisions and open questions.",
+        [],
+      );
+      expect(props.composer.onSubmit).not.toHaveBeenCalled();
+      expect(props.composer.onModifierSubmit).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(
+        screen.getByLabelText("Follow-up prompt"),
+      );
+    },
+  );
+
+  it("hides suggestions when a draft exists or submission is blocked", () => {
+    const props = createFollowUpPromptBoxProps({ kind: "ready" });
+    if (!props.composer) throw new Error("Missing composer");
+    const { rerender } = render(<FollowUpPromptBox {...props} />);
+    expect(
+      screen.queryByRole("group", { name: "Chat suggestions" }),
+    ).toBeNull();
+    props.composer.message = "";
+    props.composer = { ...props.composer };
+    rerender(<FollowUpPromptBox {...props} />);
+    expect(
+      screen.getByRole("group", { name: "Chat suggestions" }),
+    ).toBeTruthy();
+    rerender(
+      <FollowUpPromptBox
+        {...props}
+        composer={{ ...props.composer, isFollowUpSubmitting: true }}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Chat suggestions" }),
+    ).toBeNull();
+    rerender(
+      <FollowUpPromptBox
+        {...props}
+        composer={{
+          ...props.composer,
+          submitMode: { kind: "blocked", reason: "unavailable" },
+        }}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Chat suggestions" }),
+    ).toBeNull();
+    rerender(
+      <FollowUpPromptBox
+        {...props}
+        attachments={{ ...props.attachments, isAttaching: true }}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Chat suggestions" }),
+    ).toBeNull();
+  });
+
   it.each([
     { height: 24, expectedMinHeight: 79 },
     { height: 35, expectedMinHeight: 68 },
