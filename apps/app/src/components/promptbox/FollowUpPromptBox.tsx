@@ -735,7 +735,7 @@ function FollowUpPromptBoxWithComposer({
         >
           {suggestions.map((suggestion) => (
             <Button
-              key={suggestion.label}
+              key={suggestion.prompt}
               type="button"
               variant="outline"
               size="sm"

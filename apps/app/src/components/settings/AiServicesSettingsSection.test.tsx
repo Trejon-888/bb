@@ -154,6 +154,25 @@ describe("AiServicesSettingsSection", () => {
     await vi.waitFor(() => expect(trigger.textContent).toContain("Off"));
   });
 
+  it("clears cached suggestions when their AI selection changes", async () => {
+    stubFetch();
+    const { wrapper, queryClient } = createQueryClientTestHarness();
+    const key = ["thread-chat-suggestions", "thr_test", 1];
+    queryClient.setQueryData(key, {
+      sequence: 1,
+      suggestions: [{ label: "Old", prompt: "Old prompt" }],
+    });
+    render(<AiServicesSettingsSection />, { wrapper });
+    const trigger = await screen.findByRole("button", {
+      name: "Chat suggestions",
+    });
+    fireEvent.pointerDown(trigger, { button: 0 });
+    fireEvent.click(await screen.findByRole("menuitem", { name: /^Off/u }));
+    await vi.waitFor(() =>
+      expect(queryClient.getQueryData(key)).toBeUndefined(),
+    );
+  });
+
   it("runs a test and shows the reply", async () => {
     stubFetch();
     const { wrapper } = createQueryClientTestHarness();

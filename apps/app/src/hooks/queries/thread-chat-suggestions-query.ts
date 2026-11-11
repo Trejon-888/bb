@@ -14,10 +14,9 @@ export function useThreadChatSuggestions({
     queryKey: ["thread-chat-suggestions", threadId, version],
     queryFn: ({ signal }) => sdk.threads.chatSuggestions({ threadId, signal }),
     enabled,
-    staleTime: Infinity,
+    staleTime: 30_000,
     gcTime: 60_000,
     retry: false,
-    refetchOnWindowFocus: false,
   });
   return enabled ? (query.data?.suggestions ?? []) : [];
 }

@@ -179,8 +179,13 @@ export function AiServicesSettingsSection() {
     meta: { showErrorToast: false },
     mutationFn: (request: SetAiServiceSelectionRequest) =>
       sdk.system.setAiServiceSelection(request),
-    onSuccess: (view) => {
+    onSuccess: (view, request) => {
       writeCachedAiServices(queryClient, view);
+      if (request.task === "chat-suggestions") {
+        void queryClient.resetQueries({
+          queryKey: ["thread-chat-suggestions"],
+        });
+      }
     },
     onError: (error) => {
       appToast.error("Changing the AI service failed", {

@@ -68,3 +68,25 @@ it("ignores late responses after switching threads or conversation versions", as
   await waitFor(() => expect(result.current[0]?.label).toBe("Current"));
   expect(generate).toHaveBeenCalledTimes(3);
 });
+
+it("retries an unavailable empty response after the cache becomes stale", async () => {
+  generate.mockResolvedValueOnce({ sequence: 1, suggestions: [] });
+  generate.mockResolvedValue({
+    sequence: 1,
+    suggestions: [{ label: "Retry", prompt: "Review this thread." }],
+  });
+  const { wrapper, queryClient } = createQueryClientTestHarness();
+  const { result, rerender } = renderHook(useThreadChatSuggestions, {
+    wrapper,
+    initialProps: { threadId: "a", version: 1, enabled: true },
+  });
+  await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+  rerender({ threadId: "a", version: 1, enabled: false });
+  await act(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["thread-chat-suggestions", "a", 1],
+    });
+  });
+  rerender({ threadId: "a", version: 1, enabled: true });
+  await waitFor(() => expect(result.current[0]?.label).toBe("Retry"));
+});
