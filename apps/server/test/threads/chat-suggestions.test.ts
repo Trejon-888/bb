@@ -137,7 +137,6 @@ describe("conversation suggestions", () => {
     await withTestHarness({}, async (harness) => {
       const thread = seedThread(harness.deps, {
         projectId: PERSONAL_PROJECT_ID,
-        visibility: "private",
       });
       const store = createIxAccessStore(
         harness.deps.db,
