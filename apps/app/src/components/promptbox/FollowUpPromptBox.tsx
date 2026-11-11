@@ -115,22 +115,6 @@ function PromptBoxWithScrollAnchor({
   );
 }
 
-const FOLLOW_UP_SUGGESTIONS = [
-  {
-    label: "Summarize",
-    prompt: "Summarize this thread, including decisions and open questions.",
-  },
-  {
-    label: "Next steps",
-    prompt: "What are the next steps based on this thread?",
-  },
-  {
-    label: "Check work",
-    prompt:
-      "Review the work in this thread. What has been verified, and what still needs checking?",
-  },
-];
-
 const FOLLOW_UP_PROMPT_BOX_DEFAULT_MIN_HEIGHT = 68;
 const FOLLOW_UP_PROMPT_BOX_ELASTIC_TARGET_HEIGHT =
   FOLLOW_UP_PROMPT_BOX_DEFAULT_MIN_HEIGHT +
@@ -170,6 +154,7 @@ type ContextWindowUsage = ComponentProps<
 
 export interface FollowUpPromptBoxProps {
   id?: string;
+  suggestions?: readonly { label: string; prompt: string }[];
   attachments: AttachmentsConfig;
   stack: ReactNode | null;
   activePromptMode?: ThreadTimelineActivePromptMode | null;
@@ -249,6 +234,7 @@ function FollowUpPromptBoxStackOnly({
 
 function FollowUpPromptBoxWithComposer({
   id,
+  suggestions = [],
   attachments,
   stack,
   activePromptMode = null,
@@ -733,7 +719,8 @@ function FollowUpPromptBoxWithComposer({
       onFocusCapture={handleComposerFocus}
       onPointerDownCapture={handleComposerPointerDown}
     >
-      {canSubmit &&
+      {suggestions.length > 0 &&
+      canSubmit &&
       !composer.isFollowUpSubmitting &&
       !isStopping &&
       !(steerOnPrimarySubmit && !composer.canModifierSubmit) &&
@@ -746,7 +733,7 @@ function FollowUpPromptBoxWithComposer({
           role="group"
           aria-label="Chat suggestions"
         >
-          {FOLLOW_UP_SUGGESTIONS.map((suggestion) => (
+          {suggestions.map((suggestion) => (
             <Button
               key={suggestion.label}
               type="button"

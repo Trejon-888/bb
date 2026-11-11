@@ -48,6 +48,10 @@ const hostDraftMocks = vi.hoisted(() => ({
   subscribed: false,
 }));
 
+vi.mock("@/hooks/queries/thread-chat-suggestions-query", () => ({
+  useThreadChatSuggestions: () => [],
+}));
+
 vi.mock("@/components/promptbox/FollowUpPromptBox", async () => {
   const { usePluginComposerHostDraft } =
     await import("@/components/plugin/plugin-composer-host");

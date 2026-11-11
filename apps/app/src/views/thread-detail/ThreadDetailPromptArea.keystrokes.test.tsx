@@ -36,6 +36,10 @@ import { LazyQueuedMessagesList } from "@/components/promptbox/banner/LazyQueued
 import { getPromptDraftAccessor } from "@/hooks/usePromptDraftStorage";
 import { ThreadDetailPromptArea } from "./ThreadDetailPromptArea";
 
+vi.mock("@/hooks/queries/thread-chat-suggestions-query", () => ({
+  useThreadChatSuggestions: () => [],
+}));
+
 const shellProbeRenders = vi.fn();
 
 const PROJECT_ID = "proj_keystrokes";

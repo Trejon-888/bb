@@ -1,7 +1,7 @@
 # Inline chat suggestions
 
-Thread composers show reusable Summarize, Next steps, and Check work prompts when the draft is empty. Selecting a prompt fills the editable composer and focuses it; sending remains a separate action. The shared follow-up composer supplies the same behavior to native and embedded chat panels. These are fixed quick prompts, not model-generated suggestions based on conversation content.
+Idle thread composers show follow-up suggestions generated from the conversation. Selecting one fills an editable draft and focuses the composer; sending remains a separate action. Native and embedded chats use the shared follow-up composer. No fixed prompts substitute for unavailable suggestions.
 
-Suggestions hide for text (including whitespace), mentions, attachments, uploads, pending interactions, submission, stopping, and unavailable submission modes. Running threads may prepare a follow-up using their usual queue or steer behavior.
+Suggestions are requested only for ready composers with no text (including whitespace), mentions, attachments, uploads, or pending interactions. Query results are isolated by thread and conversation update version, so old requests cannot populate a different thread. Generation uses the selected Chat suggestions AI service; turning that task off hides suggestions. Failed or unavailable generation leaves the composer usable.
 
-The buttons use the existing draft-change path. SDK plugins can prepare equivalent drafts through `PluginComposerApi.replace({ text, mentions: [] })` and focus the composer; no suggestion-specific API is required. CLI callers can send the same prompt with `bb thread tell <thread-id> '<prompt>'`; that command sends immediately rather than preparing a UI draft.
+SDK callers use `threads.chatSuggestions({ threadId })` to retrieve the same generated suggestions. Plugins prepare an editable draft through `PluginComposerApi.replace({ text, mentions: [] })` and focus the composer. CLI callers retrieve suggestions with `bb thread suggestions <thread-id>` and may send one with `bb thread tell <thread-id> '<prompt>'`; tell sends immediately rather than preparing a UI draft.

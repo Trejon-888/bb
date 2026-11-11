@@ -268,6 +268,13 @@ function createFollowUpPromptBoxProps(
   submitMode: FollowUpSubmitMode,
 ): Parameters<typeof FollowUpPromptBox>[0] {
   return {
+    suggestions: [
+      {
+        label: "Summarize",
+        prompt:
+          "Summarize this thread, including decisions and open questions.",
+      },
+    ],
     attachments: {
       items: [],
       projectId: "proj_test",

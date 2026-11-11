@@ -1,3 +1,4 @@
+import { useThreadChatSuggestions } from "@/hooks/queries/thread-chat-suggestions-query";
 import { appendQuoteAndAttachmentsToDraft } from "@bb/client-core";
 import { useQueuedMessagesExpanded } from "@/components/promptbox/banner/queued-messages-expanded";
 import { createCoreComposerActions } from "@/lib/plugin-composer-handle";
@@ -1197,11 +1198,26 @@ function EmbeddedThreadChatWithComposer({
       threadId={threadId}
     />
   ) : null;
+  const chatSuggestions = useThreadChatSuggestions({
+    threadId,
+    version: threadQuery.data?.updatedAt ?? 0,
+    enabled:
+      Boolean(threadQuery.data) &&
+      !hasComposerBlockingPendingInteraction &&
+      bottomComposerConfig.submitMode.kind === "ready" &&
+      !bottomComposerConfig.isFollowUpSubmitting &&
+      bottomComposerConfig.message.length === 0 &&
+      bottomComposerConfig.mentionRanges.length === 0 &&
+      (bottomAttachmentsConfig.items?.length ?? 0) === 0 &&
+      !bottomAttachmentsConfig.isAttaching,
+  });
+
   const footer = (
     <div className={cn("relative", surfaceClassName)}>
       <OverflowFade placement="above" tone={surfaceTone} />
       <div className="px-4 pb-4 pt-2">
         <FollowUpPromptBox
+          suggestions={chatSuggestions}
           attachments={bottomAttachmentsConfig}
           stack={queuedMessagesStack}
           pendingInteraction={pendingInteractionBanner}

@@ -56,6 +56,10 @@ import {
 } from "./ThreadDetailPromptArea";
 import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
 
+vi.mock("@/hooks/queries/thread-chat-suggestions-query", () => ({
+  useThreadChatSuggestions: () => [],
+}));
+
 vi.mock("@/hooks/usePromptDraftStorage", () => ({
   usePromptDraftStorage: () => mocks.promptDraft,
 }));

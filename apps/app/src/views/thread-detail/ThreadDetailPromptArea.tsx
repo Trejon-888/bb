@@ -1,3 +1,4 @@
+import { useThreadChatSuggestions } from "@/hooks/queries/thread-chat-suggestions-query";
 import { createCoreComposerActions } from "@/lib/plugin-composer-handle";
 import { useQueuedMessagesExpanded } from "@/components/promptbox/banner/queued-messages-expanded";
 import type { MachineRemovalStatus } from "@/lib/machine-removal-display";
@@ -2285,8 +2286,23 @@ export function ThreadDetailPromptArea({
       />
     );
 
+  const chatSuggestions = useThreadChatSuggestions({
+    threadId: thread.id,
+    version: thread.updatedAt,
+    enabled:
+      !shouldHideComposer &&
+      !pendingInteractionNode &&
+      bottomComposerConfig.submitMode.kind === "ready" &&
+      !bottomComposerConfig.isFollowUpSubmitting &&
+      bottomComposerConfig.message.length === 0 &&
+      bottomComposerConfig.mentionRanges.length === 0 &&
+      (bottomAttachmentsConfig.items?.length ?? 0) === 0 &&
+      !bottomAttachmentsConfig.isAttaching,
+  });
+
   const bottomContent = (
     <FollowUpPromptBox
+      suggestions={chatSuggestions}
       id={THREAD_DETAIL_COMPOSER_TEXTAREA_ID}
       attachments={bottomAttachmentsConfig}
       stack={pendingInteractionNode ? pendingInteractionStack : promptStack}

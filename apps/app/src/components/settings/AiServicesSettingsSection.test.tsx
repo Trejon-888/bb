@@ -11,6 +11,7 @@ import {
 
 const VIEW: SystemAiServicesResponse = {
   selections: {
+    "chat-suggestions": { mode: "automatic" },
     "thread-title": { mode: "automatic" },
     "commit-message": {
       mode: "service",
@@ -112,6 +113,9 @@ describe("AiServicesSettingsSection", () => {
 
     const titles = await screen.findByRole("button", { name: "Thread titles" });
     await vi.waitFor(() => expect(titles.textContent).toContain("Automatic"));
+    expect(
+      screen.getByRole("button", { name: "Chat suggestions" }).textContent,
+    ).toContain("Automatic");
     expect(
       screen.getByRole("button", { name: "Commit messages" }).textContent,
     ).toContain("OpenRouter");

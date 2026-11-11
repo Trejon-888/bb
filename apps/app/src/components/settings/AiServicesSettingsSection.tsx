@@ -33,6 +33,13 @@ interface AiTaskRow {
 
 const AI_TASK_ROWS: readonly AiTaskRow[] = [
   {
+    task: "chat-suggestions",
+    label: "Chat suggestions",
+    hint: "Suggests follow-up prompts based on the conversation.",
+    offDescription: "Hides conversation suggestions.",
+    testTask: "chat-suggestions",
+  },
+  {
     task: "thread-title",
     label: "Thread titles",
     hint: "Branch names follow the title.",
