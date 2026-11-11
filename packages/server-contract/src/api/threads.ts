@@ -1379,3 +1379,22 @@ export const threadStoragePathListResponseSchema =
 export type ThreadStoragePathListResponse = z.infer<
   typeof threadStoragePathListResponseSchema
 >;
+
+export const threadChatSuggestionsResponseSchema = z
+  .object({
+    sequence: z.number().int().nonnegative(),
+    suggestions: z
+      .array(
+        z
+          .object({
+            label: z.string().trim().min(1).max(60),
+            prompt: z.string().trim().min(1).max(500),
+          })
+          .strict(),
+      )
+      .max(3),
+  })
+  .strict();
+export type ThreadChatSuggestionsResponse = z.infer<
+  typeof threadChatSuggestionsResponseSchema
+>;

@@ -1348,3 +1348,5 @@ metadata is preserved. This is a desktop-local preference, with no server
 settings CLI/SDK endpoint. Builds with tolerant readers ignore the field and
 may drop it on save; older strict readers can reject the whole file, so keep a
 backup before rolling back to a build predating the tolerant-reader fix #5286.
+
+The `chat-suggestions` AI task uses the selected text AI service to suggest editable next messages from recent thread conversation. Configure it with `bb settings ai-services set chat-suggestions ...`; selecting off disables generation. No messages are sent automatically.

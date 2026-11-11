@@ -1,3 +1,4 @@
+import type { ThreadChatSuggestionsResponse } from "@bb/server-contract";
 import {
   type PromptInput,
   type PendingInteraction,
@@ -685,6 +686,9 @@ export interface ThreadsArea {
   message(args: ThreadMessageArgs): Promise<ThreadMessageResult>;
   output(args: ThreadOutputArgs): Promise<ThreadOutputResponse>;
   pin(args: ThreadActionArgs): Promise<ThreadMutationResult>;
+  chatSuggestions(
+    args: ThreadActionArgs & { signal?: AbortSignal },
+  ): Promise<ThreadChatSuggestionsResponse>;
   promptHistory(
     args: ThreadPromptHistoryArgs,
   ): Promise<ThreadPromptHistoryResult>;
@@ -1484,6 +1488,14 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
         transport.api.v1.threads[":id"].pin.$post({
           param: { id: input.threadId },
         }),
+      );
+    },
+    async chatSuggestions(input) {
+      return transport.readJson(
+        transport.api.v1.threads[":id"]["chat-suggestions"].$post(
+          { param: { id: input.threadId } },
+          ...signalRequestArgs(input.signal),
+        ),
       );
     },
     async promptHistory(input) {
