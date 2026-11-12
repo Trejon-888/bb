@@ -13,6 +13,7 @@ import {
   isNull,
   lt,
   ne,
+  notInArray,
   or,
   placeholder,
   sql,
@@ -448,10 +449,14 @@ export interface ListThreadsOptions {
   originKind?: ThreadOriginKind;
   originPluginId?: string;
   threadIds?: readonly string[];
+  excludeThreadIds?: readonly string[];
+  sort?: ThreadListSort;
   limit?: number;
   offset?: number;
   includeHidden?: boolean;
 }
+
+export type ThreadListSort = "created" | "updated" | "activity";
 
 type ThreadRow = typeof threads.$inferSelect;
 
@@ -714,6 +719,10 @@ function buildListThreadsFilters(options: ListThreadsOptions) {
     options.threadIds === undefined
       ? undefined
       : inArray(threads.id, [...options.threadIds]),
+    options.excludeThreadIds === undefined ||
+    options.excludeThreadIds.length === 0
+      ? undefined
+      : notInArray(threads.id, [...options.excludeThreadIds]),
     options.sectionId ? eq(threads.sectionId, options.sectionId) : undefined,
     options.unsectioned ? isNull(threads.sectionId) : undefined,
     nonDeletedThreads(),
@@ -775,7 +784,19 @@ function buildPinnedThreadOrderBy() {
   ];
 }
 
-function buildListThreadsOrderBy(options: ListThreadsOptions) {
+function buildListThreadsOrderBy(
+  options: Pick<ListThreadsOptions, "archived" | "sort">,
+) {
+  switch (options.sort) {
+    case "created":
+      return [desc(threads.createdAt), desc(threads.id)];
+    case "updated":
+      return [desc(threads.updatedAt), desc(threads.id)];
+    case "activity":
+      return [desc(threads.latestAttentionAt), desc(threads.id)];
+    case undefined:
+      break;
+  }
   if (options.archived === true) {
     return [desc(threads.archivedAt), desc(threads.id)];
   }

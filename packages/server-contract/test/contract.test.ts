@@ -521,7 +521,7 @@ const OPTIONAL_SERVER_FIELD_GROUPS: readonly OptionalServerFieldGroup[] = [
   },
   {
     reason:
-      "Thread list queries may omit filters and pagination to include the corresponding unfiltered/default set.",
+      "Thread list queries may omit filters, sorting and pagination to include the corresponding unfiltered/default set.",
     fields: [
       "threadListQuerySchema.archived",
       "threadListQuerySchema.environmentId",
@@ -535,6 +535,7 @@ const OPTIONAL_SERVER_FIELD_GROUPS: readonly OptionalServerFieldGroup[] = [
       "threadListQuerySchema.originPluginId",
       "threadListQuerySchema.parentThreadId",
       "threadListQuerySchema.projectId",
+      "threadListQuerySchema.sort",
       "threadListQuerySchema.sourceThreadId",
       "threadListQuerySchema.threadIds",
       "threadListQuerySchema.unsectioned",

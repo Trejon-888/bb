@@ -82,6 +82,53 @@ describe("bb thread list command output", () => {
     });
   });
 
+  it("bb thread list sorts and limits on the server", async () => {
+    const list = vi.fn(async () => []);
+    stubServerApi({ "v1.threads.$get": list });
+
+    await runCommand(
+      [
+        "thread",
+        "list",
+        "--sort",
+        "updated",
+        "--limit",
+        "10",
+        "--offset",
+        "20",
+        "--json",
+      ],
+      register,
+    );
+
+    expect(list).toHaveBeenCalledWith({
+      query: { sort: "updated", limit: "10", offset: "20" },
+    });
+  });
+
+  it.each([
+    [["--limit", "0"], "Error: --limit must be a positive integer."],
+    [["--limit", "ten"], "Error: --limit must be a positive integer."],
+    [["--offset", "-1"], "Error: --offset must be a non-negative integer."],
+    [
+      ["--sort", "oldest"],
+      "Error: --sort must be one of: created, updated, activity.",
+    ],
+  ])(
+    "bb thread list rejects %j before calling the server",
+    async (flags, message) => {
+      const list = vi.fn(async () => []);
+      stubServerApi({ "v1.threads.$get": list });
+
+      await expect(
+        runCommand(["thread", "list", ...flags], register),
+      ).rejects.toThrow("process.exit:1");
+
+      expect(console.error).toHaveBeenCalledWith(message);
+      expect(list).not.toHaveBeenCalled();
+    },
+  );
+
   it("bb thread list rejects invalid parent-thread values", async () => {
     const list = vi.fn(async () => []);
     stubServerApi({ "v1.threads.$get": list });

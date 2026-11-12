@@ -38,6 +38,12 @@ export interface IxThreadMember {
   addedAt: number;
 }
 
+export interface IxThreadAccessFacts {
+  hidden: boolean;
+  shared: boolean;
+  member: boolean;
+}
+
 export function ixShareAllowed(allowed: readonly IxShareChoice[], share: IxThreadShare): boolean {
   return allowed.includes(share) || (share === "private" && allowed.includes("people"));
 }
@@ -66,6 +72,7 @@ export interface IxAccessStore {
   setDefaultThreadShare(share: IxThreadShare): void;
   hiddenThreadsFor(userId: string, visibleProject: (projectId: string) => boolean): Set<string>;
   sharedThreadsFor(userId: string, visibleProject: (projectId: string) => boolean): Set<string>;
+  threadAccessFacts(threadId: string, userId: string, visibleProject: (projectId: string) => boolean): IxThreadAccessFacts;
   allThreadIds(): string[];
   recordTurnSender(threadId: string, userId: string): void;
   turnSender(threadId: string): string | null;
@@ -218,6 +225,20 @@ export function createIxAccessStore(db: DbConnection, kv: IxKv): IxAccessStore {
       ).all(userId);
       return new Set(rows.filter((r) => (r.project_id === null ? r.share === "workspace" : visibleProject(r.project_id))).map((r) => r.thread_id));
     },
+    threadAccessFacts(threadId, userId, visibleProject) {
+      ensure();
+      const member = client.prepare<[string, string], { hit: number }>(
+        "WITH RECURSIVE chain(id, parent_id, depth) AS (SELECT id, parent_thread_id, 0 FROM threads WHERE id = ? UNION ALL SELECT t.id, t.parent_thread_id, c.depth + 1 FROM threads t JOIN chain c ON t.id = c.parent_id WHERE c.depth < 64) SELECT 1 AS hit FROM ix_thread_member m JOIN chain c ON m.thread_id = c.id OR (m.thread_id = c.parent_id AND c.depth < 64) WHERE m.user_id = ? LIMIT 1",
+      ).get(threadId, userId) !== undefined;
+      const row = client.prepare<[string], { user_id: string; share: string | null; project_id: string | null }>(
+        "SELECT o.user_id, s.share, t.project_id FROM ix_thread_owner o LEFT JOIN ix_thread_share s ON s.thread_id = o.thread_id LEFT JOIN threads t ON t.id = o.thread_id WHERE o.thread_id = ?",
+      ).get(threadId);
+      if (row === undefined || row.user_id === userId) return { hidden: false, shared: false, member };
+      const open = row.share === "workspace" || row.share === "project";
+      const hidden = !member && (!open ? true : row.project_id === null ? row.share === "project" : !visibleProject(row.project_id));
+      const shared = open && (row.project_id === null ? row.share === "workspace" : visibleProject(row.project_id));
+      return { hidden, shared, member };
+    },
     allThreadIds() {
       ensure();
       return client.prepare<[], { id: string }>("SELECT id FROM threads").all().map((r) => r.id);
@@ -286,6 +307,14 @@ interface IxRequestAccess {
   done: boolean;
   grantedProjects: Set<string>;
   threadView?: IxThreadView;
+  threadFacts?: Map<string, IxRequestThreadFacts>;
+  oversightPolicy?: boolean;
+}
+interface IxRequestThreadFacts {
+  hidden: boolean;
+  shared: boolean;
+  member: boolean;
+  oversight: boolean;
 }
 interface IxThreadView {
   hidden: Set<string>;
@@ -345,7 +374,7 @@ function threadView(access: IxRequestAccess): IxThreadView | null {
     const scope = access.scope;
     const visibleProject = (projectId: string) => scope === null || ixProjectVisible(scope, projectId);
     const hidden = access.store.hiddenThreadsFor(access.userId, visibleProject);
-    const oversight = access.admin && access.store.sharingPolicy().adminsSeeAll;
+    const oversight = oversightPolicy(access);
     access.threadView = {
       hidden: oversight ? new Set() : hidden,
       shared: access.store.sharedThreadsFor(access.userId, visibleProject),
@@ -356,26 +385,59 @@ function threadView(access: IxRequestAccess): IxThreadView | null {
   return access.threadView;
 }
 
+let pointLookupBudget = 8;
+export function setIxThreadPointLookupBudget(budget: number): void {
+  pointLookupBudget = budget;
+}
+
+function oversightPolicy(access: IxRequestAccess): boolean {
+  access.oversightPolicy ??= access.admin && access.store.sharingPolicy().adminsSeeAll;
+  return access.oversightPolicy;
+}
+
+function prepareThreadFacts(access: IxRequestAccess, count: number): void {
+  if (access.userId === null || access.threadView !== undefined) return;
+  if (count > pointLookupBudget - (access.threadFacts?.size ?? 0)) threadView(access);
+}
+
+function threadFacts(access: IxRequestAccess, threadId: string): IxRequestThreadFacts | null {
+  if (access.userId === null) return null;
+  const known = access.threadFacts?.get(threadId);
+  if (known !== undefined) return known;
+  let view = access.threadView;
+  if (view === undefined && (access.threadFacts?.size ?? 0) >= pointLookupBudget) view = threadView(access) ?? undefined;
+  if (view !== undefined) {
+    return { hidden: view.hidden.has(threadId), shared: view.shared.has(threadId), member: view.members.has(threadId), oversight: view.oversight.has(threadId) };
+  }
+  const scope = access.scope;
+  const visibleProject = (projectId: string) => scope === null || ixProjectVisible(scope, projectId);
+  const raw = access.store.threadAccessFacts(threadId, access.userId, visibleProject);
+  const oversight = oversightPolicy(access);
+  const facts = { hidden: oversight ? false : raw.hidden, shared: raw.shared, member: raw.member, oversight: oversight ? raw.hidden : false };
+  (access.threadFacts ??= new Map()).set(threadId, facts);
+  return facts;
+}
+
 function threadIdVisible(access: IxRequestAccess | null, threadId: string): boolean {
   if (access === null) return true;
-  const view = threadView(access);
-  if (view === null) return true;
-  if (view.hidden.has(threadId)) return false;
+  const facts = threadFacts(access, threadId);
+  if (facts === null) return true;
+  if (facts.hidden) return false;
   const scope = access.scope;
-  return scope === null || scope.ownThreads.has(threadId) || view.shared.has(threadId) || view.members.has(threadId);
+  return scope === null || scope.ownThreads.has(threadId) || facts.shared || facts.member;
 }
 
 function threadRowVisible(access: IxRequestAccess | null, thread: { id: string; projectId: string }): boolean {
   if (!threadIdVisible(access, thread.id)) return false;
   const scope = access?.scope ?? null;
   if (scope === null || ixProjectVisible(scope, thread.projectId)) return true;
-  return access !== null && (threadView(access)?.members.has(thread.id) ?? false);
+  return access !== null && (threadFacts(access, thread.id)?.member ?? false);
 }
 
 export function ixThreadOversightOnly(threadId: string): boolean {
   const access = currentRequestAccess();
   if (access === null) return false;
-  return threadView(access)?.oversight.has(threadId) ?? false;
+  return threadFacts(access, threadId)?.oversight ?? false;
 }
 
 function canWrite(scope: IxAccessScope, projectId: string): boolean {
@@ -394,15 +456,15 @@ export function assertIxThreadAccess(thread: { id: string; projectId: string }):
   const access = currentRequestAccess();
   if (!threadRowVisible(access, thread)) throw new ApiError(404, "thread_not_found", "Thread not found");
   if (access === null) return;
-  const view = threadView(access);
-  if (access.writing && view?.oversight.has(thread.id) === true) throw new ApiError(403, "ix_oversight_read_only", "Admins can read this chat for oversight, but only its people can change it");
+  const facts = threadFacts(access, thread.id);
+  if (access.writing && facts?.oversight === true) throw new ApiError(403, "ix_oversight_read_only", "Admins can read this chat for oversight, but only its people can change it");
   const scope = access.scope;
   if (scope === null) return;
-  if (view?.members.has(thread.id) === true && !ixProjectVisible(scope, thread.projectId)) {
+  if (facts?.member === true && !ixProjectVisible(scope, thread.projectId)) {
     access.grantedProjects.add(thread.projectId);
     return;
   }
-  if (view?.members.has(thread.id) === true) return;
+  if (facts?.member === true) return;
   if (scope.writing && !canWrite(scope, thread.projectId)) throw new ApiError(403, "ix_project_read_only", "You have read-only access to this project");
 }
 
@@ -426,7 +488,9 @@ export function filterIxProjects<T extends { id: string }>(rows: T[]): T[] {
 
 export function filterIxThreads<T extends { id: string; projectId: string }>(rows: T[]): T[] {
   const access = currentRequestAccess();
-  return access === null ? rows : rows.filter((row) => threadRowVisible(access, row));
+  if (access === null) return rows;
+  prepareThreadFacts(access, rows.length);
+  return rows.filter((row) => threadRowVisible(access, row));
 }
 
 export function noteIxThreadCreated(thread: { id: string; parentThreadId: string | null }): void {
@@ -484,14 +548,28 @@ export function ixScopedThreadIds(requested: readonly string[] | undefined): rea
   return (requested ?? access.store.allThreadIds()).filter((id) => !view.hidden.has(id));
 }
 
+export function ixThreadListScope(requested: readonly string[] | undefined): { threadIds?: readonly string[]; excludeThreadIds?: readonly string[] } {
+  const access = currentRequestAccess();
+  if (access === null || access.scope !== null || requested !== undefined) {
+    const threadIds = ixScopedThreadIds(requested);
+    return threadIds === undefined ? {} : { threadIds };
+  }
+  const view = threadView(access);
+  if (view === null || view.hidden.size === 0) return {};
+  return { excludeThreadIds: [...view.hidden] };
+}
+
 export function filterIxThreadsById<T extends { id: string }>(rows: T[]): T[] {
   const access = currentRequestAccess();
-  return access === null ? rows : rows.filter((row) => threadIdVisible(access, row.id));
+  if (access === null) return rows;
+  prepareThreadFacts(access, rows.length);
+  return rows.filter((row) => threadIdVisible(access, row.id));
 }
 
 export function filterIxSearchGroup<T extends { total: number; results: Array<{ thread: { id: string; projectId: string } }> }>(group: T): T {
   const access = currentRequestAccess();
   if (access === null) return group;
+  prepareThreadFacts(access, group.results.length);
   const results = group.results.filter((result) => threadRowVisible(access, result.thread));
   return results.length === group.results.length ? group : { ...group, total: results.length, results };
 }
@@ -503,7 +581,9 @@ export function filterIxByProjectId<T extends { projectId: string | null }>(rows
 
 export function filterIxByThreadId<T extends { threadId: string }>(rows: T[]): T[] {
   const access = currentRequestAccess();
-  return access === null ? rows : rows.filter((row) => threadIdVisible(access, row.threadId));
+  if (access === null) return rows;
+  prepareThreadFacts(access, rows.length);
+  return rows.filter((row) => threadIdVisible(access, row.threadId));
 }
 
 export function ixRestricted(): boolean {

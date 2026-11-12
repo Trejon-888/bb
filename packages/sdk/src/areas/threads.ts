@@ -99,6 +99,7 @@ export interface ThreadListArgs {
   includeHidden?: boolean;
   limit?: number;
   offset?: number;
+  sort?: ThreadListQuery["sort"];
   originKind?: ThreadListQuery["originKind"];
   originPluginId?: string;
   parentThreadId?: string;
@@ -761,6 +762,7 @@ function listQuery(args: ThreadListArgs | undefined): ThreadListQuery {
     ...(args?.includeHidden === undefined
       ? {}
       : { includeHidden: args.includeHidden ? "true" : "false" }),
+    ...(args?.sort === undefined ? {} : { sort: args.sort }),
     ...(args?.limit === undefined ? {} : { limit: String(args.limit) }),
     ...(args?.offset === undefined ? {} : { offset: String(args.offset) }),
     ...(args?.hasParent === undefined

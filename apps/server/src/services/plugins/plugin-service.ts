@@ -282,6 +282,7 @@ export interface PluginService {
   stop(): Promise<void>;
   handleUncaughtException(error: unknown): boolean;
   list(): InstalledPlugin[];
+  listRevision?(): string;
   getDisplayName(id: string): string;
   providerCatalog(): Array<{
     id: string;
@@ -703,6 +704,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     stabilizingPluginIds,
     statuses,
     statusListeners,
+    getStatusRevision,
     wireLookup,
     withArtifactLock,
     withLifecycleLock,
@@ -923,7 +925,9 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     }
   }
 
+  let pluginsChangedRevision = 0;
   function notifyPluginsChanged(): void {
+    pluginsChangedRevision += 1;
     const changes: SystemChangeKind[] = ["plugins-changed"];
     const providerRegistrationRevision =
       deps.providerRegistry?.getRegistrationRevision();
@@ -1358,6 +1362,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
 
   return {
     isBuiltin: isBuiltinPluginId,
+    listRevision: () => `${pluginsChangedRevision}:${getStatusRevision()}`,
 
     listThemes() {
       return [...loaded.entries()]

@@ -26,6 +26,38 @@ interface ThreadListCommandOptions {
   unsectioned?: boolean;
   json?: boolean;
   includeHidden?: boolean;
+  limit?: string;
+  offset?: string;
+  sort?: string;
+}
+
+const THREAD_LIST_SORTS = ["created", "updated", "activity"] as const;
+type ThreadListSortOption = (typeof THREAD_LIST_SORTS)[number];
+
+function parseThreadListSort(
+  value: string | undefined,
+): ThreadListSortOption | undefined {
+  if (value === undefined) return undefined;
+  const sort = THREAD_LIST_SORTS.find((candidate) => candidate === value);
+  if (sort === undefined) {
+    throw new Error(`--sort must be one of: ${THREAD_LIST_SORTS.join(", ")}.`);
+  }
+  return sort;
+}
+
+function parseThreadListCount(
+  value: string | undefined,
+  flag: "--limit" | "--offset",
+  minimum: 0 | 1,
+): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = /^\d+$/u.test(value) ? Number(value) : Number.NaN;
+  if (!Number.isSafeInteger(parsed) || parsed < minimum) {
+    throw new Error(
+      `${flag} must be a ${minimum === 1 ? "positive" : "non-negative"} integer.`,
+    );
+  }
+  return parsed;
 }
 
 export function registerListCommand(
@@ -53,6 +85,15 @@ export function registerListCommand(
     .option("--unsectioned", "Show only threads outside sections")
     .option("--archived", "Show only archived threads")
     .option("--include-hidden", "Include hidden threads")
+    .option(
+      "--sort <order>",
+      "Newest first by created, updated or activity (default: grouped by project, pinned first)",
+    )
+    .option(
+      "--limit <count>",
+      "Return at most this many threads (the server sorts and limits; use with --sort for the most recent)",
+    )
+    .option("--offset <count>", "Skip this many threads first")
     .option("--json", "Print machine-readable JSON output")
     .action(
       action(async (opts: ThreadListCommandOptions) => {
@@ -93,6 +134,9 @@ export function registerListCommand(
           flagName: "--section",
           value: opts.section,
         });
+        const sort = parseThreadListSort(opts.sort);
+        const limit = parseThreadListCount(opts.limit, "--limit", 1);
+        const offset = parseThreadListCount(opts.offset, "--offset", 0);
         const threads = await sdk.threads.list({
           ...(projectId ? { projectId } : {}),
           ...(environmentId ? { environmentId } : {}),
@@ -103,6 +147,9 @@ export function registerListCommand(
           ...(sectionId ? { sectionId } : {}),
           ...(opts.unsectioned ? { unsectioned: true } : {}),
           ...(opts.includeHidden ? { includeHidden: true } : {}),
+          ...(sort ? { sort } : {}),
+          ...(limit === undefined ? {} : { limit }),
+          ...(offset === undefined ? {} : { offset }),
         });
         if (outputJson(opts, threads)) return;
         if (threads.length === 0) {

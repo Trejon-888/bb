@@ -438,11 +438,13 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
   const rpcCallers = createPluginRpcCallerRegistry();
   let loadHold: PluginLoadHold | null = null;
 
+  let statusRevision = 0;
   function publishStatus(
     id: string,
     status: PluginRuntimeStatus,
     detail: string | null,
   ): void {
+    statusRevision += 1;
     statuses.set(id, { status, detail });
     for (const listener of statusListeners.get(id) ?? []) {
       listener(status, detail);
@@ -2144,6 +2146,7 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
     stabilizingPluginIds,
     statuses,
     statusListeners,
+    getStatusRevision: () => statusRevision,
     wireLookup,
     withArtifactLock,
     withLifecycleLock,

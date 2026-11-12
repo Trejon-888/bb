@@ -1,5 +1,5 @@
 import { countUnarchivedThreadDescendants } from "../../services/threads/thread-archive.js";
-import { assertIxProjectAccess, assignIxThreadOwner, filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds } from "../../ix/access.js";
+import { assertIxProjectAccess, assignIxThreadOwner, filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds, ixThreadListScope } from "../../ix/access.js";
 import { listThreadCascades } from "../../services/threads/thread-cascade.js";
 import { cancelAbandonedProviderCreations } from "../../services/threads/thread-environment-providers.js";
 import {
@@ -20,6 +20,7 @@ import {
   listThreadDescendants,
   searchThreadsWithPendingInteractionState,
   updateThread,
+  type ListThreadsOptions,
   type ThreadSearchResultGroup as DbThreadSearchResultGroup,
   type UpdateThreadInput,
 } from "@bb/db";
@@ -326,8 +327,8 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
     if (query.sectionId) {
       requireThreadSection(deps, query.sectionId);
     }
-    const scopedThreadIds = ixScopedThreadIds(query.threadIds === undefined ? undefined : parseThreadListThreadIds(query.threadIds));
-    const threads = filterIxThreads(listThreadsWithPendingInteractionState(deps.db, {
+    const listScope = ixThreadListScope(query.threadIds === undefined ? undefined : parseThreadListThreadIds(query.threadIds));
+    const listOptions: ListThreadsOptions = {
       ...(query.projectId ? { projectId: query.projectId } : {}),
       ...(query.environmentId ? { environmentId: query.environmentId } : {}),
       ...(query.hostId ? { hostId: query.hostId } : {}),
@@ -337,15 +338,25 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
       ...(query.unsectioned === "true" ? { unsectioned: true } : {}),
       ...(query.originKind ? { originKind: query.originKind } : {}),
       ...(query.originPluginId ? { originPluginId: query.originPluginId } : {}),
-      ...(scopedThreadIds === undefined ? {} : { threadIds: scopedThreadIds }),
+      ...listScope,
+      ...(query.sort ? { sort: query.sort } : {}),
       includeHidden: query.includeHidden === "true",
       archived:
         query.archived === undefined ? undefined : query.archived === "true",
       hasParent:
         query.hasParent === undefined ? undefined : query.hasParent === "true",
+    };
+    const page = listThreadsWithPendingInteractionState(deps.db, {
+      ...listOptions,
       ...(limit !== undefined ? { limit } : {}),
       ...(offset !== undefined ? { offset } : {}),
-    }));
+    });
+    let threads = filterIxThreads(page);
+    if (threads.length < page.length && (limit !== undefined || offset !== undefined)) {
+      const start = offset ?? 0;
+      const visible = filterIxThreads(listThreadsWithPendingInteractionState(deps.db, listOptions));
+      threads = visible.slice(start, limit === undefined ? undefined : start + limit);
+    }
     return context.json(
       toThreadListEntryResponses(deps, { threads }) satisfies ThreadListEntry[],
     );

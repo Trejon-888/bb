@@ -114,11 +114,13 @@ export {
 export type {
   ApplyThreadLifecycleEventArgs,
   ApplyThreadLifecycleEventOutcome,
+  ListThreadsOptions,
   ReorderPinnedThreadResult,
   RunningThreadRow,
   ThreadSearchResultGroup,
   ThreadWithPendingInteractionState,
   ThreadExecutionOverride,
+  ThreadListSort,
   UpdateThreadInput,
 } from "./threads.js";
 

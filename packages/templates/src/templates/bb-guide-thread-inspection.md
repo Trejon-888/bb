@@ -21,6 +21,13 @@ Listing:
     --section <id>                         Filter by section
     --unsectioned                          Show only threads outside sections
     --include-hidden                       Include hidden threads
+    --sort <created|updated|activity>      Newest first by that time (default: grouped by project, pinned first)
+    --limit <count>                        At most this many, sorted and limited by the server
+    --offset <count>                       Skip this many first
+
+  For "the last 10 chats" use `bb thread list --sort updated --limit 10`
+  (SDK: `threads.list({ sort: "updated", limit: 10 })`) instead of listing
+  everything and sorting locally.
 
   The table prints ID, Title, Project, and Status. Title uses the thread
   title, then the fallback title from the first prompt, then "-". Long

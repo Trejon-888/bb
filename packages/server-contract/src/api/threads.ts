@@ -908,6 +908,9 @@ export type ThreadArchiveAllResponse = z.infer<
  * caller with no IDs gets no threads instead of every thread.
  */
 
+export const threadListSortSchema = z.enum(["created", "updated", "activity"]);
+export type ThreadListSort = z.infer<typeof threadListSortSchema>;
+
 export const threadListQuerySchema = z.object({
   projectId: z.string().min(1).optional(),
   environmentId: z.string().min(1).optional(),
@@ -935,6 +938,7 @@ export const threadListQuerySchema = z.object({
       },
     )
     .optional(),
+  sort: threadListSortSchema.optional(),
   limit: z.string().regex(/^\d+$/).optional(),
   offset: z.string().regex(/^\d+$/).optional(),
 });

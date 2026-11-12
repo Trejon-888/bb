@@ -380,6 +380,8 @@ function pluginWebSocketEvents(args: {
   };
 }
 
+export const PLUGIN_LIST_REUSE_MS = 1_000;
+
 export function registerPluginRoutes(
   app: Hono,
   deps: PluginRoutesDeps,
@@ -461,7 +463,25 @@ export function registerPluginRoutes(
     return context.json(plugins.discoverRpc(query.data));
   });
 
-  app.get("/plugins", (context) => context.json({ plugins: plugins.list() }));
+  let listCache: { at: number; revision: string; body: string } | null = null;
+  app.get("/plugins", (context) => {
+    const revision = plugins.listRevision?.();
+    const now = Date.now();
+    if (
+      revision === undefined ||
+      listCache === null ||
+      listCache.revision !== revision ||
+      now - listCache.at >= PLUGIN_LIST_REUSE_MS ||
+      now < listCache.at
+    ) {
+      const body = JSON.stringify({ plugins: plugins.list() });
+      listCache = revision === undefined ? null : { at: now, revision, body };
+      return context.body(body, 200, { "content-type": "application/json" });
+    }
+    return context.body(listCache.body, 200, {
+      "content-type": "application/json",
+    });
+  });
 
   app.get("/plugins/contributions", (context) =>
     context.json({
