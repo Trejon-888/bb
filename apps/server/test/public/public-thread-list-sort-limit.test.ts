@@ -109,6 +109,9 @@ describe("GET /threads sort + limit", () => {
         expect(await listIds(harness, `?sort=${sort}&limit=2`)).toEqual(
           by(sort).slice(0, 2),
         );
+        expect(await listIds(harness, `?sort=${sort}&offset=4`)).toEqual(
+          by(sort).slice(4),
+        );
         expect(
           await listIds(harness, `?sort=${sort}&limit=2&offset=3`),
         ).toEqual(by(sort).slice(3, 5));
@@ -149,6 +152,24 @@ describe("GET /threads sort + limit", () => {
       expect(await asBen("?sort=created&limit=2&offset=1")).toEqual(
         visible.slice(1, 3),
       );
+      for (const sort of ["created", "updated", "activity"] as const) {
+        const all = await asBen(`?sort=${sort}`);
+        expect(all.length).toBe(3);
+        for (let offset = 0; offset <= all.length + 1; offset += 1) {
+          for (const limit of [1, 2, 3, 10]) {
+            expect(
+              await asBen(`?sort=${sort}&limit=${limit}&offset=${offset}`),
+              `${sort} limit ${limit} offset ${offset}`,
+            ).toEqual(all.slice(offset, offset + limit));
+          }
+          expect(await asBen(`?sort=${sort}&offset=${offset}`)).toEqual(
+            all.slice(offset),
+          );
+        }
+      }
+      expect(await asBen("?sort=created&limit=1&offset=2")).toEqual([
+        visible[2],
+      ]);
       expect(alpha.id).not.toBe(beta.id);
     });
   });

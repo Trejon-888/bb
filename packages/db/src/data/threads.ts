@@ -1483,8 +1483,8 @@ export function listThreadsWithPendingInteractionState(
     .where(and(...buildListThreadsFilters(options)))
     .orderBy(...buildListThreadsOrderBy(options))
     .$dynamic();
-  if (options.limit !== undefined) {
-    query = query.limit(options.limit);
+  if (options.limit !== undefined || options.offset !== undefined) {
+    query = query.limit(options.limit ?? Number.MAX_SAFE_INTEGER);
   }
   if (options.offset !== undefined) {
     query = query.offset(options.offset);

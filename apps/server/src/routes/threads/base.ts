@@ -1,5 +1,5 @@
 import { countUnarchivedThreadDescendants } from "../../services/threads/thread-archive.js";
-import { assertIxProjectAccess, assignIxThreadOwner, filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds, ixThreadListScope } from "../../ix/access.js";
+import { assertIxProjectAccess, assignIxThreadOwner, currentIxAccessScope, filterIxSearchGroup, filterIxThreads, filterIxThreadsById, ixScopedThreadIds, ixThreadListScope } from "../../ix/access.js";
 import { listThreadCascades } from "../../services/threads/thread-cascade.js";
 import { cancelAbandonedProviderCreations } from "../../services/threads/thread-environment-providers.js";
 import {
@@ -346,16 +346,24 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
       hasParent:
         query.hasParent === undefined ? undefined : query.hasParent === "true",
     };
-    const page = listThreadsWithPendingInteractionState(deps.db, {
-      ...listOptions,
-      ...(limit !== undefined ? { limit } : {}),
-      ...(offset !== undefined ? { offset } : {}),
-    });
-    let threads = filterIxThreads(page);
-    if (threads.length < page.length && (limit !== undefined || offset !== undefined)) {
+    const paged = limit !== undefined || offset !== undefined;
+    let threads: ReturnType<typeof listThreadsWithPendingInteractionState>;
+    if (paged && currentIxAccessScope() !== null) {
       const start = offset ?? 0;
       const visible = filterIxThreads(listThreadsWithPendingInteractionState(deps.db, listOptions));
       threads = visible.slice(start, limit === undefined ? undefined : start + limit);
+    } else {
+      const page = listThreadsWithPendingInteractionState(deps.db, {
+        ...listOptions,
+        ...(limit !== undefined ? { limit } : {}),
+        ...(offset !== undefined ? { offset } : {}),
+      });
+      threads = filterIxThreads(page);
+      if (paged && threads.length < page.length) {
+        const start = offset ?? 0;
+        const visible = filterIxThreads(listThreadsWithPendingInteractionState(deps.db, listOptions));
+        threads = visible.slice(start, limit === undefined ? undefined : start + limit);
+      }
     }
     return context.json(
       toThreadListEntryResponses(deps, { threads }) satisfies ThreadListEntry[],
